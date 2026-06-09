@@ -1,0 +1,194 @@
+@import "tailwindcss";
+
+@theme {
+  --font-mono: "JetBrains Mono", "Fira Code", "Courier New", monospace;
+  --font-display: "Share Tech Mono", "JetBrains Mono", monospace;
+}
+
+:root {
+  /* Core palette */
+  --color-bg: #030503;
+  --color-bg-panel: #060a06;
+  --color-bg-elevated: #0a120a;
+  --color-grid: #0d1f0d;
+  --color-border: #1a3a1a;
+  --color-border-hot: #2aff4a;
+
+  /* Phosphor green scale */
+  --color-green-dim: #1a4a1a;
+  --color-green-mid: #00cc33;
+  --color-green: #00ff44;
+  --color-green-bright: #88ffaa;
+  --color-green-glow: rgba(0, 255, 68, 0.15);
+
+  /* Amber / threat scale */
+  --color-amber: #ffb300;
+  --color-amber-bright: #ffd54f;
+  --color-amber-glow: rgba(255, 179, 0, 0.18);
+  --color-red: #ff2244;
+  --color-red-dim: #4a0010;
+  --color-red-glow: rgba(255, 34, 68, 0.2);
+
+  /* Cyan — Palantir data layer */
+  --color-cyan: #00e5ff;
+  --color-cyan-dim: #004a5a;
+  --color-cyan-glow: rgba(0, 229, 255, 0.12);
+
+  /* Glow definitions */
+  --glow-green: 0 0 6px var(--color-green), 0 0 12px var(--color-green-glow);
+  --glow-amber: 0 0 6px var(--color-amber), 0 0 12px var(--color-amber-glow);
+  --glow-red: 0 0 6px var(--color-red), 0 0 12px var(--color-red-glow);
+  --glow-cyan: 0 0 6px var(--color-cyan), 0 0 12px var(--color-cyan-glow);
+}
+
+body {
+  margin: 0;
+  background-color: var(--color-bg);
+  background-image: linear-gradient(var(--color-grid) 1px, transparent 1px),
+                    linear-gradient(90deg, var(--color-grid) 1px, transparent 1px);
+  background-size: 20px 20px;
+  color: var(--color-green);
+  font-family: var(--font-mono);
+  overflow-x: hidden;
+  position: relative;
+  height: 100vh;
+  /* Screen flicker animation */
+  animation: flicker 8s ease-in-out infinite;
+}
+
+/* CRT Scanlines Layer */
+body::after {
+  content: " ";
+  display: block;
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  right: 0;
+  background: repeating-linear-gradient(
+    rgba(18, 16, 16, 0) 0%,
+    rgba(0, 50, 0, 0.08) 50%,
+    rgba(18, 16, 16, 0) 100%
+  );
+  background-size: 100% 4px;
+  z-index: 9999;
+  pointer-events: none;
+}
+
+/* Cyber CRT Flicker keyframes */
+@keyframes flicker {
+  0% { opacity: 1; }
+  49.9% { opacity: 1; }
+  50% { opacity: 0.99; }
+  50.1% { opacity: 1; }
+  55.5% { opacity: 1; }
+  55.6% { opacity: 0.98; }
+  55.7% { opacity: 1; }
+  98.1% { opacity: 1; }
+  98.2% { opacity: 0.99; }
+  98.3% { opacity: 1; }
+  100% { opacity: 1; }
+}
+
+/* Glowing typography class helpers */
+.text-phosphor-green {
+  color: var(--color-green);
+  text-shadow: var(--glow-green);
+}
+
+.text-phosphor-amber {
+  color: var(--color-amber);
+  text-shadow: var(--glow-amber);
+}
+
+.text-phosphor-red {
+  color: var(--color-red);
+  text-shadow: var(--glow-red);
+}
+
+.text-phosphor-cyan {
+  color: var(--color-cyan);
+  text-shadow: var(--glow-cyan);
+}
+
+/* Panel styles */
+.combat-panel {
+  background-color: var(--color-bg-panel);
+  border: 1px solid var(--color-border);
+  box-shadow: inset 0 0 20px rgba(0, 255, 68, 0.03);
+  padding: 16px;
+  position: relative;
+}
+
+.combat-panel::before {
+  content: "";
+  position: absolute;
+  top: -1px;
+  left: 10px;
+  width: 15px;
+  height: 3px;
+  background-color: var(--color-border-hot);
+}
+
+/* custom scrollbars */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-green-dim);
+  border-radius: 2px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-green-mid);
+}
+
+/* Beziers animation */
+@keyframes dash-march {
+  to {
+    stroke-dashoffset: -50;
+  }
+}
+
+/* Alert Blinker */
+.blink-hud {
+  animation: alertBlink 1.2s infinite;
+}
+
+@keyframes alertBlink {
+  0% { opacity: 1; }
+  50% { opacity: 0.25; }
+  100% { opacity: 1; }
+}
+
+/* Radar scanning sweep */
+.radar-sweep-animation {
+  animation: radarSweeping 4s linear infinite;
+}
+
+@keyframes radarSweeping {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Pulse rings for map target focus */
+.pulse-ring-map {
+  animation: mapPulse 1.8s ease-out infinite;
+}
+
+@keyframes mapPulse {
+  0% {
+    transform: scale(0.9);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(2.6);
+    opacity: 0;
+  }
+}

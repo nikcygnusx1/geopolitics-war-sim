@@ -1,0 +1,6 @@
+{
+  "name": "Sovereign Command Simulator",
+  "description": "An deep, elite geopolitical and military war simulator terminal for sovereign states control.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
