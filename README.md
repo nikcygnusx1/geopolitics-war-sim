@@ -1,145 +1,208 @@
-# 🖥️ Sovereign Command Simulator v3.0
-
-> **[OPERATIONAL DIRECTIVE: LEVEL-5 CLASS-A SECURITY CLEARANCE REQUIRED]**  
-> Welcome to the Tactical Command Console. You are designated as Sovereign Commander. Take command of a global superpower, navigate simulated geopolitical theaters, balance critical domestic factors, command advanced aerospace fleets, and steer your state toward undisputed global hegemony.
-
----
-
-## 🎮 PLAY THE SIMULATOR NOW
-
-Experience the real-time, tick-driven geopolitical simulation engine live on our cloud-orchestrated simulation nodes:
-
-*   🌐 **[LAUNCH THEATER: PLAY SHIELD NODE](https://ais-pre-gmpxdnk4pvdzx3wq3qj7ri-276848083065.asia-southeast1.run.app)** — Production-grade deployment, recommended for active strategic operations.
-*   ⚡ **[DEVELOPER SANDBOX NODE](https://ais-dev-gmpxdnk4pvdzx3wq3qj7ri-276848083065.asia-southeast1.run.app)** — Live preview console for real-time sandbox modifications.
-
----
-
-## 🌍 Simulation Overview
-
-**Sovereign Command Simulator** is an advanced, full-scope military and geopolitical grand strategy simulation. Styled after retro military CAD systems, NORAD threat maps, and modern intelligence analyst terminal screens, the engine simulates deep macroeconomic cascades, complex demographic drifts, multi-layered cyber warfare, and precise thermodynamic weapon trajectories. 
-
-Behind the green CRT phosphor sweep lies a sophisticated simulation running deterministic tick calculations. Every choice triggers dynamic updates across high-fidelity dashboards, live newspapers, financial markets, and real-time radar nodes.
-
----
-
-## 🏛️ Core Cabinet Subsystems (F1–F8)
-
-Navigate your Sovereign Empire through eight fully interactive command decks, toggled instantly via hotkeys (`F1` through `F8` or via the main console matrix):
-
-### 1. Government (`F1`) — Executive Control & Cabinet Integrity
-*   **Fiscal Tax Rates**: Calibrate national corporate & income tax rates to fuel a multi-billion dollar treasury reserve, balancing taxation against public satisfaction.
-*   **Ideological Alignment Control**: Balance power and handle specific demands of competing domestic factions: *Military Hardliners, Reformers, Islamists, Nationalists, Oligarchs, Technocrats, Separatists, or Foreign-Backed agents*.
-*   **Executive Cabinet Placement**: Review minister competence, loyalty, and corruption levels across your cabinet (*Defense Minister, Finance Minister, Foreign Minister, Intelligence Chief, and Central Bank Governor*).
-*   **Martial Law**: Activate domestic emergency powers to suppress soaring popular unrest at the cost of civil liberties.
-
-### 2. Central Bank (`F2`) — Macroeconomic Stability & Reserve Speculation
-*   **Monetary Base Rates**: Adjust the central bank's base interest rate to curb volatile inflation or inject rapid liquidity during sovereign debt stress indices.
-*   **Sovereign Debt Allocation**: Liquidate treasury stress by issuing high-yield government bonds, or execute market buy-backs of active debt assets.
-*   **Commodity Speculation**: Trade rare physical asset reserves (such as crude oil, natural gas, wheat, rare earths, silicon, and weapons-grade uranium) inside standard spot markets.
-*   **Printing Press**: Activate the currency printing press to inject emergency liquidity, risking hyperinflation or direct sovereign credit downgrades.
-
-### 3. Arsenal (`F3`) — Deterrence & Ballistic Trajectory Matrix
-*   **High-Yield Procurements**: Construct nuclear-capable strategic systems (ICBMs, SLBM ballistic submarines, cruise missiles, hypersonic vectors) or conventional tactical systems (tank divisions, drone swarms, carrier strike groups).
-*   **Active Defense Grid (ABM)**: Maintain operational anti-ballistic missile interception percentages (Iron Dome grids) to automatically target and intercept incoming hostile trajectories.
-*   **Strike Telemetry Controls**: Target specific rival nations, allocate warhead yields, and direct tactical strikes or pre-emptive nuclear salvos with dynamic pathing.
-
-### 4. Diplomacy (`F4`) — International Realpolitik & Trade Networks
-*   **Intergovernmental Bilaterals**: Track public opinion and forge defense blocks or bilateral treaties across major coalitions (*NATO, BRICS, GCC, QUAD, SCO, or NEUTRAL*).
-*   **Tariff Matrices**: Establish sovereign import tariffs ranging from 0% to 50% to shield local key sectors or wage aggressive trade wars.
-*   **Trade Alliances & Embargoes**: Establish dense trading relationships to skyrocket GDP growth, or declare economic embargoes to strip target powers of vital resources.
-
-### 5. Research (`F5`) — Technological Development Trees
-*   **Technological Milestones**: Fund multi-phase R&D trees covering military-industrial cybernet, spatial intelligence, and atmospheric weaponry.
-*   **Upgrades Matrix**: Unravel critical systems: *HAARP Atmospheric Command, Iron Dome ABM Shields, Cyber Firewalls, Quantum Comms, Bio-Weapon Detectors, EMP Shields*, or *Deep Strike* tactical tracking.
-
-### 6. Intelligence (`F6`) — Dark Budgets & Covert Espionage
-*   **Espionage Penetration**: Fund black budgets to infiltrate target security networks, upgrading Signal Intel Scores and HUMINT assets.
-*   **Covert Op Protocols**: Orchestrate classified operations with real-time success probabilities and catastrophic blowout risks, including:
-    *   *Regime Decapitation*: Liquidate hostile national leadership to crash global state stability.
-    *   *Sovereign Financial Outflow*: Destabilize the currency of a rival economy through cyber-financial manipulation.
-    *   *Election Fraud Schemes*: Forge ballot outputs to shift ideological alignment.
-    *   *Grid Blackouts*: Crash target ABM radar grids to clear the way for ballistic strikes.
-    *   *Banded Guerrilla Funding*: Subsidize and arm insurgent factions to split host nations apart.
-
-### 7. Space Command (`F7`) — Orbital Asset Deployment
-*   **Multi-Orbit Tracking**: Manually inject orbital platforms into designated trajectories — **Low Earth Orbit (LEO)**, **Polar Orbits**, or **Geostationary Orbits (GEO)**, balancing payload capacity against launch cost.
-*   **Satellite Constellations**: Deploy advanced military payloads: *Reconnaissance Satellites (RECON_SAT) for enhanced targeting telemetry, Comms Satellites (COMMS_SAT) for signal decryption, GPS Platforms (GPS_SAT) for strike alignment*, and *Orbital Weapons (KILL_SAT) for spatial neutralizing strikes*.
-
-### 8. Population (`F8`) — Demographics & Welfare Systems
-*   **Demographic Dynamics**: Analyze and manage base social statistics including birth rate matrices, mortality indexes, net migration flows, urbanization percentages, and workforce participation rates.
-*   **Social Resource Allocation**: Steer state spending towards key social vectors (*Healthcare, Education, Infrastructure, state Propaganda, and Civilian Welfare*).
-*   **Ethnic & Religious Compositions**: Monitor internal sociological divides, handling resistance levels to maintain a cohesive unified culture.
-
----
-
-## 📡 Live Telemetry & Spatial Systems
-
-The Sovereign Command interface is framed by real-time intelligence feeds:
-
-*   **Interactive Geopolitical Radar**: A live, high-contrast world vector map showing country boundaries, active military operations, and color-coded alliance alignments.
-*   **Interactive Alliance Graph Node**: A real-time visual-node matrix tracing economic dependencies, defense treaties, and hostile lines between major states.
-*   **Reactive Telemetry Feeds**: Four real-time, line-by-line raster grids monitoring active theaters:
-    *   *Thermal Recon*: Satellite feed capturing dynamic infrared thermal signatures.
-    *   *Drone Recon*: Feed detailing localized surveillance drone combat sweeps.
-    *   *Cyber Signal Intake*: Real-time network decrypts and firewall intercept attempts.
-    *   *HAARP Weather Radar*: Sweeping ionospheric anomalies and climate manipulations.
-*   **Live Data Tickers**: Direct feed tracking instant stock index movements, inflation changes, and global currency updates.
-
----
-
-## 🏛️ Sim Auxiliary Systems
-
-The living sandbox reactively interacts using simulated elements:
-
-*   **The UN Security Council**: The international assembly automatically meets to vote on global peacekeeping resolutions, target aggressive nations, or launch sweeping economic sanction cascades.
-*   **The Black Market Bazaar**: Engage with contraband smugglers. Spend cash reserves to acquire banned weapons-grade uranium, hire foreign mercenaries, bypass defensive R&D blockades, or secure covert intelligence assets.
-*   **The Newspaper Dispatch Feed**: Headlines read out national successes, global economic shocks, military deployment crises, and public interest profiles dynamically.
-
----
-
-## 🛠️ World Builder Sandbox & Scenarios
-
-Choose from multiple built-in tactical scenarios, or command your own world:
-
-1.  **World Builder Sandbox**: Fully configure your starting world. Select your initial playable superpower, set custom treasury spending multipliers, and dictate global baseline tensions from *Cold Peace* up to *Inferno*.
-2.  **Arctic Claim (Scenario)**: Navigate climate drilling conflicts, form high-yield trade alliances, and maintain local satisfaction indexes during territory claims.
-3.  **Tech War (Scenario)**: Wage intensive digital embargoes and deploy quantum firewalls to secure state assets against rogue actors.
-4.  **Kashmir Flashpoint (Scenario)**: Coordinate rapid diplomatic or military intercepts to cool a regional flashpoint before a nuclear threshold is reached.
-5.  **Global Hegemony (Scenario)**: Drive your sovereign state to total global superpower dominance, demanding high economic GDPs, robust military ratings, and total alliance loyalty.
-
----
-
-## 🚀 Installation & Local Development
-
-Launch the command console locally to run personal tests:
-
-### 1. Install Workspace Dependencies
-Ensure Node.js and npm are configured in your development environment, then execute:
-```bash
-npm install
+```
+┌──────────────────────────────────────────────────────────────────────────┐
+│  CLASSIFIED // EYES ONLY // NOCONTRACT // COGNITIVE RECON UNIT Z9        │
+│  SECURITY CLEARANCE: COSMIC TOP SECRET (LEVEL 5)                         │
+└──────────────────────────────────────────────────────────────────────────┘
 ```
 
-### 2. Configure Environment Parameters
-Create a `.env` configuration file in the project root following the structure in `.env.example`:
-```env
-# Required for running any AI-driven intelligence logs or scenario interactions
-GEMINI_API_KEY=your_google_ai_studio_api_key
-```
+# ███████╗  ██████╗  ██╗   ██╗ ███████╗ ██████╗  ███████╗ ██╗  ██████╗  ███╗   ██╗
+# ██╔════╝ ██╔═══██╗ ██║   ██║ ██╔════╝ ██╔══██╗ ██╔════╝ ██║ ██╔═══██╗ ████╗  ██║
+# ███████╗ ██║   ██║ ██║   ██║ █████╗   ██████╔╝ █████╗   ██║ ██║   ██║ ██╔██╗ ██║
+# ╚════██║ ██║   ██║ ╚██╗ ██╔╝ ██╔══╝   ██╔══██╗ ██╔══╝   ██║ ██║   ██║ ██║╚██╗██║
+# ███████║ ╚██████╔╝  ╚████╔╝  ███████╗ ██║  ██║ ███████╗ ██║ ╚██████╔╝ ██║ ╚████║
+# ╚══════╝  ╚═════╝    ╚═══╝   ╚══════╝ ╚═╝  ╚═╝ ╚══════╝ ╚═╝  ╚═════╝  ╚═╝  ╚═══╝
+# 
+#  ██████╗  ██████╗  ███╗   ███╗ ███╗   ███╗  █████╗  ███╗   ██╗ ██████╗  
+# ██╔════╝ ██╔═══██╗ ████╗ ████║ ████╗ ████║ ██╔══██╗ ████╗  ██║ ██╔══██╗ 
+# ██║      ██║   ██║ ██╔████╔██║ ██╔████╔██║ ███████║ ██╔██╗ ██║ ██║  ██║ 
+# ██║      ██║   ██║ ██║╚██╔╝██║ ██║╚██╔╝██║ ██╔══██║ ██║╚██╗██║ ██║  ██║ 
+# ╚██████╗ ╚██████╔╝ ██║ ╚═╝ ██║ ██║ ╚═╝ ██║ ██║  ██║ ██║ ╚████║ ██████╔╝ 
+#  ╚═════╝  ╚═════╝  ╚═╝     ╚═╝ ╚═╝     ╚═╝ ╚═╝  ╚═╝ ╚═╝  ╚═══╝ ╚═════╝  
+#
+#                         SOVEREIGN COMMAND SIMULATOR v4.0
 
-### 3. Launch Development Server
-Boot the live, hot-reloading development server:
-```bash
-npm run dev
-```
-The console will start on the fallback port `3000`. Open `http://localhost:3000` in your browser.
-
-### 4. Production Build & Deployment Compilation
-Test the local production build engine to verify performance optimizations:
-```bash
-npm run build
-```
-This builds static client assets and packs the server logic into `/dist/` conforming to production container setups.
+[![Operational Status: ACTIVE](https://img.shields.io/badge/OPERATIONAL_STATUS-ACTIVE-00FF44?style=flat-for-the-badge&logo=opsgenie&logoColor=00FF44&labelColor=050a05)]()
+[![Clearance Level: 5 (COSMIC)](https://img.shields.io/badge/CLEARANCE_LEVEL-5%20(COSMIC)-ffb300?style=flat-for-the-badge&logoColor=ffb300&labelColor=0a0800)]()
+[![DEFCON Palette: COMPLIANT](https://img.shields.io/badge/DEFCON_PALETTE-COMPLIANT-ff2244?style=flat-for-the-badge&logoColor=ff2244&labelColor=100000)]()
 
 ---
 
-*🔐 This terminal simulation operates entirely under sandbox containment parameters. Carry out your mission, Sovereign Commander.*
+## 🌐 DIRECT INTERCEPT LINK: LOBBY ACCESS
+
+Step onto the command deck and run geopolitical scenarios across global threat maps from any tactical browser console:
+
+> 🖥️ **[LAUNCH THEATER: PLAY SOVEREIGN COMMAND](https://geopolitics-war-sim.pages.dev/)**  
+> *Recommended for active strategic operators requiring full Web Audio synthesizer outputs and WebGL orbital rendering.*
+
+---
+
+## 👁️ Geopolitical Simulation Overview
+
+**Sovereign Command Simulator** is a full-fidelity geopolitical sandbox and real-time military crisis simulator. Styled after legacy cyber-warfare commands, intelligence visualization software (such as Palantir Gotham), and retro tactical NORAD threat monitors, it simulates deterministic economic drifts, currency balances, sub-state proxy rebellions, covert espionage penetrations, and high-yield strategic nuclear trajectories.
+
+Behind the flickering green phosphor scanlines lies an advanced full-scope engine keeping the world alive. Every action—from raising corporate tax brackets to deploying spatial reconnaissance satellites—cascades immediately through international diplomatic channels, triggering dynamic reaction matrices across 50+ countries.
+
+---
+
+## 🎮 Core Subsystems Matrix (F1–F8)
+
+Take control of your sovereign state through eight interactive, real-time command systems toggled via hotkeys (`F1`-`F8`) or the main UI sidebar:
+
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│ [F1] GOVERNMENT  │ Adjust taxes, suppress popular unrest, and handle   │
+│                  │ competing factions (Military Hardliners, Reformers).│
+├──────────────────┼─────────────────────────────────────────────────────┤
+│ [F2] CENT. BANK  │ Control interest rates, issue high-yield bonds, or   │
+│                  │ override limits with the currency printing press.   │
+├──────────────────┼─────────────────────────────────────────────────────┤
+│ [F3] ARSENAL     │ Procure and deploy conventional force structures,   │
+│                  │ target ballistic silos, and activate Iron Dome ABMs.│
+├──────────────────┼─────────────────────────────────────────────────────┤
+│ [F4] DIPLOMACY   │ Broker non-aggression pacts, dispatch humanitarian  │
+│                  │ aid, join blocs (NATO, SCO), or declare embargoes.  │
+├──────────────────┼─────────────────────────────────────────────────────┤
+│ [F5] RESEARCH    │ Fund tech trees improving satellite recon, climate   │
+│                  │ HAARP storms, hypersonic vectors, and EMP shields.  │
+├──────────────────┼─────────────────────────────────────────────────────┤
+│ [F6] INTEL       │ Hack grids, trigger financial outflows, plant propaganda│
+│                  │ campaigns, and run deniable wetwork covert ops.     │
+├──────────────────┼─────────────────────────────────────────────────────┤
+│ [F7] SPACE CMD   │ Inject intelligence payloads into LEO, Polar, or    │
+│                  │ Geostationary orbits to remove map Fog of War.      │
+├──────────────────┼─────────────────────────────────────────────────────┤
+│ [F8] WELFARE     │ Calibrate state resource spending toward healthcare, │
+│                  │ education, and national internal infrastructure.    │
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## ⚡ Triple-A Simulation Features (v4.0 Spec Upgrade)
+
+### 🪐 1. WebGL Atmospheric Orbital Intro
+Experience a cinematic Netflix-style game boot. Powered by **Three.js**, the globe emerges from deep space inside a glowing atmospheric fresnel envelope, spinning from photorealistic day/night textures into digital phosphor-sweep matrix grids as your terminal authorization completes.
+
+### 🌐 2. Interactive D3 Relationship Graphs
+Relations aren't just lists—they are living systems. The simulation boasts a dynamic, drag-and-drop force-directed graph rendering diplomatic alignments, trade connectivity, and active wars. When war is declared, watch kinetic push forces physicalize conflict, driving node repulsions in real-time.
+
+### ⚠️ 3. Dynamic DEFCON HUD Palettes
+No more static layouts. The entyre UI is reactive to threat level indexes. As regional flashpoints escalate, the game's theme, panels, and borders transition seamlessly through five DEFCON palettes—shifting your console from soothing PEACETIME green to warning watch amber, and finally into a pulsing DEFCON 1 nuclear red.
+
+### ☢️ 4. Consequence Permanence (World Scars)
+Your decisions leave scars. Conventional missile strikes and strategic thermonuclear detonations generate permanent ground markers mapped onto the world graticule. Craters, fallout zones, and climate wreckage persist across gameplay, decaying GDP, inflating regional unrest, and causing radiation casualties on every game tick.
+
+### 👤 5. Procedural Leader Portraits & CIA Dossiers
+Every country features a unique leader with specific demographics, military experience, and a procedurally drawn Canvas vector portrait. Click any country to open a CIA-style flip-open classified folder. If your intelligence level on a targeted area is too low, critical records render with redacted black out bars.
+
+---
+
+## 🛠️ Triple-A Tech Stack
+
+The simulation is built using a low-latency, modular architecture engineered to handle thousands of concurrent calculations:
+
+```
+                  ┌──────────────────────────────────────────────┐
+                  │                 REACT 18.3                   │
+                  │        (Fiber & Responsive Routing)          │
+                  └──────┬──────────────────────────────┬────────┘
+                         │                              │
+                         ▼                              ▼
+            ┌────────────────────────┐      ┌────────────────────────┐
+            │       D3.JS / G3       │      │        THREE.JS        │
+            │  TopoJSON Geo Map &    │      │    Real-Time WebGL     │
+            │  Interactive Force Sim │      │     Orbital Globe      │
+            └────────────────────────┘      └────────────────────────┘
+                         │                              │
+                         └──────────────┬───────────────┘
+                                        │
+                                        ▼
+                  ┌──────────────────────────────────────────────┐
+                  │          ZUSTAND STATE ORCHESTRATION         │
+                  │      (Immer Immutability Core Engine)        │
+                  └──────────────────────┬───────────────────────┘
+                                         │
+                                         ▼
+                  ┌──────────────────────────────────────────────┐
+                  │              WEB AUDIO SYNTH                 │
+                  │      (White-Noise Rocket Ignition,           │
+                  │       Klaxon Horns, Sine Wave Pings)         │
+                  └──────────────────────────────────────────────┘
+```
+
+- **Core Framework**: React 18.3 + TypeScript 5.4 + Vite 5.2
+- **Data Visualization**: D3 (v7.9.0) + Geo TopoJSON (Orthographic & Natural Earth projections)
+- **3D Graphics Engine**: Three.js (v0.164.0) Custom Ambient/Atmospheric shaders
+- **State Store**: Zustand + Immer middleware for selective component re-rendering
+- **Audio Synthesis**: Native Web Audio API (Synthesizing square wave alert sirens, square/sine key-clicks, and low-frequency custom ambient drones)
+
+---
+
+## 🕹️ How To Play — Tactical Onboarding
+
+### 1. Set Your Mission parameters
+Choose from several specialized campaigns inside the terminal briefing center:
+- **MENA Spark**: Broker a ceasefire in the Middle East before regional tensions cross the nuclear threshold.
+- **Kashmir Flashpoint**: Calm bilateral mobilizations along the Indian/Pakistani border within a restricted tick duration.
+- **Sovereign Default**: Rescue Europe from sovereign bankruptcy. Stabilize debt indices across unified central banks.
+- **Arctic Claim**: Secure raw resource extraction rights before rival superpower polar navies establish grid locks.
+- **Classic Sandbox**: Fully customize starting tensions, sub-state actors, resources multipliers, and AI aggression factors.
+
+### 2. Monitor Visual Telemetry Feeds
+Watch target coordinates through four interactive canvas telemetry engines:
+- **Thermal Recon**: Task satellites to locate coordinates. Watch visual heat blobs spike during active combat sequences.
+- **Drone targeting**: Lock onto target silos, adjusting loiter speeds and guidance codes before authorized launches.
+- **Cyber matrix**: Counter incoming ransomware intrusions and reinforce firewalls with localized backup buffers.
+- **HAARP Radar**: Sweep ionized high-altitude weather circles to generate targeted regional droughts and flood anomalies.
+
+### 3. Command via Persistent Terminal Shell
+The bottom footer contains a persistent command console. Tap autocomplete to quickly trigger operations:
+- `/strike [CountryID] [WeaponType] [Yield]` - Queue immediate strategic interceptors
+- `/interest [Rate]` - Manipulate central bank bases
+- `/aid [CountryID] [Amount]` - Disburse macroeconomic foreign assistance
+- `/research [NodeID]` - Select scientific tech upgrades
+- `/op [OpType] [CountryID]` - Authorize Covert networks
+- `/inspect [CountryID]` - Flip open classified dossiers
+- `/clear` - Purge shell memory trace backlogs
+
+---
+
+## 🧠 Geopolitical Strategies & Doctrines
+
+```
+                        DIPLOMATIC ALIGNMENT GRID
+                      
+                        [+] DEEPEST COOPERATION
+                                   ▲
+                                   │  ◆ Alliance Pacts (NATO/SCO)
+                                   │  ◆ Direct Technical Aid Dispatches
+                                   │  ◆ Joint Foreign Intelligence Sharing
+                                   │
+      [-] REDACTED RED CARD ◄──────┼──────► [+] UNRESTRICTED GDP EXPANSION
+                                   │
+                                   │  ◆ Bilateral Sanctions & Tariffs
+                                   │  ◆ Sabotaging Power Grids (Cyber Ops)
+                                   │  ◆ Hypersonic Strike Silos Armed
+                                   │
+                                   ▼
+                        [-] TOTAL WARFARE POSTURE
+```
+
+### Strategy A: The Hegmonic Shield (Defensive)
+Unlock `IRON_DOME_V3` and `EMP_SHIELD` immediately. Expand your satellite array over polar zones to remove all map Fog of War. Set taxes to a moderate 18% to generate maximum public approval ratings while slowly using treasury profits to finance bilateral aid to neutral states. Shift non-allies to your ideological block via Signal disinformation covert campaigns.
+
+### Strategy B: Macroeconomic Attrition (Aggressive Economic)
+Impose 35% trade tariffs on rival industrial manufacturing powers. Coordinate a `FINANCIAL_ATTACK` covert operation via your cyber terminal to trigger sudden currency devaluations. If cash reserves stress, issue high-yield bonds to central markets or devalue your currency relative to the USD peg to stimulate massive agricultural exports.
+
+### Strategy C: Climate Disruption HAARP Matrix (Asymmetric)
+Fund `HAARP_V3` immediately. Task HAARP radar arrays to generate heavy cloud concentrations over rival wheat processing agricultural zones. This triggers an immediate food pricing crisis, inflating target country popular unrest to 80%+. When the target country enters civil war and rebel factions revolt, step in with proxy financial support to overthrow the regime without firing a single missile.
+
+---
+
+```
+┌──────────────────────────────────────────────────────────────────────────┐
+│ WARNING: SYSTEM SIMULATION STATE ACCELERATES ON A WEEKLY TICK CONTEXT.    │
+│ ESCAPE KEY IMMEDIATELY PURGES ACTIVE MEMORY IN THE EVENT OF SECURITY CODES│
+│ BREACH. TERMINAL STATUS COMPLIANT. AWAITING EXECUTIVE COGNATE DECREE...  │
+└──────────────────────────────────────────────────────────────────────────┘
+```
