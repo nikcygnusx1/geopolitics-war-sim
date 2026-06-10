@@ -1,7 +1,11 @@
 {
   "name": "Sovereign Command Simulator",
   "description": "A deep geopolitical and military strategy simulator terminal.",
-  "requestFramePermissions": [],
+  "requestFramePermissions": [
+    "camera",
+    "microphone",
+    "geolocation"
+  ],
   "majorCapabilities": [
     "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
   ]

@@ -1,473 +1,284 @@
+export type DefconLevel = 5 | 4 | 3 | 2 | 1;
+
 class AudioEngine {
   private ctx: AudioContext | null = null;
-  private masterGain: GainNode | null = null;
+  private master: GainNode | null = null;
   private ambientGain: GainNode | null = null;
   private sfxGain: GainNode | null = null;
+  private ambientOscillators: OscillatorNode[] = [];
+  private currentDefcon: DefconLevel = 5;
 
-  // Ambient synth nodes
-  private ambientOscs: { osc: OscillatorNode; gain: GainNode }[] = [];
-  private ambientVolume: number = 0.5;
-
-  private isAmbientRunning = false;
-
-  constructor() {
-    // Lazy initialize on first interaction to comply with autoplay policies
-  }
-
-  private initCtx() {
-    if (this.ctx) return;
+  init() {
     try {
-      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
-      this.ctx = new AudioContextClass();
-      this.masterGain = this.ctx.createGain();
-      this.masterGain.gain.setValueAtTime(0.7, this.ctx.currentTime);
-      this.masterGain.connect(this.ctx.destination);
-
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioCtx) return;
+      this.ctx = new AudioCtx();
+      this.master = this.ctx.createGain();
+      this.master.gain.value = 0.7;
+      this.master.connect(this.ctx.destination);
+      
       this.ambientGain = this.ctx.createGain();
-      this.ambientGain.gain.setValueAtTime(0.15, this.ctx.currentTime); // Low background volume
-      this.ambientGain.connect(this.masterGain);
-
+      this.ambientGain.gain.value = 0.15;
+      this.ambientGain.connect(this.master);
+      
       this.sfxGain = this.ctx.createGain();
-      this.sfxGain.gain.setValueAtTime(0.6, this.ctx.currentTime);
-      this.sfxGain.connect(this.masterGain);
+      this.sfxGain.gain.value = 0.8;
+      this.sfxGain.connect(this.master);
     } catch (e) {
-      console.warn('AudioContext failed to start', e);
+      console.warn('Web Audio compilation / initialization failed:', e);
     }
   }
 
-  public resume() {
-    this.initCtx();
+  resume() {
     if (this.ctx && this.ctx.state === 'suspended') {
-      this.ctx.resume().catch((err) => console.warn('Failed to resume audio context', err));
+      this.ctx.resume();
     }
   }
 
-  private getContext(): AudioContext | null {
+  sfxKeyClick() {
+    if (!this.ctx) return;
     this.resume();
-    return this.ctx;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'square';
+    osc.frequency.value = Math.random() > 0.5 ? 800 : 900;
+    gain.gain.setValueAtTime(0.08, this.ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.02);
+    osc.connect(gain);
+    gain.connect(this.sfxGain || this.ctx.destination);
+    osc.start();
+    osc.stop(this.ctx.currentTime + 0.02);
   }
 
-  public setMasterVolume(vol: number) {
+  sfxRadarPing() {
+    if (!this.ctx) return;
     this.resume();
-    if (this.masterGain && this.ctx) {
-      this.masterGain.gain.linearRampToValueAtTime(vol, this.ctx.currentTime + 0.1);
-    }
-  }
-
-  // SFX: Terminal typing click
-  public sfxKeyClick() {
-    const ctx = this.getContext();
-    if (!ctx || !this.sfxGain) return;
-
-    const t = ctx.currentTime;
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-
-    osc.type = 'triangle';
-    osc.frequency.setValueAtTime(800 + Math.random() * 200, t);
-
-    gain.gain.setValueAtTime(0.08, t);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.05);
-
-    osc.connect(gain);
-    gain.connect(this.sfxGain);
-
-    osc.start(t);
-    osc.stop(t + 0.06);
-  }
-
-  // SFX: Type char with mechanical clicking variation
-  public sfxTypeChar() {
-    const ctx = this.getContext();
-    if (!ctx || !this.sfxGain) return;
-
-    const t = ctx.currentTime;
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
     osc.type = 'sine';
-    const freq = Math.random() > 0.5 ? 750 : 900;
-    osc.frequency.setValueAtTime(freq, t);
-
-    gain.gain.setValueAtTime(0.12, t);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.03);
-
+    osc.frequency.value = 1200;
+    gain.gain.setValueAtTime(0.25, this.ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.6);
     osc.connect(gain);
-    gain.connect(this.sfxGain);
-
-    osc.start(t);
-    osc.stop(t + 0.04);
+    gain.connect(this.sfxGain || this.ctx.destination);
+    osc.start();
+    osc.stop(this.ctx.currentTime + 0.6);
   }
 
-  // SFX: Radar Ping (sine decay)
-  public sfxRadarPing() {
-    const ctx = this.getContext();
-    if (!ctx || !this.sfxGain) return;
-
-    const t = ctx.currentTime;
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(1200, t);
-
-    gain.gain.setValueAtTime(0.25, t);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.6);
-
-    osc.connect(gain);
-    gain.connect(this.sfxGain);
-
-    osc.start(t);
-    osc.stop(t + 0.61);
-  }
-
-  // SFX: Alert Klaxon (alternating square wave)
-  public sfxKlaxon() {
-    const ctx = this.getContext();
-    if (!ctx || !this.sfxGain) return;
-
-    const t = ctx.currentTime;
-    // 3 alternating pulses
-    for (let i = 0; i < 3; i++) {
-      const pTime = t + i * 0.4;
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-
+  sfxKlaxon() {
+    if (!this.ctx) return;
+    this.resume();
+    [0, 0.25, 0.5].forEach((delay, i) => {
+      if (!this.ctx) return;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
       osc.type = 'square';
-      osc.frequency.setValueAtTime(440, pTime);
-      osc.frequency.setValueAtTime(550, pTime + 0.2);
-
-      gain.gain.setValueAtTime(0, pTime);
-      gain.gain.linearRampToValueAtTime(0.15, pTime + 0.05);
-      gain.gain.setValueAtTime(0.15, pTime + 0.35);
-      gain.gain.exponentialRampToValueAtTime(0.001, pTime + 0.4);
-
+      osc.frequency.value = i % 2 === 0 ? 440 : 550;
+      gain.gain.setValueAtTime(0.2, this.ctx.currentTime + delay);
+      gain.gain.setValueAtTime(0.0, this.ctx.currentTime + delay + 0.2);
       osc.connect(gain);
-      gain.connect(this.sfxGain);
-
-      osc.start(pTime);
-      osc.stop(pTime + 0.4);
-    }
+      gain.connect(this.sfxGain || this.ctx.destination);
+      osc.start(this.ctx.currentTime + delay);
+      osc.stop(this.ctx.currentTime + delay + 0.22);
+    });
   }
 
-  // SFX: Missile Launch (whitenoise high pass filtered + pitch sweep)
-  public sfxMissileLaunch() {
-    const ctx = this.getContext();
-    if (!ctx || !this.sfxGain) return;
-
-    const t = ctx.currentTime;
-    const bufferSize = ctx.sampleRate * 0.5; // half second buffer
-    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+  sfxMissileLaunch() {
+    if (!this.ctx) return;
+    this.resume();
+    const bufferSize = this.ctx.sampleRate * 0.5;
+    const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
     const data = buffer.getChannelData(0);
     for (let i = 0; i < bufferSize; i++) {
       data[i] = Math.random() * 2 - 1;
     }
-
-    const noise = ctx.createBufferSource();
-    noise.buffer = buffer;
-
-    const filter = ctx.createBiquadFilter();
+    const source = this.ctx.createBufferSource();
+    source.buffer = buffer;
+    
+    const filter = this.ctx.createBiquadFilter();
     filter.type = 'highpass';
-    filter.frequency.setValueAtTime(200, t);
-    filter.frequency.exponentialRampToValueAtTime(800, t + 0.4);
-
-    const gain = ctx.createGain();
-    gain.gain.setValueAtTime(0.2, t);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
-
-    noise.connect(filter);
+    filter.frequency.setValueAtTime(200, this.ctx.currentTime);
+    filter.frequency.linearRampToValueAtTime(1500, this.ctx.currentTime + 0.4);
+    
+    const gain = this.ctx.createGain();
+    gain.gain.setValueAtTime(0.4, this.ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.5);
+    
+    source.connect(filter);
     filter.connect(gain);
-    gain.connect(this.sfxGain);
-
-    noise.start(t);
-    noise.stop(t + 0.5);
+    gain.connect(this.sfxGain || this.ctx.destination);
+    source.start();
   }
 
-  // SFX: Impact (60Hz low frequency rumble)
-  public sfxMissileImpact() {
-    const ctx = this.getContext();
-    if (!ctx || !this.sfxGain) return;
-
-    const t = ctx.currentTime;
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-
+  sfxMissileImpact() {
+    if (!this.ctx) return;
+    this.resume();
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
     osc.type = 'sine';
-    osc.frequency.setValueAtTime(60, t);
-    osc.frequency.linearRampToValueAtTime(10, t + 1.2);
-
-    gain.gain.setValueAtTime(0.6, t);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + 1.5);
-
+    osc.frequency.setValueAtTime(90, this.ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(15, this.ctx.currentTime + 1.5);
+    gain.gain.setValueAtTime(0.8, this.ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 1.5);
     osc.connect(gain);
-    gain.connect(this.sfxGain);
-
-    osc.start(t);
-    osc.stop(t + 1.51);
+    gain.connect(this.sfxGain || this.ctx.destination);
+    osc.start();
+    osc.stop(this.ctx.currentTime + 1.5);
   }
 
-  // SFX: Intercept success chimes
-  public sfxIntercept() {
-    const ctx = this.getContext();
-    if (!ctx || !this.sfxGain) return;
+  sfxIntercept() {
+    if (!this.ctx) return;
+    this.resume();
+    [880, 1100].forEach((freq, i) => {
+      if (!this.ctx) return;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.2, this.ctx.currentTime + i * 0.12);
+      gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + i * 0.12 + 0.10);
+      osc.connect(gain);
+      gain.connect(this.sfxGain || this.ctx.destination);
+      osc.start(this.ctx.currentTime + i * 0.12);
+      osc.stop(this.ctx.currentTime + i * 0.12 + 0.12);
+    });
+  }
 
-    const t = ctx.currentTime;
-    const osc1 = ctx.createOscillator();
-    const osc2 = ctx.createOscillator();
-    const gain = ctx.createGain();
+  sfxMarketCrash() {
+    if (!this.ctx) return;
+    this.resume();
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(350, this.ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(70, this.ctx.currentTime + 0.8);
+    gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.8);
+    osc.connect(gain);
+    gain.connect(this.sfxGain || this.ctx.destination);
+    osc.start();
+    osc.stop(this.ctx.currentTime + 0.8);
+  }
 
-    osc1.type = 'sine';
-    osc1.frequency.setValueAtTime(880, t);
+  sfxFactionAlert() {
+    if (!this.ctx) return;
+    this.resume();
+    [0, 0.1, 0.2].forEach(delay => {
+      if (!this.ctx) return;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'square';
+      osc.frequency.value = 220;
+      gain.gain.setValueAtTime(0.15, this.ctx.currentTime + delay);
+      gain.gain.setValueAtTime(0, this.ctx.currentTime + delay + 0.08);
+      osc.connect(gain);
+      gain.connect(this.sfxGain || this.ctx.destination);
+      osc.start(this.ctx.currentTime + delay);
+      osc.stop(this.ctx.currentTime + delay + 0.1);
+    });
+  }
+
+  sfxUNVote() {
+    if (!this.ctx) return;
+    this.resume();
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = 523; 
+    gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+    gain.gain.setValueAtTime(0.2, this.ctx.currentTime + 0.3);
+    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.7);
+    osc.connect(gain);
+    gain.connect(this.sfxGain || this.ctx.destination);
+    osc.start();
+    osc.stop(this.ctx.currentTime + 0.7);
+  }
+
+  sfxNewspaper() {
+    if (!this.ctx) return;
+    this.resume();
+    for (let i = 0; i < 5; i++) {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.frequency.value = 600 + Math.random() * 200;
+      gain.gain.setValueAtTime(0.1, this.ctx.currentTime + i * 0.05);
+      gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + i * 0.05 + 0.04);
+      osc.connect(gain);
+      gain.connect(this.sfxGain || this.ctx.destination);
+      osc.start(this.ctx.currentTime + i * 0.05);
+      osc.stop(this.ctx.currentTime + i * 0.05 + 0.06);
+    }
+  }
+
+  updateAmbientScore(defcon: DefconLevel) {
+    this.currentDefcon = defcon;
+    const targetGain = defcon === 5 ? 0.08 : defcon === 4 ? 0.12 : defcon === 3 ? 0.18 : defcon === 2 ? 0.25 : 0.35;
+    if (this.ambientGain && this.ctx) {
+      this.ambientGain.gain.linearRampToValueAtTime(targetGain, this.ctx.currentTime + 2.0);
+    }
+  }
+
+  startAmbient() {
+    if (!this.ctx) this.init();
+    if (!this.ctx) return;
+    this.resume();
+    if (this.ambientOscillators.length > 0) return; // already running
+    
+    const baseFreqs = [55, 110, 82.5];
+    baseFreqs.forEach((freq, i) => {
+      if (!this.ctx || !this.ambientGain) return;
+      const osc = this.ctx.createOscillator();
+      osc.type = i === 2 ? 'sawtooth' : 'sine';
+      osc.frequency.value = freq;
+      
+      const gain = this.ctx.createGain();
+      gain.gain.value = i === 0 ? 0.03 : i === 1 ? 0.02 : 0.01;
+      
+      const lfo = this.ctx.createOscillator();
+      lfo.frequency.value = 0.15 + i * 0.1;
+      
+      const lfoGain = this.ctx.createGain();
+      lfoGain.gain.value = freq * 0.005;
+      
+      lfo.connect(lfoGain);
+      lfoGain.connect(osc.frequency);
+      
+      lfo.start();
+      osc.connect(gain);
+      gain.connect(this.ambientGain);
+      osc.start();
+      
+      this.ambientOscillators.push(osc, lfo);
+    });
+  }
+
+  sfxSatDestroy() {
+    if (!this.ctx) return;
+    this.resume();
+    const osc1 = this.ctx.createOscillator();
+    const osc2 = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+
+    osc1.type = 'sawtooth';
+    osc1.frequency.setValueAtTime(180, this.ctx.currentTime);
+    osc1.frequency.exponentialRampToValueAtTime(30, this.ctx.currentTime + 0.8);
+
     osc2.type = 'sine';
-    osc2.frequency.setValueAtTime(1100, t + 0.1);
+    osc2.frequency.setValueAtTime(880, this.ctx.currentTime);
+    osc2.frequency.exponentialRampToValueAtTime(100, this.ctx.currentTime + 0.6);
 
-    gain.gain.setValueAtTime(0.22, t);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+    gain.gain.setValueAtTime(0.12, this.ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.82);
 
     osc1.connect(gain);
     osc2.connect(gain);
-    gain.connect(this.sfxGain);
+    gain.connect(this.sfxGain || this.ctx.destination);
 
-    osc1.start(t);
-    osc1.stop(t + 0.3);
-    osc2.start(t + 0.1);
-    osc2.stop(t + 0.3);
-  }
-
-  // SFX: Nuclear alarm
-  public sfxNuclearAlarm() {
-    const ctx = this.getContext();
-    if (!ctx || !this.sfxGain) return;
-
-    const t = ctx.currentTime;
-    // Slow LFO-modulated siren
-    const osc = ctx.createOscillator();
-    const lfo = ctx.createOscillator();
-    const lfoGain = ctx.createGain();
-    const gain = ctx.createGain();
-
-    osc.type = 'sawtooth';
-    osc.frequency.setValueAtTime(600, t);
-
-    lfo.type = 'sine';
-    lfo.frequency.setValueAtTime(3, t); // 3Hz
-    lfoGain.gain.setValueAtTime(100, t); // swing ±100Hz
-
-    gain.gain.setValueAtTime(0, t);
-    gain.gain.linearRampToValueAtTime(0.12, t + 0.2);
-    // Beep 3 times and shut off to avoid infinite annoyance
-    gain.gain.setValueAtTime(0.12, t + 2.5);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + 3.0);
-
-    lfo.connect(lfoGain);
-    lfoGain.connect(osc.frequency);
-    osc.connect(gain);
-    gain.connect(this.sfxGain);
-
-    lfo.start(t);
-    osc.start(t);
-
-    lfo.stop(t + 3.0);
-    osc.stop(t + 3.0);
-  }
-
-  // SFX: Economy crash glide
-  public sfxMarketCrash() {
-    const ctx = this.getContext();
-    if (!ctx || !this.sfxGain) return;
-
-    const t = ctx.currentTime;
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(400, t);
-    osc.frequency.exponentialRampToValueAtTime(150, t + 0.8);
-
-    gain.gain.setValueAtTime(0.25, t);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.82);
-
-    osc.connect(gain);
-    gain.connect(this.sfxGain);
-
-    osc.start(t);
-    osc.stop(t + 0.83);
-  }
-
-  // SFX: Sat Destroy static
-  public sfxSatDestroy() {
-    const ctx = this.getContext();
-    if (!ctx || !this.sfxGain) return;
-
-    const t = ctx.currentTime;
-    const bufferSize = ctx.sampleRate * 0.15;
-    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-    const data = buffer.getChannelData(0);
-    for (let i = 0; i < bufferSize; i++) {
-       data[i] = Math.random() * 2 - 1;
-    }
-    const noise = ctx.createBufferSource();
-    noise.buffer = buffer;
-
-    const filter = ctx.createBiquadFilter();
-    filter.type = 'bandpass';
-    filter.frequency.setValueAtTime(1000, t);
-    filter.frequency.exponentialRampToValueAtTime(400, t + 0.15);
-
-    const gain = ctx.createGain();
-    gain.gain.setValueAtTime(0.3, t);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
-
-    noise.connect(filter);
-    filter.connect(gain);
-    gain.connect(this.sfxGain);
-
-    noise.start(t);
-    noise.stop(t + 0.15);
-  }
-
-  // SFX: UN vote chime (C5)
-  public sfxUNVote() {
-    const ctx = this.getContext();
-    if (!ctx || !this.sfxGain) return;
-
-    const t = ctx.currentTime;
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(523.25, t); // C5
-
-    gain.gain.setValueAtTime(0.2, t);
-    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.4);
-
-    osc.connect(gain);
-    gain.connect(this.sfxGain);
-
-    osc.start(t);
-    osc.stop(t + 0.41);
-  }
-
-  // SFX: Newspaper mechanical ratchet
-  public sfxNewspaper() {
-    const ctx = this.getContext();
-    if (!ctx || !this.sfxGain) return;
-
-    const t = ctx.currentTime;
-    for (let i = 0; i < 5; i++) {
-      const clickTime = t + i * 0.06;
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-
-      osc.type = 'triangle';
-      osc.frequency.setValueAtTime(950 - i * 50, clickTime);
-
-      gain.gain.setValueAtTime(0.12, clickTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, clickTime + 0.04);
-
-      osc.connect(gain);
-      gain.connect(this.sfxGain);
-
-      osc.start(clickTime);
-      osc.stop(clickTime + 0.05);
-    }
-  }
-
-  // SFX: Faction alarm waves
-  public sfxFactionAlert() {
-    const ctx = this.getContext();
-    if (!ctx || !this.sfxGain) return;
-
-    const t = ctx.currentTime;
-    for (let i = 0; i < 3; i++) {
-      const pulseTime = t + i * 0.15;
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-
-      osc.type = 'square';
-      osc.frequency.setValueAtTime(220, pulseTime);
-
-      gain.gain.setValueAtTime(0.15, pulseTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, pulseTime + 0.1);
-
-      osc.connect(gain);
-      gain.connect(this.sfxGain);
-
-      osc.start(pulseTime);
-      osc.stop(pulseTime + 0.11);
-    }
-  }
-
-  // Ambient Drone Music
-  public startAmbientScore() {
-    this.resume();
-    const ctx = this.getContext();
-    if (!ctx || !this.ambientGain || this.isAmbientRunning) return;
-
-    this.isAmbientRunning = true;
-    const t = ctx.currentTime;
-
-    // Layer 1: Low rumble (A1 - 55Hz)
-    const baseOsc = ctx.createOscillator();
-    const baseGain = ctx.createGain();
-    baseOsc.type = 'sine';
-    baseOsc.frequency.setValueAtTime(55, t);
-    baseGain.gain.setValueAtTime(0.05, t);
-    baseOsc.connect(baseGain);
-    baseGain.connect(this.ambientGain);
-    baseOsc.start(t);
-
-    // Layer 2: Mid tension drone (110Hz + LFO vibrato)
-    const midOsc = ctx.createOscillator();
-    const midGain = ctx.createGain();
-    midOsc.type = 'sine';
-    midOsc.frequency.setValueAtTime(110, t);
-    midGain.gain.setValueAtTime(0.03, t);
-
-    const lfo = ctx.createOscillator();
-    const lfoGain = ctx.createGain();
-    lfo.type = 'sine';
-    lfo.frequency.setValueAtTime(0.2, t); // 0.2Hz LFO
-    lfoGain.gain.setValueAtTime(4, t); // ±4Hz
-
-    lfo.connect(lfoGain);
-    lfoGain.connect(midOsc.frequency);
-    midOsc.connect(midGain);
-    midGain.connect(this.ambientGain);
-
-    lfo.start(t);
-    midOsc.start(t);
-
-    this.ambientOscs.push(
-      { osc: baseOsc, gain: baseGain },
-      { osc: midOsc, gain: midGain }
-    );
-  }
-
-  public updateTensionLayers(threatLevel: 'GREEN' | 'AMBER' | 'RED' | 'BLACK') {
-    const ctx = this.getContext();
-    if (!ctx || !this.ambientGain) return;
-    const t = ctx.currentTime;
-
-    // Adjust gain levels based on global threat level
-    if (threatLevel === 'RED' || threatLevel === 'BLACK') {
-      this.ambientGain.gain.linearRampToValueAtTime(0.25, t + 2.0);
-    } else if (threatLevel === 'AMBER') {
-      this.ambientGain.gain.linearRampToValueAtTime(0.18, t + 2.0);
-    } else {
-      this.ambientGain.gain.linearRampToValueAtTime(0.12, t + 2.0);
-    }
-  }
-
-  public stopAmbientScore() {
-    this.ambientOscs.forEach((o) => {
-      try {
-        o.osc.stop();
-      } catch (e) {}
-    });
-    this.ambientOscs = [];
-    this.isAmbientRunning = false;
+    osc1.start();
+    osc2.start();
+    osc1.stop(this.ctx.currentTime + 0.85);
+    osc2.stop(this.ctx.currentTime + 0.85);
   }
 }
 
 export const audio = new AudioEngine();
+export default audio;

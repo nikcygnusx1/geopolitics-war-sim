@@ -1,54 +1,60 @@
-import React, { useEffect, useRef, useState } from 'react';
-import * as d3 from 'd3';
+import React, { useEffect, useState } from 'react';
+import { WebGLGlobe } from './WebGLGlobe';
 import { audio } from '../../utils/audio';
 
 interface CinematicIntroProps {
   onComplete: () => void;
 }
 
-export default function CinematicIntro({ onComplete }: CinematicIntroProps) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [act, setAct] = useState<1 | 2 | 3>(1);
+export const CinematicIntro: React.FC<CinematicIntroProps> = ({ onComplete }) => {
+  const [act, setAct] = useState<1 | 2 | 3 | 4>(1);
   const [briefedText, setBriefedText] = useState('');
-  const [tick, setTick] = useState(0);
+  const [greenTint, setGreenTint] = useState(0);
+  const [speed, setSpeed] = useState(0.001);
 
   const fullBriefingLines = [
-    '> INITIALIZING SOVEREIGN COMMAND SIMULATOR v3.0',
-    '> CLEARANCE LEVEL: COSMIC TOP SECRET',
-    '> AUTHORIZATION CODE: SIGMA-9-OMEGA-LOCK',
-    '> THEATER STATUS: 4 ACTIVE GEOPOLITICAL CONFLICTS DETECTED',
-    '> NUCLEAR POSTURE: ELEVATED DEFCON STATUS',
-    '> ALL ORBITAL WEAPONS AND SATELLITE CHANNELS: STANDBY',
-    '> AWAITING COMMANDER DIRECTIVE INPUT...',
+    '> SIGNAL INTERCEPT: COVERT DECRYPTION STABLE',
+    '> GEOPOLITICAL SCAN: 4 ACTIVE CONFLICTS DETECTED',
+    '> DEFCON POSTURE: ELEVATED TO Watch STATUS',
+    '> SPACE DEFENSE COMBAT CHANNELS: ACTIVE',
+    '> COMMAND DECK: AUTHORIZED FOR INGRESS.',
     '█'
   ];
 
-  // Act controller timers
   useEffect(() => {
-    audio.resume();
-    audio.startAmbientScore();
+    // Start Audio
+    audio.init();
+    audio.startAmbient();
 
-    // Act 1: Globe rotates (0 - 3s)
-    const t1 = setTimeout(() => {
-      setAct(2); // Shatter
-      audio.sfxKlaxon();
-    }, 3000);
-
-    // Act 2: Shatter lasts 800ms (3s - 3.8s)
+    // Act 1: Orbital (0s - 4s)
     const t2 = setTimeout(() => {
-      setAct(3); // Start briefing typing
-    }, 3850);
+      setAct(2); // Incoming Signal
+    }, 4000);
+
+    // Act 2: Green tint transition starts (6s)
+    const t3 = setTimeout(() => {
+      setAct(3); // Green tint takeover
+      setGreenTint(1.0);
+      setSpeed(0.004); // briefly accelerate
+      audio.sfxKlaxon();
+    }, 6000);
+
+    // Act 3: Slow down rotation & slide lobby in (8s)
+    const t4 = setTimeout(() => {
+      setSpeed(0.0006);
+      setAct(4); // Trigger completion or go to select lobby
+    }, 8500);
 
     return () => {
-      clearTimeout(t1);
       clearTimeout(t2);
+      clearTimeout(t3);
+      clearTimeout(t4);
     };
   }, []);
 
-  // Text briefing typewriter effect
+  // Act 2 & 3 Typewriter briefings
   useEffect(() => {
-    if (act !== 3) return;
-
+    if (act < 2) return;
     let lineIndex = 0;
     let charIndex = 0;
     let currentText = '';
@@ -59,218 +65,106 @@ export default function CinematicIntro({ onComplete }: CinematicIntroProps) {
         if (charIndex < line.length) {
           currentText += line[charIndex];
           setBriefedText(currentText);
-          audio.sfxTypeChar();
+          audio.sfxKeyClick();
           charIndex++;
         } else {
           currentText += '\n';
           setBriefedText(currentText);
           lineIndex++;
           charIndex = 0;
+          audio.sfxRadarPing();
         }
       } else {
         clearInterval(interval);
       }
-    }, 25);
+    }, 30);
 
     return () => clearInterval(interval);
   }, [act]);
 
-  // Canvas ortho rendering animation for Globe and Shatter
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-
-    let animationId: number;
-    let angle = 0;
-    let shatterTime = 0;
-
-    // Create wireframe sphere points
-    const points: { x: number; y: number; z: number }[] = [];
-    const radius = 220;
-    const centerX = canvas.width / 2;
-    const centerY = canvas.height / 2;
-
-    // Generate grid of points on sphere
-    for (let lat = -90; lat <= 90; lat += 15) {
-      const radLat = (lat * Math.PI) / 180;
-      const cosLat = Math.cos(radLat);
-      const sinLat = Math.sin(radLat);
-
-      for (let lon = 0; lon < 360; lon += 15) {
-        const radLon = (lon * Math.PI) / 180;
-        const x = radius * cosLat * Math.cos(radLon);
-        const y = radius * sinLat;
-        const z = radius * cosLat * Math.sin(radLon);
-        points.push({ x, y, z });
-      }
-    }
-
-    // Shards for disintegration
-    const shards = Array.from({ length: 40 }).map((_, idx) => {
-      const theta = Math.random() * Math.PI * 2;
-      const phi = Math.acos(Math.random() * 2 - 1);
-      return {
-        x: radius * Math.sin(phi) * Math.cos(theta),
-        y: radius * Math.sin(phi) * Math.sin(theta),
-        z: radius * Math.cos(phi),
-        vx: (Math.random() * 6 - 3) * 3,
-        vy: (Math.random() * 6 - 3) * 3,
-        vz: (Math.random() * 4 - 2) * 3,
-        size: Math.random() * 25 + 15,
-        alpha: 1
-      };
-    });
-
-    const draw = () => {
-      ctx.fillStyle = '#020402';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      // CRT Scanlines visual effect overlay
-      ctx.strokeStyle = '#071407';
-      ctx.lineWidth = 1;
-      for (let i = 0; i < canvas.height; i += 4) {
-        ctx.beginPath();
-        ctx.moveTo(0, i);
-        ctx.lineTo(canvas.width, i);
-        ctx.stroke();
-      }
-
-      if (act === 1) {
-        angle += 0.015;
-
-        // Draw orthographic projected rotating globe lines
-        ctx.strokeStyle = '#00ff44';
-        ctx.lineWidth = 1.0;
-        ctx.shadowColor = '#00ff44';
-        ctx.shadowBlur = 10;
-
-        // Project and Draw latitude circles
-        for (let lat = -90; lat <= 90; lat += 20) {
-          const r = radius * Math.cos((lat * Math.PI) / 180);
-          const y = radius * Math.sin((lat * Math.PI) / 180);
-          
-          ctx.beginPath();
-          for (let deg = 0; deg <= 360; deg += 5) {
-            const rad = (deg * Math.PI) / 180;
-            const rotX = r * Math.cos(rad + angle);
-            const rotZ = r * Math.sin(rad + angle);
-
-            if (rotZ >= 0) { // Ortho back-face Culling simplified
-              const screenX = centerX + rotX;
-              const screenY = centerY + y;
-              if (deg === 0) ctx.moveTo(screenX, screenY);
-              else ctx.lineTo(screenX, screenY);
-            }
-          }
-          ctx.stroke();
-        }
-
-        // Draw longitude lines
-        for (let lon = 0; lon < 180; lon += 24) {
-          ctx.beginPath();
-          for (let lat = -90; lat <= 90; lat += 5) {
-            const radLat = (lat * Math.PI) / 180;
-            const radLon = ((lon + angle * 57.3) * Math.PI) / 180;
-            const rotX = radius * Math.cos(radLat) * Math.cos(radLon);
-            const rotY = radius * Math.sin(radLat);
-            const rotZ = radius * Math.cos(radLat) * Math.sin(radLon);
-
-            if (rotZ >= 0) {
-              const screenX = centerX + rotX;
-              const screenY = centerY + rotY;
-              if (lat === -90) ctx.moveTo(screenX, screenY);
-              else ctx.lineTo(screenX, screenY);
-            }
-          }
-          ctx.stroke();
-        }
-
-        // Reset shadows
-        ctx.shadowBlur = 0;
-
-      } else if (act === 2) {
-        shatterTime += 1;
-
-        // Shattering animation of triangles expanding outwards
-        ctx.shadowBlur = 15;
-        shards.forEach((s) => {
-          s.x += s.vx;
-          s.y += s.vy;
-          s.alpha = Math.max(0, 1 - shatterTime / 40);
-
-          ctx.fillStyle = `rgba(0, 255, 68, ${s.alpha})`;
-          ctx.strokeStyle = `rgba(0, 255, 68, ${s.alpha * 0.8})`;
-          ctx.shadowColor = '#00ff44';
-
-          ctx.beginPath();
-          ctx.moveTo(centerX + s.x, centerY + s.y);
-          ctx.lineTo(centerX + s.x + s.size, centerY + s.y - s.size / 2);
-          ctx.lineTo(centerX + s.x + s.size / 2, centerY + s.y + s.size);
-          ctx.closePath();
-          ctx.fill();
-          ctx.stroke();
-        });
-
-        // Upward horizontal scanning phosphor sweep wave
-        const sweepY = canvas.height - (shatterTime * (canvas.height / 35));
-        ctx.fillStyle = 'rgba(0, 255, 100, 0.4)';
-        ctx.fillRect(0, sweepY - 15, canvas.width, 30);
-        ctx.fillStyle = 'rgba(0, 255, 100, 0.2)';
-        ctx.fillRect(0, sweepY - 50, canvas.width, 100);
-
-        ctx.shadowBlur = 0;
-      }
-
-      animationId = requestAnimationFrame(draw);
-    };
-
-    draw();
-
-    return () => {
-      cancelAnimationFrame(animationId);
-    };
-  }, [act]);
+  const handleEnterLobby = () => {
+    audio.sfxKeyClick();
+    onComplete();
+  };
 
   return (
-    <div className="absolute inset-0 z-50 bg-[#020402] flex flex-col justify-center items-center overflow-hidden">
-      <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none" />
+    <div className="fixed inset-0 z-50 bg-[#030503] flex flex-col justify-between overflow-hidden font-mono select-none">
+      {/* Cinematic CRT Overlay screen lines */}
+      <div className="scanlines absolute inset-0 pointer-events-none z-45" />
 
-      {/* Skipping command */}
-      <button
-        onClick={() => { audio.sfxKeyClick(); onComplete(); }}
-        className="absolute bottom-6 right-6 z-50 px-4 py-1.5 border border-[#1a3a1a] text-[#00ff44] hover:border-[#00ff44] hover:bg-[#060f06] transition-colors rounded text-[10px] tracking-widest font-mono cursor-pointer uppercase font-bold"
-      >
-        SKIP CINEMATIC &gt;&gt;
-      </button>
+      {/* ACT 1: Top & Bottom Letterbox boundary bars */}
+      <div className="h-[60px] bg-black border-b border-[#1a3a1a] flex items-center justify-between px-6 z-10">
+        <span className="text-[10px] text-[#00ff44] tracking-widest uppercase font-bold glow-green">
+          📡 OPERATIONAL CONTROL // LEVEL-5 CLEARANCE REQUIRED
+        </span>
+        <span className="text-[9px] text-[#88ffaa] opacity-60">
+          NODE: PRE-SHIELD_B4
+        </span>
+      </div>
 
-      {/* Act 3 typing classified console */}
-      {act === 3 && (
-        <div className="relative z-10 w-full max-w-2xl px-6 py-8 border border-[#1a3a1a] bg-[#030603]/90 backdrop-blur shadow-2xl rounded text-left">
-          <div className="text-[10px] uppercase font-bold text-[#00e5ff] tracking-widest border-b border-[#1a3a1a] pb-2 mb-4 flex justify-between select-none">
-            <span>📡 DECRYPTED METRIC BROADCST RECONNAISSANCE</span>
-            <span className="text-red-500 blink-hud">● WARNING DEFCON POSTURE LEVEL 2</span>
+      {/* Main viewport rendering Earth */}
+      <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0">
+        <WebGLGlobe greenTintProgress={greenTint} rotSpeed={speed} />
+      </div>
+
+      {/* Act overlays and Text stamps */}
+      <div className="flex-1 flex items-center justify-center px-6 relative z-10">
+        {act === 1 && (
+          <div className="absolute top-[80px] left-12 animate-pulse">
+            <h1 className="text-xl md:text-3xl font-display font-medium tracking-widest text-[#00ff44] glow-green uppercase">
+              SOVEREIGN COMMAND SIMULATOR
+            </h1>
+            <p className="text-xs text-[#ffb300] tracking-widest mt-2 uppercase">
+              Initializing Secure Link Node-9...
+            </p>
           </div>
-          <pre className="font-mono text-[11px] leading-relaxed text-[#00ff44] whitespace-pre-wrap select-none">
-            {briefedText}
-          </pre>
+        )}
 
-          {briefedText.length >= fullBriefingLines.join('\n').length - 5 && (
-            <div className="mt-8 pt-4 border-t border-[#1a3a1a] flex justify-center">
-              <button
-                onClick={() => { audio.sfxKlaxon(); onComplete(); }}
-                className="px-6 py-2 border-2 border-[#00ff44] bg-transparent text-[#00ff44] hover:bg-[#00ff44]/15 hover:shadow-lg transition-all text-xs tracking-widest font-bold font-mono cursor-pointer rounded animate-pulse"
-              >
-                INITIALIZE COMMAND DECOMMISSION
-              </button>
+        {/* ACT 2: Signal targeting crosshair */}
+        {act >= 2 && act < 4 && (
+          <div className="absolute w-[240px] h-[240px] border border-[#ff2244]/30 rounded-full flex items-center justify-center animate-ping pointer-events-none">
+            <div className="w-4 h-4 bg-[#ff2244] rounded-full" />
+          </div>
+        )}
+
+        {/* ACT 2, 3: Typewriter signal logs container */}
+        {act >= 2 && (
+          <div className="absolute left-6 md:left-12 bottom-[100px] w-full max-w-[450px] p-6 border border-[#1a3a1a] bg-black/85 backdrop-blur shadow-2xl rounded text-left z-20">
+            <div className="text-[9px] uppercase font-bold text-[#ffb300] tracking-widest border-b border-[#1a3a1a] pb-2 mb-4 flex justify-between">
+              <span>📡 ACTIVE INCOMING INTERCEPT RECORD</span>
+              <span className="text-red-500 animate-pulse font-bold">● CRISIS ELEVATION WATCH</span>
             </div>
-          )}
-        </div>
-      )}
+            <pre className="text-[10px] leading-relaxed text-[#00ff44] whitespace-pre-wrap font-mono">
+              {briefedText}
+            </pre>
+          </div>
+        )}
+      </div>
+
+      {/* Skip/Ingress interaction controls */}
+      <div className="h-[60px] bg-black border-t border-[#1a3a1a] flex items-center justify-between px-6 z-10">
+        <span className="text-[9px] text-[#ffb300] tracking-wider uppercase font-medium">
+          CLASSIFIED // EYES ONLY // CLEARANCE: COSMIC TOP SECRET
+        </span>
+        
+        {act === 4 ? (
+          <button
+            onClick={handleEnterLobby}
+            className="px-6 py-1.5 border border-[#00ff44] bg-[#00ff44]/10 text-[#00ff44] hover:bg-[#00ff44]/20 transition-all text-[11px] tracking-widest font-bold cursor-pointer rounded animate-bounce shadow-[0_0_12px_rgba(0,255,68,0.3)] glow-green"
+          >
+            ENTER TACTICAL COMMAND LOBBY &gt;&gt;
+          </button>
+        ) : (
+          <button
+            onClick={handleEnterLobby}
+            className="px-4 py-1.5 border border-[#1a3a1a] text-[#00ff44] hover:border-[#00ff44] hover:bg-[#060f06] transition-colors rounded text-[10px] tracking-widest cursor-pointer uppercase font-bold"
+          >
+            SKIP BRIEFING
+          </button>
+        )}
+      </div>
     </div>
   );
-}
+};
+
+export default CinematicIntro;
