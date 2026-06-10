@@ -50,6 +50,10 @@ export interface Arsenal {
   abmShieldStrength: number;      // 0-100% — upgraded via R&D
   abmIntercepts: number;          // successful intercepts this tick
   readinessLevel: number;         // 0-100% — affected by morale + supply
+  personnel?: MilitaryPersonnel;
+  logistics?: MilitaryLogistics;
+  readiness?: MilitaryReadiness;
+  combatRealism?: MilitaryCombat;
 }
 
 export interface BondIssuance {
@@ -101,6 +105,9 @@ export interface EconomicProfile {
   sanctionedBy: string[];      // countryIds
   tradeSurplusDeficitB: number;
   spendingAllocation: SpendingAllocation;
+  sectors?: EconomicSectors;
+  supplyChains?: SupplyChains;
+  financialMarkets?: FinancialMarkets;
 }
 
 export interface Faction {
@@ -137,6 +144,7 @@ export interface PoliticalProfile {
   propagandaEffectiveness: number; // 0-100
   censorship: number;              // 0-100
   diasporaInfluence: number;       // 0-100 — expats sending money/info back
+  infoWarfare?: InformationCampaign;
 }
 
 export interface SatelliteAsset {
@@ -169,6 +177,113 @@ export interface CovertOp {
   blowbackRisk: number;       // 0-100
 }
 
+export interface Province {
+  id: string;
+  name: string;
+  population: number; // millions
+  controllerCountryId: string;
+  originalCountryId: string;
+  integrity: number; // 0-100% infrastructure status
+  features: Array<'CITY' | 'PORT' | 'AIRBASE' | 'ENERGY_FACILITY' | 'INDUSTRIAL_ZONE'>;
+  resistanceLevel: number; // 0-100
+}
+
+export interface PopulationProfile {
+  ageDemographics: { youthPct: number; adultPct: number; elderlyPct: number };
+  birthRate: number; // births per year per 1000
+  deathRate: number; // deaths per year per 1000
+  educationLevel: number; // 0-100
+  urbanization: number; // 0-100
+  poverty: number; // 0-100
+  migration: number; // monthly net migration
+  religiousComposition: { secular: number; religiousA: number; religiousB: number };
+  ethnicComposition: { majority: number; minorityA: number; minorityB: number };
+  workforceParticipation: number; // 0-100
+}
+
+export interface CabinetMember {
+  name: string;
+  competence: number; // 0-100
+  loyalty: number; // 0-100
+  corruption: number; // 0-100
+  ideology: Ideology;
+}
+
+export interface Cabinet {
+  defenseMinister: CabinetMember;
+  financeMinister: CabinetMember;
+  foreignMinister: CabinetMember;
+  intelligenceChief: CabinetMember;
+  centralBankGovernor: CabinetMember;
+}
+
+export interface EconomicSectors {
+  agriculture: number; // value $B
+  manufacturing: number;
+  services: number;
+  energy: number;
+  mining: number;
+  technology: number;
+  tourism: number;
+  defense: number;
+}
+
+export interface SupplyChains {
+  energyDependency: number; // 0-100%
+  foodDependency: number; // 0-100%
+  semiconductorDependency: number; // 0-100%
+  defenseDependency: number; // 0-100%
+}
+
+export interface FinancialMarkets {
+  stockMarketIndex: number;
+  bondYield: number; // %
+  currencyMarketValue: number; // e.g. 100 is baseline
+  sovereignRating: string; // e.g. 'AAA', 'A', 'BBB', etc.
+}
+
+export interface MilitaryPersonnel {
+  activeTroops: number; // thousands
+  reserveTroops: number; // thousands
+  specialForces: number; // thousands
+}
+
+export interface MilitaryLogistics {
+  ammunition: number; // 0-100
+  fuel: number; // 0-100
+  spareParts: number; // 0-100
+  supplyDepots: number; // count
+}
+
+export interface MilitaryReadiness {
+  training: number; // 0-100
+  morale: number; // 0-100
+  combatExperience: number; // 0-100
+}
+
+export interface MilitaryCombat {
+  attrition: number; // 0-100
+  supplyLineStatus: number; // 0-100
+  occupationCosts: number; // $B per tick
+  insurgencies: number; // 0-100
+}
+
+export interface SpyAsset {
+  id: string;
+  alias: string;
+  targetCountryId: string;
+  competence: number; // 0-100
+  status: 'ACTIVE' | 'DORMANT' | 'DOUBLE_AGENT' | 'EXPOSED';
+  ticksActive: number;
+}
+
+export interface InformationCampaign {
+  socialMediaInfluence: number; // 0-100
+  deepfakesActive: boolean;
+  narrativeFocus: 'PRO_GOVERNMENT' | 'ANTAGONIZE' | 'FOREIGN_DISINFO';
+  mediaOwnershipCensorship: number; // 0-100
+}
+
 export interface IntelligenceProfile {
   satellites: SatelliteAsset[];
   cyberAssets: CyberAsset[];
@@ -178,6 +293,8 @@ export interface IntelligenceProfile {
   cyberFirewallLevel: number; // upgraded via R&D
   knownThreats: string[];     // countryIds with confirmed hostile intent
   blackBudgetB: number;       // hidden budget not visible in public spending
+  spyAssets?: SpyAsset[];
+  intelReportConfidence?: number; // 0-100
 }
 
 export interface Country {
@@ -202,6 +319,9 @@ export interface Country {
   intelligence: IntelligenceProfile;
   lastEventLog: string[];            // last 5 event strings for this country
   tariffs?: { [countryId: string]: number }; // Tariff rate percentages (0-50%)
+  provinces?: Province[];
+  populationSim?: PopulationProfile;
+  cabinet?: Cabinet;
 }
 
 export interface BezierCurve {

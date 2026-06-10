@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useWorldStore } from '../../store/worldStore';
 import { usePlayerStore } from '../../store/playerStore';
-import { useUIStore } from '../../store/uiStore';
 import { CovertOpType } from '../../types';
 
 export default function IntelPanel() {
@@ -13,14 +12,14 @@ export default function IntelPanel() {
   const updateCountry = useWorldStore((s) => s.updateCountry);
 
   const playerCountry = countries[countryId];
-  if (!playerCountry) return <div className="text-red-500">Error: Player Country not loaded.</div>;
+  if (!playerCountry) return <div className="text-red-500 font-mono">Error: Player Country not loaded.</div>;
 
   const intel = playerCountry.intelligence;
+  const spyAssets = intel.spyAssets || [];
 
-  // Covert Op Form
+  const [intelTab, setIntelTab] = useState<'OPS' | 'ASSETS'>('OPS');
   const [opType, setOpType] = useState<CovertOpType>('PLANT_PROPAGANDA');
 
-  // Specs
   const opSpecs: Record<CovertOpType, { name: string; costB: number; ticks: number; desc: string; success: number; blowback: number }> = {
     ASSASSINATE_LEADER: {
       name: 'DEEP COVERT LEADERSHIP ASSASSINATION',
@@ -103,17 +102,16 @@ export default function IntelPanel() {
     }
 
     if (selectedTargetId === countryId) {
-      alert('Espionage alert: Domestic targeting restricted by federal safety boards.');
+      alert('Espionage alert: Domestic targeting restricted.');
       return;
     }
 
     const spec = opSpecs[opType];
     if (intel.blackBudgetB < spec.costB) {
-      alert(` Espionage alert: Slush finance insufficient. Hacking requires $${spec.costB}B covert budget.`);
+      alert(`Espionage alert: Slush finance insufficient. Op requires $${spec.costB}B.`);
       return;
     }
 
-    // Launch Covert operation
     updateCountry(countryId, (draft) => {
       draft.intelligence.blackBudgetB -= spec.costB;
       draft.intelligence.activeCovertOps.push({
@@ -129,13 +127,13 @@ export default function IntelPanel() {
       });
     });
 
-    useWorldStore.getState().addGlobalEvent(`COVERT SECTOR: Sent elite signal assets against ${selectedTargetId} executing "${opType}". ETA: ${spec.ticks} ticks.`, 'WARNING');
+    useWorldStore.getState().addGlobalEvent(`COVERT SECTOR: Logged operative vectors against ${selectedTargetId}.`, 'WARNING');
   };
 
   const handleFundBlackSlush = () => {
     const transferAmtB = 3.0;
     if (playerCountry.economic.treasuryCashB < transferAmtB) {
-      alert('Debit warning: Budget allocation exceeds current cash reserves.');
+      alert('Debit warning: Allocation exceeds current treasury cash reserves.');
       return;
     }
 
@@ -144,138 +142,223 @@ export default function IntelPanel() {
       draft.intelligence.blackBudgetB += transferAmtB;
     });
 
-    usePlayerStore.setState((state) => ({ cashB: state.cashB - transferAmtB }));
-    usePlayerStore.getState().syncCashToCountry();
-
-    useWorldStore.getState().addGlobalEvent(`Signals desk: Diverted $${transferAmtB}B from national cash reserves to covert operations.`, 'INFO');
+    useWorldStore.getState().addGlobalEvent(`Signals desk: Transferred $${transferAmtB}B from treasury to black operations budget.`, 'INFO');
   };
 
   return (
-    <div className="w-full text-xs grid grid-cols-1 md:grid-cols-2 gap-4">
-      {/* Covert Ops ongoing */}
-      <div className="flex flex-col gap-4">
-        <div className="combat-panel flex flex-col gap-2">
-          <h3 className="font-bold border-b border-[#1a3a1a] pb-1 uppercase tracking-wider text-[#00ff44]">
-            ACTIVE ESPIONAGE VECTORS LOGS
-          </h3>
+    <div className="w-full text-xs flex flex-col gap-3">
+      {/* Subtab selection info */}
+      <div className="flex border-b border-[#1a3a1a] pb-2 mb-1 gap-2">
+        <button
+          onClick={() => setIntelTab('OPS')}
+          className={`px-3 py-1 text-[10px] font-bold border rounded transition-colors ${
+            intelTab === 'OPS' ? 'bg-[#1a4a1a] text-[#00ff44] border-[#00ff44]' : 'text-gray-400 border-transparent hover:text-white'
+          }`}
+        >
+          🕵️ COVERT OPERATIONS
+        </button>
+        <button
+          onClick={() => setIntelTab('ASSETS')}
+          className={`px-3 py-1 text-[10px] font-bold border rounded transition-colors ${
+            intelTab === 'ASSETS' ? 'bg-[#1a4a1a] text-[#00ff44] border-[#00ff44]' : 'text-gray-400 border-transparent hover:text-white'
+          }`}
+        >
+          📁 SIGINT & CLANDESTINE ASSETS
+        </button>
+      </div>
 
-          <div className="space-y-1.5 overflow-y-auto max-h-[140px] pr-1">
-            {intel.activeCovertOps.length === 0 ? (
-              <p className="text-gray-600 italic text-[10px] py-2">No active clandestine Ops tracking inside foreign firewalls.</p>
-            ) : (
-              intel.activeCovertOps.map((op) => {
-                const spec = opSpecs[op.type];
-                return (
-                  <div
-                    key={op.id}
-                    className="border border-[#0d1f0d] bg-[#030503] p-1.5 rounded flex justify-between items-center text-[10px] font-mono"
-                  >
-                    <div>
-                      <div className="font-bold text-shadow-sm text-[#00e5ff]">{spec?.name || op.type}</div>
-                      <div className="text-[8px] text-gray-500 uppercase">
-                        TARGET: {op.targetCountryId} | REMAINING: {op.remainingTicks} TICKS
+      {intelTab === 'OPS' && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="flex flex-col gap-4">
+            <div className="combat-panel flex flex-col gap-2">
+              <h3 className="font-bold border-b border-[#1a3a1a] pb-1 uppercase tracking-wider text-[#00ff44]">
+                ACTIVE ESPIONAGE VECTORS LOG
+              </h3>
+
+              <div className="space-y-1.5 overflow-y-auto max-h-[140px] pr-1">
+                {intel.activeCovertOps.length === 0 ? (
+                  <p className="text-gray-600 italic py-2">No active clandestine Ops tracking inside foreign firewalls.</p>
+                ) : (
+                  intel.activeCovertOps.map((op) => {
+                    const spec = opSpecs[op.type];
+                    return (
+                      <div
+                        key={op.id}
+                        className="border border-[#0d1f0d] bg-[#030503] p-1.5 rounded flex justify-between items-center text-[10px] font-mono"
+                      >
+                        <div>
+                          <div className="font-bold text-[#00e5ff]">{spec?.name || op.type}</div>
+                          <div className="text-[8px] text-gray-500 uppercase">
+                            TARGET: {op.targetCountryId} | REMAINING: {op.remainingTicks} TICKS
+                          </div>
+                        </div>
+                        <span className="text-[#00ff44] font-bold py-0.5 px-1.5 bg-[#1a4a1a] uppercase text-[9px] rounded">
+                          {Math.round(((op.ticksToComplete - op.remainingTicks) / op.ticksToComplete) * 100)}%
+                        </span>
                       </div>
-                    </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
 
-                    <div className="text-right flex items-center gap-3">
-                      <span className="text-[#00ff44] font-bold py-0.5 px-1.5 bg-[#1a4a1a] uppercase text-[9px] rounded">
-                        {Math.round(((op.ticksToComplete - op.remainingTicks) / op.ticksToComplete) * 100)}%
+            <div className="combat-panel flex justify-between items-center h-20">
+              <div>
+                <div className="text-[9px] text-gray-500 uppercase tracking-wider">Covert Slush Reserves</div>
+                <div className="text-lg font-bold text-[#00ff44]">${intel.blackBudgetB.toFixed(1)}B</div>
+              </div>
+              <button
+                onClick={handleFundBlackSlush}
+                className="px-3 py-1.5 bg-[#002f3c] border border-[#00e5ff] text-[#00e5ff] rounded hover:bg-[#00475b] font-bold uppercase text-[9px] cursor-pointer"
+              >
+                Divert $3.0B Cash
+              </button>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-4">
+            <div className="combat-panel flex flex-col gap-2.5">
+              <h3 className="font-bold border-b border-[#1a3a1a] pb-1 uppercase tracking-wider text-[#ffb300]">
+                ESPIONAGE DIRECTIVES LAUNCHER
+              </h3>
+
+              <div className="space-y-2 uppercase text-[11px] font-mono">
+                <div className="flex justify-between items-center">
+                  <span>Target Coordinates:</span>
+                  <select
+                    value={selectedTargetId || ''}
+                    onChange={(e) => setTargetCountry(e.target.value || null)}
+                    className="bg-[#030503] border border-[#1a3a1a] text-[#ffb300] outline-none text-[10px] p-1 font-mono uppercase rounded"
+                  >
+                    <option value="">-- NO LOCK --</option>
+                    {Object.keys(countries)
+                      .filter((id) => id !== countryId)
+                      .map((id) => (
+                        <option key={id} value={id}>
+                          {id} - {countries[id].name}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+
+                <div className="flex justify-between items-center">
+                  <span>espionage directive:</span>
+                  <select
+                    value={opType}
+                    onChange={(e) => setOpType(e.target.value as CovertOpType)}
+                    className="bg-[#030503] border border-[#1a3a1a] text-[#00ff44] outline-none text-[10px] p-1 font-mono uppercase rounded"
+                  >
+                    {Object.keys(opSpecs).map((key) => (
+                      <option key={key} value={key}>
+                        {opSpecs[key as CovertOpType].name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="border border-[#1a3a1a] bg-black p-2 rounded text-[9.5px] lowercase text-gray-500 leading-normal font-sans">
+                  {opSpecs[opType].desc}
+                </div>
+
+                <button
+                  onClick={handleLaunchCovertOp}
+                  disabled={!selectedTargetId}
+                  className={`w-full py-2 border font-bold uppercase text-[10px] rounded cursor-pointer transition-all ${
+                    !selectedTargetId
+                      ? 'bg-gray-800 border-gray-900 border text-gray-400 select-none'
+                      : 'bg-[#ffb300]/15 border border-[#ffb300] text-[#ffb300] hover:bg-[#ffb300]/30'
+                  }`}
+                >
+                  DEPLOY ESPIONAGE DIRECTIVE (cost: ${opSpecs[opType].costB}B)
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {intelTab === 'ASSETS' && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Spy Assets table */}
+          <div className="combat-panel flex flex-col gap-3">
+            <h3 className="font-bold border-b border-[#1a3a1a] pb-1.5 uppercase tracking-wider text-[#00ff44]">
+              🕵️ ACTIVE HUMINT CLANDESTINE ASSETS
+            </h3>
+            <p className="text-[10px] text-gray-500 leading-normal mb-2">
+              Human intelligence networks operating on foreign soils. Clandestine agents feed intercept intelligence and confirm projectile directions, but risk being exposed or converted to double agents by hostile firewalls.
+            </p>
+
+            <div className="space-y-1.5 max-h-[190px] overflow-y-auto">
+              {spyAssets.length === 0 ? (
+                <p className="text-gray-600 italic">No human assets currently deployed abroad.</p>
+              ) : (
+                spyAssets.map((spy) => (
+                  <div key={spy.id} className="border border-[#183618] bg-[#020502] p-2.5 rounded font-mono text-[10px] space-y-1.5">
+                    <div className="flex justify-between items-center border-b border-[#0d1f0d] pb-1">
+                      <span className="font-bold text-[#00e5ff]">{spy.alias}</span>
+                      <span className={`text-[8.5px] font-bold px-1.5 py-0.2 rounded border ${
+                        spy.status === 'ACTIVE'
+                          ? 'bg-[#0b280d] border-[#1b6b21] text-[#00ff44]'
+                          : spy.status === 'EXPOSED'
+                          ? 'bg-[#3b0b0d] border-[#8b1b21] text-[#ff2244]'
+                          : 'bg-yellow-950/40 border-yellow-800 text-yellow-400'
+                      }`}>
+                        {spy.status}
                       </span>
                     </div>
+
+                    <div className="grid grid-cols-2 gap-2 text-[9px] text-gray-400">
+                      <div>TARGET REGION: <span className="text-white font-bold">{spy.targetCountryId}</span></div>
+                      <div>COMPETENCE: <span className="text-white font-bold">{spy.competence}%</span></div>
+                      <div className="col-span-2">TICKS COMPLETED ACTIVE: <span className="text-white font-bold">{spy.ticksActive} cycles</span></div>
+                    </div>
                   </div>
-                );
-              })
-            )}
+                ))
+              )}
+            </div>
           </div>
-        </div>
 
-        {/* Slush fund transfer console */}
-        <div className="combat-panel flex justify-between items-center h-20">
-          <div>
-            <div className="text-[9px] text-gray-500 uppercase tracking-wider">Espionage Slush Funds</div>
-            <div className="text-lg font-bold text-phosphor-green text-shadow">${intel.blackBudgetB.toFixed(1)}B</div>
-          </div>
-          <button
-            onClick={handleFundBlackSlush}
-            className="px-3 py-1.5 bg-[#002f3c] border border-[#00e5ff] text-[#00e5ff] rounded hover:bg-[#00475b] font-bold uppercase text-[9px] cursor-pointer"
-          >
-            Divert $3.0B Cash
-          </button>
-        </div>
-      </div>
+          <div className="flex flex-col gap-4">
+            {/* Intel accuracy score */}
+            <div className="combat-panel flex flex-col gap-3">
+              <h3 className="font-bold border-b border-[#1a3a1a] pb-1 uppercase tracking-wider text-[#00ff44]">
+                💾 SIGINT COGNITIVE METRICS
+              </h3>
 
-      {/* Deploy Espionage operation */}
-      <div className="flex flex-col gap-4">
-        <div className="combat-panel flex flex-col gap-2.5">
-          <h3 className="font-bold border-b border-[#1a3a1a] pb-1 uppercase tracking-wider text-phosphor-amber">
-            ESPIONAGE DEPLOYMENT CONTROL
-          </h3>
-
-          <div className="space-y-2 uppercase text-[11px] font-mono">
-            {/* Target LOCK info */}
-            <div className="flex justify-between items-center">
-              <span>Espionage Target locked:</span>
-              <select
-                value={selectedTargetId || ''}
-                onChange={(e) => setTargetCountry(e.target.value || null)}
-                className="bg-[#030503] border border-[#1a3a1a] text-[#ffb300] outline-none text-[10px] p-1 font-mono uppercase rounded"
-              >
-                <option value="">-- NO LOCK --</option>
-                {Object.keys(countries)
-                  .filter((id) => id !== countryId)
-                  .map((id) => (
-                    <option key={id} value={id}>
-                      {id} - {countries[id].name}
-                    </option>
-                  ))}
-              </select>
+              <div className="space-y-3 font-mono">
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-500">INTEL REPORT CONFIDENCE:</span>
+                  <span className="font-bold text-[#00ff44] text-xs">
+                    {playerCountry.intelligence.intelReportConfidence ?? 95}% ACCURATE
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-500">SIGNAL INTERCEPT SCORE:</span>
+                  <span className="font-bold text-[#00e5ff]">
+                    {playerCountry.intelligence.signalIntelScore} dB
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-gray-500 font-mono">CYBER FIREWALL SHIELD:</span>
+                  <span className="font-bold text-white">
+                    LEVEL {playerCountry.intelligence.cyberFirewallLevel} ACTIVE
+                  </span>
+                </div>
+              </div>
             </div>
 
-            {/* Select Op type */}
-            <div className="flex justify-between items-center">
-              <span>espionage directive:</span>
-              <select
-                value={opType}
-                onChange={(e) => setOpType(e.target.value as CovertOpType)}
-                className="bg-[#030503] border border-[#1a3a1a] text-[#00ff44] outline-none text-[10px] p-1 font-mono uppercase rounded"
-              >
-                {Object.keys(opSpecs).map((key) => (
-                  <option key={key} value={key}>
-                    {opSpecs[key as CovertOpType].name}
-                  </option>
-                ))}
-              </select>
+            {/* Orbit diagnostics */}
+            <div className="combat-panel flex-1 flex flex-col justify-center">
+              <span className="text-[9px] text-gray-500 uppercase font-mono mb-1">Orbital recon satellites:</span>
+              <div className="text-[10px] font-mono leading-relaxed text-gray-450 uppercase space-y-1">
+                <div>🛰️ ACTIVE IMAGING SENSORS: 9</div>
+                <div>📡 BANDWIDTH FEED SPEED: 480 GBPS</div>
+                <div>📡 CORRELATION COVERAGE: NOMINAL</div>
+              </div>
             </div>
-
-            {/* Description blurb */}
-            <div className="border border-[#1a3a1a] bg-black p-2 rounded text-[9px] lowercase text-gray-500 leading-normal font-sans">
-              {opSpecs[opType].desc}
-            </div>
-
-            <button
-              onClick={handleLaunchCovertOp}
-              disabled={!selectedTargetId}
-              className={`w-full py-2 border font-bold uppercase text-[10px] rounded cursor-pointer transition-all ${
-                !selectedTargetId
-                  ? 'bg-gray-800 border-gray-900 border text-gray-400 select-none'
-                  : 'bg-[#ffb300]/15 border border-[#ffb300] text-[#ffb300] hover:bg-[#ffb300]/30'
-              }`}
-            >
-              DEPLOY ESPIONAGE VECTORS (cost: ${opSpecs[opType].costB}B)
-            </button>
           </div>
         </div>
-
-        {/* Orbit coordinates */}
-        <div className="combat-panel flex-1 flex flex-col justify-center">
-          <span className="text-[9px] text-gray-500 uppercase font-mono mb-1">Orbital satellites constellations:</span>
-          <div className="text-[10px] font-mono leading-relaxed text-shadow-sm text-gray-400 uppercase">
-            🛰️ CONSTELLATION CODENAME: SATELLITES-PALANTIR 9
-            <br />
-            🌍 COORDINATE ACCURACY LOCK: 99.87% SIGS NOMINAL
-          </div>
-        </div>
-      </div>
+      )}
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import { Country, WeaponType, FactionType, Ideology, AllianceBlock, SatelliteAsset } from '../types';
+import { WeaponType, FactionType, Ideology, AllianceBlock, SatelliteAsset, Province, Cabinet, PopulationProfile, EconomicSectors, SupplyChains, FinancialMarkets, MilitaryPersonnel, MilitaryLogistics, MilitaryReadiness, MilitaryCombat, InformationCampaign, SpyAsset, Country } from '../types';
 
 const BASE_WEAPONS: { type: WeaponType; baseCount: number; power: number; cost: number }[] = [
   { type: 'ICBM', baseCount: 0, power: 95, cost: 2.0 },
@@ -157,6 +157,224 @@ Object.keys(SEED_TEMPLATES).forEach((id) => {
     { id: `${id}_cyber_off`, type: 'OFFENSIVE' as const, targetCountryId: undefined, powerLevel: Math.round(t.power * 0.8), isDeployed: false, firewallRating: 0 },
   ];
 
+  // Provincial level data
+  const provinces: Province[] = [
+    {
+      id: `${id}_prov_cap`,
+      name: `${t.name} Capital District`,
+      population: Math.round(t.pop * 0.3 * 10) / 10 + 1,
+      controllerCountryId: id,
+      originalCountryId: id,
+      integrity: 100,
+      features: ['CITY', 'ENERGY_FACILITY'],
+      resistanceLevel: 0
+    },
+    {
+      id: `${id}_prov_ind`,
+      name: `${t.name} Industrial Zone`,
+      population: Math.round(t.pop * 0.4 * 10) / 10 + 2,
+      controllerCountryId: id,
+      originalCountryId: id,
+      integrity: 100,
+      features: ['INDUSTRIAL_ZONE', 'AIRBASE'],
+      resistanceLevel: 0
+    },
+    {
+      id: `${id}_prov_port`,
+      name: `${t.name} Coastal Reach`,
+      population: Math.round(t.pop * 0.3 * 10) / 10 + 1,
+      controllerCountryId: id,
+      originalCountryId: id,
+      integrity: 100,
+      features: ['PORT'],
+      resistanceLevel: 0
+    }
+  ];
+
+  // Specific cabinet configurations
+  const cabinName = (role: string) => {
+    switch(id) {
+      case 'US':
+        if(role === 'DEF') return 'Gen. Lloyd Austin';
+        if(role === 'FIN') return 'Dr. Janet Yellen';
+        if(role === 'FOR') return 'Sec. Antony Blinken';
+        if(role === 'INT') return 'Director William Burns';
+        return 'Gov. Jerome Powell';
+      case 'CN':
+        if(role === 'DEF') return 'Gen. Dong Jun';
+        if(role === 'FIN') return 'Minister Lan Foan';
+        if(role === 'FOR') return 'Minister Wang Yi';
+        if(role === 'INT') return 'Director Chen Yixin';
+        return 'Gov. Pan Gongsheng';
+      case 'RU':
+        if(role === 'DEF') return 'Gen. Andrey Belousov';
+        if(role === 'FIN') return 'Minister Anton Siluanov';
+        if(role === 'FOR') return 'Minister Sergey Lavrov';
+        if(role === 'INT') return 'Director Sergey Naryshkin';
+        return 'Gov. Elvira Nabiullina';
+      case 'IN':
+        if(role === 'DEF') return 'Gen. Rajnath Singh';
+        if(role === 'FIN') return 'Minister Nirmala Sitharaman';
+        if(role === 'FOR') return 'Minister S. Jaishankar';
+        if(role === 'INT') return 'Advisor Ajit Doval';
+        return 'Gov. Shaktikanta Das';
+      case 'GB':
+        if(role === 'DEF') return 'John Healey';
+        if(role === 'FIN') return 'Rachel Reeves';
+        if(role === 'FOR') return 'David Lammy';
+        if(role === 'INT') return 'Richard Moore';
+        return 'Gov. Andrew Bailey';
+      default:
+        return `${t.flag} Portfolio ${role}`;
+    }
+  };
+
+  const cabinet: Cabinet = {
+    defenseMinister: {
+      name: cabinName('DEF'),
+      competence: Math.round(75 + Math.random() * 20),
+      loyalty: Math.round(80 + Math.random() * 15),
+      corruption: id === 'RU' || id === 'PK' ? 35 : 12,
+      ideology: t.ideology
+    },
+    financeMinister: {
+      name: cabinName('FIN'),
+      competence: Math.round(70 + Math.random() * 25),
+      loyalty: Math.round(75 + Math.random() * 20),
+      corruption: id === 'RU' || id === 'PK' ? 40 : 10,
+      ideology: t.ideology
+    },
+    foreignMinister: {
+      name: cabinName('FOR'),
+      competence: Math.round(80 + Math.random() * 15),
+      loyalty: Math.round(80 + Math.random() * 15),
+      corruption: id === 'RU' || id === 'PK' ? 25 : 8,
+      ideology: t.ideology
+    },
+    intelligenceChief: {
+      name: cabinName('INT'),
+      competence: Math.round(85 + Math.random() * 12),
+      loyalty: Math.round(85 + Math.random() * 12),
+      corruption: id === 'RU' || id === 'PK' ? 30 : 15,
+      ideology: t.ideology
+    },
+    centralBankGovernor: {
+      name: cabinName('CB'),
+      competence: Math.round(88 + Math.random() * 10),
+      loyalty: Math.round(70 + Math.random() * 25),
+      corruption: 5,
+      ideology: 'TECHNOCRACY'
+    }
+  };
+
+  const ageDemographics = id === 'DE' || id === 'JP'
+    ? { youthPct: 12, adultPct: 58, elderlyPct: 30 }
+    : id === 'IN' || id === 'PK' || id === 'PS'
+    ? { youthPct: 38, adultPct: 54, elderlyPct: 8 }
+    : { youthPct: 20, adultPct: 62, elderlyPct: 18 };
+
+  const birthRate = id === 'PS' || id === 'PK' ? 28 : id === 'IN' ? 17 : id === 'JP' ? 7 : 11;
+  const deathRate = id === 'JP' || id === 'RU' ? 12 : id === 'IN' || id === 'PK' ? 7 : 8;
+  const poverty = id === 'PS' ? 62 : id === 'PK' ? 40 : id === 'IN' ? 21 : id === 'CN' ? 8 : 4;
+
+  const populationSim: PopulationProfile = {
+    ageDemographics,
+    birthRate,
+    deathRate,
+    educationLevel: id === 'US' || id === 'GB' || id === 'DE' || id === 'JP' ? 88 : id === 'CN' || id === 'KR' || id === 'TW' ? 92 : id === 'IN' ? 74 : 58,
+    urbanization: id === 'US' || id === 'DE' ? 83 : id === 'CN' ? 65 : id === 'IN' ? 36 : 80,
+    poverty,
+    migration: id === 'US' || id === 'GB' || id === 'DE' ? 5 : id === 'PK' || id === 'PS' || id === 'RU' ? -3 : 0,
+    religiousComposition: id === 'IR' || id === 'SA' || id === 'PS'
+      ? { secular: 5, religiousA: 85, religiousB: 10 }
+      : id === 'US' || id === 'BR'
+      ? { secular: 25, religiousA: 65, religiousB: 10 }
+      : { secular: 60, religiousA: 30, religiousB: 10 },
+    ethnicComposition: id === 'US'
+      ? { majority: 60, minorityA: 18, minorityB: 22 }
+      : { majority: 90, minorityA: 7, minorityB: 3 },
+    workforceParticipation: id === 'CN' || id === 'DE' ? 68 : id === 'US' ? 62 : id === 'IN' ? 48 : 55
+  };
+
+  const sectors: EconomicSectors = {
+    agriculture: Math.round(t.gdp * (id === 'IN' || id === 'PK' ? 0.18 : 0.02)),
+    manufacturing: Math.round(t.gdp * (id === 'CN' ? 0.38 : id === 'DE' || id === 'KR' ? 0.26 : 0.12)),
+    services: Math.round(t.gdp * (id === 'US' || id === 'GB' ? 0.76 : 0.50)),
+    energy: Math.round(t.gdp * (id === 'RU' || id === 'SA' ? 0.35 : 0.05)),
+    mining: Math.round(t.gdp * (id === 'ZA' || id === 'AU' ? 0.15 : 0.03)),
+    technology: Math.round(t.gdp * (id === 'US' || id === 'JP' || id === 'TW' || id === 'KR' ? 0.18 : 0.05)),
+    tourism: Math.round(t.gdp * (id === 'FR' ? 0.10 : 0.03)),
+    defense: Math.round(t.gdp * (id === 'RU' || id === 'US' || id === 'IL' ? 0.08 : 0.02))
+  };
+
+  const supplyChains: SupplyChains = {
+    energyDependency: id === 'SA' || id === 'RU' ? 0 : id === 'DE' || id === 'JP' ? 82 : id === 'US' ? 12 : 45,
+    foodDependency: id === 'PS' || id === 'SA' ? 75 : id === 'US' || id === 'BR' || id === 'FR' ? 5 : 25,
+    semiconductorDependency: id === 'TW' || id === 'KR' || id === 'JP' ? 5 : id === 'RU' || id === 'IR' ? 95 : id === 'US' || id === 'CN' ? 55 : 85,
+    defenseDependency: id === 'US' || id === 'RU' || id === 'CN' || id === 'FR' ? 2 : id === 'PS' || id === 'SA' || id === 'PK' ? 85 : 45
+  };
+
+  const ratingId = id === 'US' || id === 'DE' || id === 'JP' ? 'AAA' : id === 'CN' || id === 'GB' || id === 'FR' || id === 'KR' || id === 'TW' ? 'AA' : id === 'IN' || id === 'BR' || id === 'ZA' || id === 'IL' || id === 'SA' || id === 'TR' ? 'BBB' : id === 'RU' || id === 'IR' || id === 'EG' || id === 'PK' ? 'B' : 'CCC';
+
+  const financialMarkets: FinancialMarkets = {
+    stockMarketIndex: id === 'US' ? 39500 : id === 'CN' ? 9500 : id === 'GB' ? 8200 : id === 'IN' ? 73000 : 1500,
+    bondYield: id === 'US' ? 4.35 : id === 'DE' ? 2.45 : id === 'TR' ? 45.0 : id === 'PK' ? 22.0 : 5.0,
+    currencyMarketValue: 100,
+    sovereignRating: ratingId
+  };
+
+  const personnel: MilitaryPersonnel = {
+    activeTroops: id === 'CN' ? 2000 : id === 'US' ? 1350 : id === 'IN' ? 1400 : id === 'RU' ? 1150 : id === 'PK' ? 650 : 120,
+    reserveTroops: id === 'KR' ? 3100 : id === 'RU' ? 2000 : id === 'CN' ? 510 : id === 'US' ? 800 : id === 'IN' ? 1150 : 250,
+    specialForces: id === 'US' ? 70 : id === 'RU' ? 45 : id === 'CN' ? 35 : id === 'GB' || id === 'FR' || id === 'IL' ? 15 : 5
+  };
+
+  const logistics: MilitaryLogistics = {
+    ammunition: 92,
+    fuel: 88,
+    spareParts: 85,
+    supplyDepots: id === 'US' ? 45 : id === 'CN' || id === 'RU' ? 30 : 10
+  };
+
+  const readiness: MilitaryReadiness = {
+    training: id === 'US' || id === 'GB' || id === 'IL' ? 90 : id === 'CN' || id === 'RU' || id === 'KR' ? 80 : 65,
+    morale: id === 'IL' || id === 'TW' ? 88 : id === 'US' ? 80 : id === 'RU' || id === 'PK' ? 62 : 72,
+    combatExperience: id === 'US' || id === 'RU' || id === 'IL' ? 85 : id === 'GB' || id === 'FR' ? 60 : 25
+  };
+
+  const combatRealism: MilitaryCombat = {
+    attrition: 0,
+    supplyLineStatus: 100,
+    occupationCosts: 0,
+    insurgencies: id === 'PS' || id === 'PK' ? 15 : 0
+  };
+
+  const infoWarfare: InformationCampaign = {
+    socialMediaInfluence: id === 'US' || id === 'CN' ? 85 : 45,
+    deepfakesActive: false,
+    narrativeFocus: 'PRO_GOVERNMENT',
+    mediaOwnershipCensorship: t.ideology === 'DEMOCRACY' ? 15 : 75
+  };
+
+  const spyAssets: SpyAsset[] = [
+    {
+      id: `${id}_spy_1`,
+      alias: `Op Agent ${id}-A`,
+      targetCountryId: id === 'US' ? 'CN' : id === 'CN' ? 'US' : 'US',
+      competence: 72 + Math.round(Math.random() * 20),
+      status: 'ACTIVE',
+      ticksActive: 0
+    },
+    {
+      id: `${id}_spy_2`,
+      alias: `Op Agent ${id}-B`,
+      targetCountryId: id === 'IL' ? 'IR' : id === 'IR' ? 'IL' : 'RU',
+      competence: 65 + Math.round(Math.random() * 25),
+      status: 'ACTIVE',
+      ticksActive: 0
+    }
+  ];
+
   // Assemble full country details
   INITIAL_COUNTRIES[id] = {
     id: id,
@@ -172,6 +390,9 @@ Object.keys(SEED_TEMPLATES).forEach((id) => {
     nuclearDoctrineFirstStrike: id === 'US' || id === 'RU' || id === 'CN',
     researchUnlocked: id === 'US' || id === 'RU' ? ['HAARP_V1', 'IRON_DOME_V1', 'CYBER_FIREWALL_V1'] : ['IRON_DOME_V1'],
     haarpActive: false,
+    provinces,
+    populationSim,
+    cabinet,
     economic: {
       gdpB: t.gdp,
       gdpGrowthRate: id === 'CN' || id === 'IN' ? 6.2 : 2.1,
@@ -200,6 +421,9 @@ Object.keys(SEED_TEMPLATES).forEach((id) => {
         debtService: 0.05,
         propaganda: 0.05,
       },
+      sectors,
+      supplyChains,
+      financialMarkets
     },
     political: {
       ideology: t.ideology,
@@ -215,6 +439,7 @@ Object.keys(SEED_TEMPLATES).forEach((id) => {
       propagandaEffectiveness: t.ideology === 'DEMOCRACY' ? 45 : 75,
       censorship: t.ideology === 'DEMOCRACY' ? 20 : 80,
       diasporaInfluence: 30,
+      infoWarfare
     },
     arsenal: {
       units: weaponUnits,
@@ -224,6 +449,10 @@ Object.keys(SEED_TEMPLATES).forEach((id) => {
       abmShieldStrength: id === 'IL' ? 70 : id === 'US' ? 45 : 15,
       abmIntercepts: 0,
       readinessLevel: 80,
+      personnel,
+      logistics,
+      readiness,
+      combatRealism
     },
     intelligence: {
       satellites: satellites,
@@ -234,6 +463,8 @@ Object.keys(SEED_TEMPLATES).forEach((id) => {
       cyberFirewallLevel: id === 'US' || id === 'CN' ? 2 : 1,
       knownThreats: [],
       blackBudgetB: id === 'US' || id === 'CN' ? 25 : 2,
+      spyAssets,
+      intelReportConfidence: 95
     },
     lastEventLog: [`System online for ${t.name}. Ready for sovereign directives.`],
     tariffs: {}

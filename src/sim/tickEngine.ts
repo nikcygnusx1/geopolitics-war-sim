@@ -8,6 +8,7 @@ import { advanceStrikes } from './militaryEngine';
 import { processRelations } from './diplomaticEngine';
 import { processSentiment } from './propagandaEngine';
 import { processAllAI } from './aiDecisionEngine';
+import { processComplexPhase2Geopolitics } from './geopoliticalEngine';
 import { CovertOp, WorldState } from '../types';
 
 let tickIntervalId: any = null;
@@ -76,6 +77,9 @@ export function executeSimulationStep() {
 
     // 9. Process signals covert actions & satellite reconnaissance sweeps
     advanceCovertIntelligenceOps(draft, player.countryId);
+
+    // 10. Process Phase 2 evolved Geopolitical, Population, Cabinet, Sectors, and Provinces systems
+    processComplexPhase2Geopolitics(draft, player.countryId);
   });
 
   // 10. Sync player's cash levels with their nation's real treasury reserves
