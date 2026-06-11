@@ -218,7 +218,12 @@ export default function ThermalRecon() {
       ctx!.fillStyle = '#00ff44';
       ctx!.font = '6.5px "JetBrains Mono", monospace';
       
-      const peakHeat = Math.max(...Array.from(heat.current));
+      let peakHeat = 0.25;
+      for (let i = 0; i < heat.current.length; i++) {
+        if (heat.current[i] > peakHeat) {
+          peakHeat = heat.current[i];
+        }
+      }
       const estTemp = Math.round(peakHeat * 380 + 200);
 
       ctx!.fillText(
@@ -257,7 +262,7 @@ export default function ThermalRecon() {
   };
 
   return (
-    <div className="flex flex-col gap-1 w-full border border-[#1a5c1a] p-1.5 bg-[#030603] rounded">
+    <div className="flex flex-col gap-1 w-full border border-[#1a5c1a] p-1.5 bg-[#030603] rounded h-full justify-between">
       <div className="text-[8px] font-mono tracking-wider text-[#00ff44] uppercase flex justify-between px-0.5">
         <span>SATELLITE POV</span>
         <span className="text-[#ff2244] font-bold animate-pulse">◉ REC</span>

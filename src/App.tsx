@@ -255,7 +255,7 @@ export default function App() {
           <StockMarketTicker />
 
           {/* Satellite live feeds matrix row */}
-          <div className="h-[150px] grid grid-cols-4 gap-1 p-1 bg-[#010301] shrink-0 select-none overflow-x-auto">
+          <div className="h-[210px] grid grid-cols-4 gap-1.5 p-1 bg-[#010301] shrink-0 select-none overflow-hidden border-t border-[#1a5c1a]">
             <ThermalRecon />
             <DroneFeed />
             <CyberFeed />

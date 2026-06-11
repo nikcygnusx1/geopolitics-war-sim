@@ -213,7 +213,7 @@ export default function CyberFeed() {
   };
 
   return (
-    <div className="flex flex-col gap-1 w-full border border-[#1a5c1a] p-1.5 bg-[#030603] rounded">
+    <div className="flex flex-col gap-1 w-full border border-[#1a5c1a] p-1.5 bg-[#030603] rounded h-full justify-between">
       <div className="text-[8px] font-mono tracking-wider text-[#00ff44] uppercase flex justify-between px-0.5">
         <span>COVERT CYBER GRID DIAGRAM</span>
         <span style={{ color: underAttack ? '#ff2244' : hackActive ? '#00e5ff' : '#00cc33' }}>

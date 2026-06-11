@@ -219,16 +219,16 @@ export default function HaarpRadar() {
       // Trigger world state climate impacts!
       useWorldStore.getState().applyTickDelta((draft) => {
         const c = draft.countries[haarpTarget];
-        if (c) {
+        if (c && c.political) {
           // Increase substate tension or deplete infrastructure slightly to show real simulation effects!
-          c.cohesion = Math.max(10, c.cohesion - 12);
+          c.political.stabilityIndex = Math.max(10, c.political.stabilityIndex - 12);
         }
       });
     }
   };
 
   return (
-    <div className="flex flex-col gap-1 w-full border border-[#1a5c1a] p-1.5 bg-[#030603] rounded">
+    <div className="flex flex-col gap-1 w-full border border-[#1a5c1a] p-1.5 bg-[#030603] rounded h-full justify-between">
       <div className="text-[8px] font-mono tracking-wider text-[#00ff44] uppercase flex justify-between px-0.5">
         <span>HAARP CLIMATE EMITTER</span>
         <span style={{ animation: haarpActive ? 'blink 0.8s infinite' : 'none', color: haarpActive ? '#00e5ff' : '#666' }}>

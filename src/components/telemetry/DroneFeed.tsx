@@ -301,7 +301,7 @@ export default function DroneFeed() {
   };
 
   return (
-    <div className="flex flex-col gap-1 w-full border border-[#1a5c1a] p-1.5 bg-[#030603] rounded">
+    <div className="flex flex-col gap-1 w-full border border-[#1a5c1a] p-1.5 bg-[#030603] rounded h-full justify-between">
       <div className="text-[8px] font-mono tracking-wider text-[#00ff44] uppercase flex justify-between px-0.5">
         <span>TAC DRONE MULTISPECTRAL FEED</span>
         <span style={{ color: droneArmed ? '#ff2244' : '#ffb300' }}>
