@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { useWorldStore } from '../../store/worldStore';
 import { usePlayerStore } from '../../store/playerStore';
 import { CovertOpType } from '../../types';
+import { audio } from '../../utils/audio';
+import { useUIStore } from '../../store/uiStore';
 
 export default function IntelPanel() {
   const countryId = usePlayerStore((s) => s.countryId);
@@ -12,7 +14,7 @@ export default function IntelPanel() {
   const updateCountry = useWorldStore((s) => s.updateCountry);
 
   const playerCountry = countries[countryId];
-  if (!playerCountry) return <div className="text-red-500 font-mono">Error: Player Country not loaded.</div>;
+  if (!playerCountry) return <div className="text-red-500 font-mono p-4 border border-red-950 bg-black">Error: Player Country not loaded.</div>;
 
   const intel = playerCountry.intelligence;
   const spyAssets = intel.spyAssets || [];
@@ -55,11 +57,11 @@ export default function IntelPanel() {
     },
     ELECTION_RIG: {
       name: 'DEMOCRATIC ELECTION INTERFERENCE',
-      costB: 1.2,
-      ticks: 7,
-      desc: 'Infiltrate voter tallies to set favorable regime alignments.',
       success: 80,
       blowback: 15,
+      ticks: 7,
+      costB: 1.2,
+      desc: 'Infiltrate voter tallies to set favorable regime alignments.',
     },
     PLANT_PROPAGANDA: {
       name: 'COVERT PSYOP INTRUSION LAYERING',
@@ -73,7 +75,7 @@ export default function IntelPanel() {
       name: 'PARAMILITARY REBEL MILITIA FUNDING',
       costB: 3.0,
       ticks: 14,
-      desc: 'Stoke local sep separatism movements to spark popular unrest spikes.',
+      desc: 'Stoke local separatist movements to spark popular unrest spikes.',
       success: 50,
       blowback: 50,
     },
@@ -96,19 +98,33 @@ export default function IntelPanel() {
   };
 
   const handleLaunchCovertOp = () => {
+    audio.sfxKeyClick();
+
     if (!selectedTargetId) {
-      alert('Espionage alert: No target country locked in tactical aperture.');
+      useUIStore.getState().pushAlert({
+        title: 'TACTICAL DRIFT WARNING',
+        message: 'Espionage alert: No target country locked in tactical aperture. Link targeted foreign node on orbital directory.',
+        type: 'WARNING'
+      });
       return;
     }
 
     if (selectedTargetId === countryId) {
-      alert('Espionage alert: Domestic targeting restricted.');
+      useUIStore.getState().pushAlert({
+        title: 'DOMESTIC ESPIONAGE BLOCKED',
+        message: 'Espionage alert: Domestic active operations restricted. Local signal desks already enforce supreme internal quarantine.',
+        type: 'WARNING'
+      });
       return;
     }
 
     const spec = opSpecs[opType];
     if (intel.blackBudgetB < spec.costB) {
-      alert(`Espionage alert: Slush finance insufficient. Op requires $${spec.costB}B.`);
+      useUIStore.getState().pushAlert({
+        title: 'COVERT RESERVES LOW',
+        message: `Espionage alert: Slush finance insufficient. Direct espionage directive "${spec.name}" requires $${spec.costB}B.`,
+        type: 'DANGER'
+      });
       return;
     }
 
@@ -128,12 +144,23 @@ export default function IntelPanel() {
     });
 
     useWorldStore.getState().addGlobalEvent(`COVERT SECTOR: Logged operative vectors against ${selectedTargetId}.`, 'WARNING');
+    
+    useUIStore.getState().pushAlert({
+      title: 'Espionage Directive DEPLOYED',
+      message: `Clandestine agents dispatched for "${spec.name}" inside target [${selectedTargetId}] sector firewalls. Probe triggers initialized.`,
+      type: 'INFO'
+    });
   };
 
   const handleFundBlackSlush = () => {
+    audio.sfxKeyClick();
     const transferAmtB = 3.0;
     if (playerCountry.economic.treasuryCashB < transferAmtB) {
-      alert('Debit warning: Allocation exceeds current treasury cash reserves.');
+      useUIStore.getState().pushAlert({
+        title: 'ALLOCATION DENIED',
+        message: 'Debit warning: Covert allocation exceeds current treasury cash reserves. Liquid assets deficient.',
+        type: 'DANGER'
+      });
       return;
     }
 
@@ -143,24 +170,30 @@ export default function IntelPanel() {
     });
 
     useWorldStore.getState().addGlobalEvent(`Signals desk: Transferred $${transferAmtB}B from treasury to black operations budget.`, 'INFO');
+    
+    useUIStore.getState().pushAlert({
+      title: 'COVERT FUNDS REFILLED',
+      message: `Asset routing successfully processed. Routed $${transferAmtB}B sovereign funds into clandestine operations accounts.`,
+      type: 'INFO'
+    });
   };
 
   return (
-    <div className="w-full text-xs flex flex-col gap-3">
+    <div className="w-full text-xs flex flex-col gap-3 font-mono">
       {/* Subtab selection info */}
       <div className="flex border-b border-[#1a3a1a] pb-2 mb-1 gap-2">
         <button
-          onClick={() => setIntelTab('OPS')}
-          className={`px-3 py-1 text-[10px] font-bold border rounded transition-colors ${
-            intelTab === 'OPS' ? 'bg-[#1a4a1a] text-[#00ff44] border-[#00ff44]' : 'text-gray-400 border-transparent hover:text-white'
+          onClick={() => { audio.sfxKeyClick(); setIntelTab('OPS'); }}
+          className={`px-3 py-1 text-[10px] uppercase font-bold border rounded transition-colors cursor-pointer ${
+            intelTab === 'OPS' ? 'bg-[#1a4a1a] text-[#00ff44] border-[#00ff44] shadow-[0_0_8px_rgba(0,255,68,0.25)]' : 'text-gray-400 border-transparent hover:text-white hover:bg-white/5'
           }`}
         >
           🕵️ COVERT OPERATIONS
         </button>
         <button
-          onClick={() => setIntelTab('ASSETS')}
-          className={`px-3 py-1 text-[10px] font-bold border rounded transition-colors ${
-            intelTab === 'ASSETS' ? 'bg-[#1a4a1a] text-[#00ff44] border-[#00ff44]' : 'text-gray-400 border-transparent hover:text-white'
+          onClick={() => { audio.sfxKeyClick(); setIntelTab('ASSETS'); }}
+          className={`px-3 py-1 text-[10px] uppercase font-bold border rounded transition-colors cursor-pointer ${
+            intelTab === 'ASSETS' ? 'bg-[#1a4a1a] text-[#00ff44] border-[#00ff44] shadow-[0_0_8px_rgba(0,255,68,0.25)]' : 'text-gray-400 border-transparent hover:text-white hover:bg-white/5'
           }`}
         >
           📁 SIGINT & CLANDESTINE ASSETS
@@ -170,29 +203,29 @@ export default function IntelPanel() {
       {intelTab === 'OPS' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="flex flex-col gap-4">
-            <div className="combat-panel flex flex-col gap-2">
-              <h3 className="font-bold border-b border-[#1a3a1a] pb-1 uppercase tracking-wider text-[#00ff44]">
+            <div className="combat-panel flex flex-col gap-2 border border-[#1a3a1a] bg-[#030503] p-4 rounded shadow-inner">
+              <h3 className="font-bold border-b border-[#1a3a1a] pb-1.5 uppercase text-[#00ff44] text-[10px]/1">
                 ACTIVE ESPIONAGE VECTORS LOG
               </h3>
 
-              <div className="space-y-1.5 overflow-y-auto max-h-[140px] pr-1">
+              <div className="space-y-1.5 overflow-y-auto max-h-[140px] pr-1 scrollbar-thin">
                 {intel.activeCovertOps.length === 0 ? (
-                  <p className="text-gray-600 italic py-2">No active clandestine Ops tracking inside foreign firewalls.</p>
+                  <p className="text-gray-600 italic py-2 leading-relaxed text-[10px]/1">No active clandestine Ops tracking inside foreign firewalls.</p>
                 ) : (
                   intel.activeCovertOps.map((op) => {
                     const spec = opSpecs[op.type];
                     return (
                       <div
                         key={op.id}
-                        className="border border-[#0d1f0d] bg-[#030503] p-1.5 rounded flex justify-between items-center text-[10px] font-mono"
+                        className="border border-[#0d1f0d] bg-[#030503] p-2 rounded flex justify-between items-center text-[10px] hover:bg-[#071307]"
                       >
-                        <div>
-                          <div className="font-bold text-[#00e5ff]">{spec?.name || op.type}</div>
+                        <div className="font-mono">
+                          <div className="font-bold text-[#00e5ff] text-[9.5px] uppercase">{spec?.name || op.type}</div>
                           <div className="text-[8px] text-gray-500 uppercase">
-                            TARGET: {op.targetCountryId} | REMAINING: {op.remainingTicks} TICKS
+                            TARGET: <span className="text-white font-bold">{op.targetCountryId}</span> | REMAINING: <span className="text-white font-bold">{op.remainingTicks} TICKS</span>
                           </div>
                         </div>
-                        <span className="text-[#00ff44] font-bold py-0.5 px-1.5 bg-[#1a4a1a] uppercase text-[9px] rounded">
+                        <span className="text-[#00ff44] font-black py-0.5 px-1.5 bg-[#1a4a1a] uppercase text-[9px] rounded font-mono">
                           {Math.round(((op.ticksToComplete - op.remainingTicks) / op.ticksToComplete) * 100)}%
                         </span>
                       </div>
@@ -202,14 +235,14 @@ export default function IntelPanel() {
               </div>
             </div>
 
-            <div className="combat-panel flex justify-between items-center h-20">
+            <div className="combat-panel flex justify-between items-center h-[72px] border border-[#1a3a1a] bg-[#030503] p-4 rounded shadow-sm">
               <div>
-                <div className="text-[9px] text-gray-500 uppercase tracking-wider">Covert Slush Reserves</div>
-                <div className="text-lg font-bold text-[#00ff44]">${intel.blackBudgetB.toFixed(1)}B</div>
+                <div className="text-[8.5px] text-gray-500 uppercase tracking-wider font-bold">Covert Slush Reserves</div>
+                <div className="text-base font-black text-[#00ff44]">${intel.blackBudgetB.toFixed(1)}B</div>
               </div>
               <button
                 onClick={handleFundBlackSlush}
-                className="px-3 py-1.5 bg-[#002f3c] border border-[#00e5ff] text-[#00e5ff] rounded hover:bg-[#00475b] font-bold uppercase text-[9px] cursor-pointer"
+                className="px-3 py-1.5 bg-[#002f3c] border border-[#00e5ff] text-[#00e5ff] rounded hover:bg-[#00475b] font-bold uppercase text-[9px] cursor-pointer transition-all active:translate-y-0.5"
               >
                 Divert $3.0B Cash
               </button>
@@ -217,18 +250,18 @@ export default function IntelPanel() {
           </div>
 
           <div className="flex flex-col gap-4">
-            <div className="combat-panel flex flex-col gap-2.5">
-              <h3 className="font-bold border-b border-[#1a3a1a] pb-1 uppercase tracking-wider text-[#ffb300]">
+            <div className="combat-panel flex flex-col gap-2.5 border border-[#1a3a1a] bg-[#030503] p-4 rounded shadow-md relative">
+              <h3 className="font-bold border-b border-[#1a3a1a] pb-1.5 uppercase text-[#ffb300] text-[10px]/1">
                 ESPIONAGE DIRECTIVES LAUNCHER
               </h3>
 
-              <div className="space-y-2 uppercase text-[11px] font-mono">
-                <div className="flex justify-between items-center">
-                  <span>Target Coordinates:</span>
+              <div className="space-y-3.5 uppercase text-[10.5px] text-gray-405 font-mono">
+                <div className="flex justify-between items-center bg-[#071407]/30 p-2 border border-[#113211]/50 rounded">
+                  <span className="text-gray-400 font-bold">Target Coordinates:</span>
                   <select
                     value={selectedTargetId || ''}
-                    onChange={(e) => setTargetCountry(e.target.value || null)}
-                    className="bg-[#030503] border border-[#1a3a1a] text-[#ffb300] outline-none text-[10px] p-1 font-mono uppercase rounded"
+                    onChange={(e) => { audio.sfxKeyClick(); setTargetCountry(e.target.value || null); }}
+                    className="bg-[#030503] border border-[#1a3a1a] text-[#ffb300] outline-none text-[10px] p-1 font-mono uppercase rounded w-[150px] cursor-pointer"
                   >
                     <option value="">-- NO LOCK --</option>
                     {Object.keys(countries)
@@ -241,12 +274,12 @@ export default function IntelPanel() {
                   </select>
                 </div>
 
-                <div className="flex justify-between items-center">
-                  <span>espionage directive:</span>
+                <div className="flex justify-between items-center bg-[#071407]/30 p-2 border border-[#113211]/50 rounded">
+                  <span className="text-gray-400 font-bold">Espionage Directive:</span>
                   <select
                     value={opType}
-                    onChange={(e) => setOpType(e.target.value as CovertOpType)}
-                    className="bg-[#030503] border border-[#1a3a1a] text-[#00ff44] outline-none text-[10px] p-1 font-mono uppercase rounded"
+                    onChange={(e) => { audio.sfxKeyClick(); setOpType(e.target.value as CovertOpType); }}
+                    className="bg-[#030503] border border-[#1a3a1a] text-[#00ff44] outline-none text-[10px] p-1 font-mono uppercase rounded w-[150px] cursor-pointer"
                   >
                     {Object.keys(opSpecs).map((key) => (
                       <option key={key} value={key}>
@@ -256,17 +289,18 @@ export default function IntelPanel() {
                   </select>
                 </div>
 
-                <div className="border border-[#1a3a1a] bg-black p-2 rounded text-[9.5px] lowercase text-gray-500 leading-normal font-sans">
+                <div className="border border-[#1a2d1a] bg-black/60 p-2.5 rounded text-[10px] lowercase text-gray-400 leading-relaxed font-sans normal-case relative">
+                  <span className="font-mono text-[9px] uppercase tracking-widest text-[#00ff44] block mb-1">PROBE PROTOCOL PARAMETERS:</span>
                   {opSpecs[opType].desc}
                 </div>
 
                 <button
                   onClick={handleLaunchCovertOp}
                   disabled={!selectedTargetId}
-                  className={`w-full py-2 border font-bold uppercase text-[10px] rounded cursor-pointer transition-all ${
+                  className={`w-full py-2 border font-extrabold uppercase text-[10px] tracking-widest rounded cursor-pointer transition-all active:translate-y-0.5 ${
                     !selectedTargetId
-                      ? 'bg-gray-800 border-gray-900 border text-gray-400 select-none'
-                      : 'bg-[#ffb300]/15 border border-[#ffb300] text-[#ffb300] hover:bg-[#ffb300]/30'
+                      ? 'bg-gray-850 border-gray-900 border text-gray-500 opacity-50 cursor-not-allowed select-none'
+                      : 'bg-[#ffb300]/15 border border-[#ffb300] text-[#ffb300] hover:bg-[#ffb300]/30 shadow-[0_0_10px_rgba(255,179,0,0.15)] animate-pulse'
                   }`}
                 >
                   DEPLOY ESPIONAGE DIRECTIVE (cost: ${opSpecs[opType].costB}B)
@@ -280,20 +314,20 @@ export default function IntelPanel() {
       {intelTab === 'ASSETS' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Spy Assets table */}
-          <div className="combat-panel flex flex-col gap-3">
-            <h3 className="font-bold border-b border-[#1a3a1a] pb-1.5 uppercase tracking-wider text-[#00ff44]">
+          <div className="combat-panel flex flex-col gap-3 border border-[#1a3a1a] bg-[#030503] p-4 rounded shadow-inner">
+            <h3 className="font-bold border-b border-[#1a3a1a] pb-1.5 uppercase tracking-wider text-[#00ff44] text-[10px]">
               🕵️ ACTIVE HUMINT CLANDESTINE ASSETS
             </h3>
             <p className="text-[10px] text-gray-500 leading-normal mb-2">
               Human intelligence networks operating on foreign soils. Clandestine agents feed intercept intelligence and confirm projectile directions, but risk being exposed or converted to double agents by hostile firewalls.
             </p>
 
-            <div className="space-y-1.5 max-h-[190px] overflow-y-auto">
+            <div className="space-y-1.5 max-h-[190px] overflow-y-auto pr-1 scrollbar-thin">
               {spyAssets.length === 0 ? (
-                <p className="text-gray-600 italic">No human assets currently deployed abroad.</p>
+                <p className="text-gray-600 italic leading-normal">No human assets currently deployed abroad.</p>
               ) : (
                 spyAssets.map((spy) => (
-                  <div key={spy.id} className="border border-[#183618] bg-[#020502] p-2.5 rounded font-mono text-[10px] space-y-1.5">
+                  <div key={spy.id} className="border border-[#183618] bg-[#020502] p-2.5 rounded font-mono text-[10px] space-y-1.5 hover:bg-[#061206] transition-colors">
                     <div className="flex justify-between items-center border-b border-[#0d1f0d] pb-1">
                       <span className="font-bold text-[#00e5ff]">{spy.alias}</span>
                       <span className={`text-[8.5px] font-bold px-1.5 py-0.2 rounded border ${
@@ -307,7 +341,7 @@ export default function IntelPanel() {
                       </span>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-2 text-[9px] text-gray-400">
+                    <div className="grid grid-cols-2 gap-2 text-[9px] text-gray-400 uppercase font-mono">
                       <div>TARGET REGION: <span className="text-white font-bold">{spy.targetCountryId}</span></div>
                       <div>COMPETENCE: <span className="text-white font-bold">{spy.competence}%</span></div>
                       <div className="col-span-2">TICKS COMPLETED ACTIVE: <span className="text-white font-bold">{spy.ticksActive} cycles</span></div>
@@ -320,27 +354,27 @@ export default function IntelPanel() {
 
           <div className="flex flex-col gap-4">
             {/* Intel accuracy score */}
-            <div className="combat-panel flex flex-col gap-3">
-              <h3 className="font-bold border-b border-[#1a3a1a] pb-1 uppercase tracking-wider text-[#00ff44]">
+            <div className="combat-panel flex flex-col gap-3 border border-[#1a3a1a] bg-[#030503] p-4 rounded text-xs shadow-md">
+              <h3 className="font-bold border-b border-[#1a3a1a] pb-1 uppercase tracking-wider text-[#00ff44] text-[10px]">
                 💾 SIGINT COGNITIVE METRICS
               </h3>
 
               <div className="space-y-3 font-mono">
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-500">INTEL REPORT CONFIDENCE:</span>
-                  <span className="font-bold text-[#00ff44] text-xs">
+                <div className="flex justify-between items-center border-b border-[#0f240f] pb-1.5">
+                  <span className="text-gray-500 font-bold">INTEL REPORT CONFIDENCE:</span>
+                  <span className="font-black text-[#00ff44] text-[12px]">
                     {playerCountry.intelligence.intelReportConfidence ?? 95}% ACCURATE
                   </span>
                 </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-500">SIGNAL INTERCEPT SCORE:</span>
-                  <span className="font-bold text-[#00e5ff]">
+                <div className="flex justify-between items-center border-b border-[#0f240f] pb-1.5">
+                  <span className="text-gray-500 font-bold">SIGNAL INTERCEPT SCORE:</span>
+                  <span className="font-black text-[#00e5ff] text-[11px]">
                     {playerCountry.intelligence.signalIntelScore} dB
                   </span>
                 </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-500 font-mono">CYBER FIREWALL SHIELD:</span>
-                  <span className="font-bold text-white">
+                <div className="flex justify-between items-center border-b border-[#0f240f] pb-1.5">
+                  <span className="text-gray-500 font-bold">CYBER FIREWALL SHIELD:</span>
+                  <span className="font-bold text-white text-[11px]">
                     LEVEL {playerCountry.intelligence.cyberFirewallLevel} ACTIVE
                   </span>
                 </div>
@@ -348,12 +382,12 @@ export default function IntelPanel() {
             </div>
 
             {/* Orbit diagnostics */}
-            <div className="combat-panel flex-1 flex flex-col justify-center">
-              <span className="text-[9px] text-gray-500 uppercase font-mono mb-1">Orbital recon satellites:</span>
-              <div className="text-[10px] font-mono leading-relaxed text-gray-450 uppercase space-y-1">
-                <div>🛰️ ACTIVE IMAGING SENSORS: 9</div>
-                <div>📡 BANDWIDTH FEED SPEED: 480 GBPS</div>
-                <div>📡 CORRELATION COVERAGE: NOMINAL</div>
+            <div className="combat-panel flex-1 flex flex-col justify-center border border-[#1a3a1a] bg-[#030503] p-4 rounded">
+              <span className="text-[9px] text-gray-500 uppercase font-mono font-bold mb-1">Orbital recon satellites telemetry:</span>
+              <div className="text-[10px] font-mono leading-relaxed text-gray-400 uppercase space-y-1">
+                <div>🛰️ ACTIVE IMAGING SENSORS: 9 ARRAY NODES</div>
+                <div>📡 BANDWIDTH FEED SPEED: 480 GBPS REAL-TIME</div>
+                <div>📡 CORRELATION COVERAGE: NOMINAL SWEEPS</div>
               </div>
             </div>
           </div>
