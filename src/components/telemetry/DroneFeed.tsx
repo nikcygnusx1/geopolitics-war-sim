@@ -5,7 +5,15 @@ import { usePlayerStore } from '../../store/playerStore';
 import { GEO_COORDS } from '../../data/geoCoords';
 import { audio } from '../../utils/audio';
 
-// Feed dimensions: width={192} height={148}
+// Drone multispectral modes
+type MultispectralMode = 'EO' | 'IR' | 'SWIR' | 'MULTI' | 'INDEX';
+
+interface TargetThreatData {
+  id: string;
+  name: string;
+  lat: number;
+  long: number;
+}
 
 export default function DroneFeed() {
   const targetCountryId = useUIStore((s) => s.countryInspectorId);
@@ -15,36 +23,41 @@ export default function DroneFeed() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const rafRef = useRef<number | null>(null);
 
+  // Operational States
   const [droneArmed, setDroneArmed] = useState(false);
   const [isLoitering, setIsLoitering] = useState(true);
+  const [spectralMode, setSpectralMode] = useState<MultispectralMode>('IR');
+  const [pendingStrike, setPendingStrike] = useState(false);
 
+  // Real Flight-Control telemetry state
   const state = useRef({
-    altitude: 1240 + Math.random() * 200,
-    airspeed: 310 + Math.random() * 40,
-    heading: 247 + Math.random() * 10,
+    altitude: 4850,
+    airspeed: 135,
+    heading: 182,
     pitch: 0,
     roll: 0,
     lockBlink: true,
-    // Parallax terrain scrolling layers
-    layers: Array.from({ length: 5 }, (_, i) => ({
-      speed: (i + 1) * 0.45,
-      color: `hsl(${135 + i * 3}, ${16 + i * 2}%, ${5 + i * 2}%)`,
-      features: Array.from({ length: 6 }, () => ({
-        x: Math.random() * 192,
-        w: 6 + Math.random() * 14,
-        h: 3 + Math.random() * 8,
+    // Terrain scroll objects
+    terrains: Array.from({ length: 6 }, (_, i) => ({
+      x: Math.random() * 192,
+      scale: (i + 1) * 0.45,
+      height: 10 + Math.random() * 32,
+      dots: Array.from({ length: 4 }, () => ({
+        dx: Math.random() * 40,
+        dy: Math.random() * 12,
       })),
     })),
   });
 
-  // Handle active status blinking
+  // Toggle blinking locks
   useEffect(() => {
     const interval = setInterval(() => {
       state.current.lockBlink = !state.current.lockBlink;
-    }, 450);
+    }, 400);
     return () => clearInterval(interval);
   }, []);
 
+  // Update canvas
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -55,7 +68,7 @@ export default function DroneFeed() {
     const dpr = window.devicePixelRatio || 1;
     const baseW = 192;
     const baseH = 148;
-    
+
     canvas.width = baseW * dpr;
     canvas.height = baseH * dpr;
     ctx.scale(dpr, dpr);
@@ -63,213 +76,282 @@ export default function DroneFeed() {
     const W = baseW;
     const H = baseH;
 
-    function drawAltitudeTape(alt: number) {
-      ctx!.strokeStyle = 'rgba(0, 255, 68, 0.65)';
-      ctx!.lineWidth = 1;
-      ctx!.strokeRect(W - 26, H / 2 - 30, 22, 60);
-      ctx!.fillStyle = 'rgba(2, 6, 2, 0.55)';
-      ctx!.fillRect(W - 26, H / 2 - 30, 22, 60);
-
-      for (let i = -2; i <= 2; i++) {
-        const tapAlt = Math.round(alt / 50) * 50 + i * 50;
-        const y = H / 2 + i * -11;
-        ctx!.fillStyle = i === 0 ? '#00ff44' : 'rgba(0, 210, 50, 0.48)';
-        ctx!.font = `${i === 0 ? 7.5 : 6}px "JetBrains Mono", monospace`;
-        ctx!.textAlign = 'right';
-        ctx!.fillText(String(tapAlt), W - 7, y + 2.5);
-      }
-      ctx!.textAlign = 'left';
-    }
-
-    function drawAirspeedTape(spd: number) {
-      ctx!.strokeStyle = 'rgba(0, 255, 68, 0.65)';
-      ctx!.lineWidth = 1;
-      ctx!.strokeRect(4, H / 2 - 30, 22, 60);
-      ctx!.fillStyle = 'rgba(2, 6, 2, 0.55)';
-      ctx!.fillRect(4, H / 2 - 30, 22, 60);
-
-      for (let i = -2; i <= 2; i++) {
-        const tapSpd = Math.round(spd / 10) * 10 + i * 10;
-        const y = H / 2 + i * -11;
-        ctx!.fillStyle = i === 0 ? '#00ff44' : 'rgba(0, 210, 50, 0.48)';
-        ctx!.font = `${i === 0 ? 7.5 : 6}px "JetBrains Mono", monospace`;
-        ctx!.textAlign = 'left';
-        ctx!.fillText(String(tapSpd), 7, y + 2.5);
-      }
-    }
-
-    function drawHeadingTape(hdg: number) {
-      ctx!.fillStyle = 'rgba(2, 6, 2, 0.6)';
-      ctx!.fillRect(W / 2 - 40, 2, 80, 13);
-      ctx!.strokeStyle = 'rgba(0, 255, 68, 0.65)';
-      ctx!.lineWidth = 1;
-      ctx!.strokeRect(W / 2 - 40, 2, 80, 13);
-
-      for (let i = -3; i <= 3; i++) {
-        const tapHdg = ((Math.round(hdg / 10) * 10 + i * 10) + 360) % 360;
-        const x = W / 2 + i * 11;
-        ctx!.fillStyle = i === 0 ? '#00ff44' : 'rgba(0, 210, 50, 0.48)';
-        ctx!.font = `${i === 0 ? 7.5 : 6}px "JetBrains Mono", monospace`;
-        ctx!.textAlign = 'center';
-        ctx!.fillText(String(tapHdg), x, 10);
-      }
-      // Center reference tick
-      ctx!.fillStyle = '#00ff44';
-      ctx!.fillRect(W / 2 - 0.5, 12, 1, 3);
-    }
-
-    function frameLoop() {
+    function renderLoop() {
       const s = state.current;
-      ctx!.clearRect(0, 0, W, H);
+      ctx.clearRect(0, 0, W, H);
 
-      // Solid background
-      ctx!.fillStyle = '#020502';
-      ctx!.fillRect(0, 0, W, H);
+      // 1. SCENE RENDERER - Spectral Base styling
+      let bgStyle = '#020502';
+      let edgeColor = 'rgba(0, 255, 68, 0.4)';
+      let contrastGlow = false;
 
-      // Scrolling terrain features
-      s.layers.forEach((layer, li) => {
-        layer.features.forEach((f) => {
-          f.x -= isLoitering ? layer.speed * 0.3 : layer.speed;
-          if (f.x + f.w < 0) {
-            f.x = W + Math.random() * 30;
+      switch (spectralMode) {
+        case 'EO':
+          bgStyle = '#0a1209'; // Daylight low light
+          edgeColor = 'rgba(0, 230, 80, 0.55)';
+          break;
+        case 'IR':
+          bgStyle = '#030503'; // Monochrome heat signature
+          edgeColor = 'rgba(255, 255, 255, 0.5)';
+          break;
+        case 'SWIR':
+          bgStyle = '#0f0502'; // Infrared thermal
+          edgeColor = 'rgba(255, 120, 0, 0.6)';
+          break;
+        case 'MULTI':
+          bgStyle = '#021015'; // Fused cyan/yellow surveillance
+          edgeColor = 'rgba(0, 240, 255, 0.7)';
+          contrastGlow = true;
+          break;
+        case 'INDEX':
+          bgStyle = '#000000'; // Pure data values
+          edgeColor = 'rgba(255, 191, 0, 0.65)';
+          break;
+      }
+
+      ctx.fillStyle = bgStyle;
+      ctx.fillRect(0, 0, W, H);
+
+      // 2. PARALLAX TERRAIN scrolling
+      const terrainMovementMultiplier = isLoitering ? 0.15 : 0.95;
+      s.terrains.forEach((layer, li) => {
+        layer.x -= layer.scale * terrainMovementMultiplier;
+        if (layer.x < -60) {
+          layer.x = W + Math.random() * 30;
+        }
+
+        // Draw terrain structures based on current spectrum
+        ctx.fillStyle =
+          spectralMode === 'EO'
+            ? `rgba(18, 48, 20, ${0.1 * li + 0.15})`
+            : spectralMode === 'IR'
+            ? `rgba(45, 45, 45, ${0.12 * li + 0.1})`
+            : spectralMode === 'SWIR'
+            ? `rgba(90, 40, 10, ${0.08 * li + 0.1})`
+            : spectralMode === 'MULTI'
+            ? `rgba(5, 52, 65, ${0.1 * li + 0.2})`
+            : `rgba(25, 40, 12, ${0.1 * li + 0.15})`;
+
+        ctx.beginPath();
+        ctx.moveTo(layer.x, H - 20);
+        ctx.lineTo(layer.x + 15, H - 20 - layer.height);
+        ctx.lineTo(layer.x + 45, H - 20 - layer.height * 0.6);
+        ctx.lineTo(layer.x + 60, H - 20);
+        ctx.closePath();
+        ctx.fill();
+
+        // Draw small structural thermal dots representing settlements/outposts
+        layer.dots.forEach((dot) => {
+          const dotX = layer.x + dot.dx;
+          const dotY = H - 20 - layer.height * 0.4 + dot.dy;
+          if (dotX > 0 && dotX < W) {
+            ctx.fillStyle =
+              spectralMode === 'IR'
+                ? 'rgba(255, 255, 255, 0.8)'
+                : spectralMode === 'SWIR'
+                ? 'rgba(255, 140, 0, 0.9)'
+                : spectralMode === 'MULTI'
+                ? '#00ffff'
+                : 'rgba(0, 255, 68, 0.7)';
+            ctx.fillRect(dotX, dotY, 2, 2);
           }
-          const baseY = H - 18 - li * 9;
-          ctx!.fillStyle = layer.color;
-          ctx!.fillRect(f.x, baseY - f.h, f.w, f.h + 20);
         });
       });
 
-      // Dynamic Horizon Line
-      const horizY = H / 2 + s.pitch * 2.2;
-      ctx!.strokeStyle = 'rgba(0, 255, 68, 0.55)';
-      ctx!.lineWidth = 1;
-      ctx!.setLineDash([]);
+      // 3. FLIGHT COCKPIT ATTITUDE HUD (Responsive to pitch/roll)
+      s.pitch = Math.sin(Date.now() / 2500) * 4;
+      s.roll = Math.cos(Date.now() / 3200) * (isLoitering ? 4 : 1.2);
 
-      // Horizon left sweep
-      ctx!.beginPath();
-      ctx!.moveTo(W * 0.15, horizY);
-      ctx!.lineTo(W / 2 - 16, horizY);
-      ctx!.stroke();
+      ctx.save();
+      ctx.translate(W / 2, H / 2);
+      ctx.rotate((s.roll * Math.PI) / 180);
 
-      // Horizon right sweep
-      ctx!.beginPath();
-      ctx!.moveTo(W / 2 + 16, horizY);
-      ctx!.lineTo(W * 0.85, horizY);
-      ctx!.stroke();
+      // Pitch lines
+      ctx.strokeStyle = edgeColor;
+      ctx.lineWidth = 1;
+      ctx.setLineDash([5, 4]);
 
-      // Center reference chevron
-      ctx!.fillStyle = 'rgba(0, 255, 68, 0.8)';
-      ctx!.beginPath();
-      ctx!.moveTo(W / 2, horizY - 3);
-      ctx!.lineTo(W / 2 - 5, horizY + 3);
-      ctx!.lineTo(W / 2 + 5, horizY + 3);
-      ctx!.closePath();
-      ctx!.fill();
+      // Pitch up bar
+      const pY = s.pitch * 3.5;
+      ctx.beginPath();
+      ctx.moveTo(-25, pY - 15); ctx.lineTo(25, pY - 15);
+      ctx.moveTo(-15, pY + 15); ctx.lineTo(15, pY + 15);
+      ctx.stroke();
 
-      // Velocity flight vector dot
-      ctx!.beginPath();
-      ctx!.arc(W / 2 + s.roll * 3, horizY - 6, 2.5, 0, Math.PI * 2);
-      ctx!.strokeStyle = '#00ff44';
-      ctx!.lineWidth = 1.2;
-      ctx!.stroke();
+      // Pitch reference scale numbers
+      ctx.fillStyle = edgeColor;
+      ctx.font = '5px "JetBrains Mono", monospace';
+      ctx.fillText('+10', 28, pY - 13);
+      ctx.fillText('-10', 18, pY + 17);
 
-      // Active target diamond lock-on reticle
+      ctx.restore();
+      ctx.setLineDash([]);
+
+      // 4. CENTRAL RETICLE / FLIGHT VECTOR
+      ctx.strokeStyle = '#00ff44';
+      if (contrastGlow) ctx.strokeStyle = '#00f2fe';
+      ctx.lineWidth = 1.2;
+
+      // Center crosshair with open center gap
+      const cx = W / 2;
+      const cy = H / 2;
+      ctx.beginPath();
+      ctx.moveTo(cx - 16, cy); ctx.lineTo(cx - 5, cy);
+      ctx.moveTo(cx + 5, cy); ctx.lineTo(cx + 16, cy);
+      ctx.moveTo(cx, cy - 16); ctx.lineTo(cx, cy - 5);
+      ctx.moveTo(cx, cy + 5); ctx.lineTo(cx, cy + 16);
+      ctx.stroke();
+
+      // Mini concentric ring
+      ctx.beginPath();
+      ctx.arc(cx, cy, 3, 0, Math.PI * 2);
+      ctx.stroke();
+
+      // 5. LOCK ON BOX (Target tracking box)
       if (targetCountryId) {
-        const tx = W / 2;
-        const ty = H / 2 + 10;
-        const pulse = 24 + Math.sin(Date.now() / 250) * 1.5;
+        const lockX = cx + Math.sin(Date.now() / 1500) * 6;
+        const lockY = cy + 10 + Math.cos(Date.now() / 1200) * 4;
+        const lockSize = 16 + Math.sin(Date.now() / 300) * 1;
 
-        ctx!.save();
-        ctx!.translate(tx, ty);
-        ctx!.rotate(Math.PI / 4);
-        ctx!.strokeStyle = s.lockBlink ? '#ffb300' : 'rgba(255, 179, 0, 0.35)';
-        ctx!.lineWidth = 1.2;
-        ctx!.strokeRect(-pulse / 2, -pulse / 2, pulse, pulse);
-        ctx!.restore();
+        ctx.strokeStyle = droneArmed ? '#ff2244' : '#ffb300';
+        ctx.lineWidth = 1.2;
+        ctx.strokeRect(lockX - lockSize / 2, lockY - lockSize / 2, lockSize, lockSize);
 
-        // Target box corner ticks
-        const br = pulse * 0.82;
-        ctx!.strokeStyle = '#ffb300';
-        ctx!.lineWidth = 0.8;
-        [[-br, -br], [br, -br], [br, br], [-br, br]].forEach(([dx, dy]) => {
-          const px = tx + dx;
-          const py = ty + dy;
-          const ex = dx > 0 ? 3 : -3;
-          const ey = dy > 0 ? 3 : -3;
-          ctx!.beginPath();
-          ctx!.moveTo(px, py);
-          ctx!.lineTo(px + ex, py);
-          ctx!.stroke();
-
-          ctx!.beginPath();
-          ctx!.moveTo(px, py);
-          ctx!.lineTo(px, py + ey);
-          ctx!.stroke();
-        });
-
-        // LOCK-ON HUD indicators
+        // Blinking sector lock indicators
         if (s.lockBlink) {
-          ctx!.fillStyle = '#ffb300';
-          ctx!.font = '6.5px "JetBrains Mono", monospace';
-          ctx!.textAlign = 'left';
-          ctx!.fillText('◆ TGT LOCK', tx + br + 4, ty + 2);
-          ctx!.fillText(targetCountryId, tx + br + 4, ty + 10);
+          ctx.beginPath();
+          ctx.arc(lockX, lockY, 1.5, 0, Math.PI * 2);
+          ctx.fillStyle = droneArmed ? '#ff2244' : '#ffb300';
+          ctx.fill();
+
+          ctx.font = 'bold 6.5px "JetBrains Mono", monospace';
+          ctx.fillText(`◆ TGT_${targetCountryId}`, lockX + lockSize / 2 + 3, lockY + 2);
         }
       }
 
-      // Draw flight UI tapes
-      drawHeadingTape(s.heading);
-      drawAltitudeTape(s.altitude);
-      drawAirspeedTape(s.airspeed);
+      // 6. SPEED & ALTITUDE TAPES
+      // Speed (Left tape)
+      ctx.fillStyle = 'rgba(2, 6, 2, 0.7)';
+      ctx.fillRect(4, cy - 35, 20, 70);
+      ctx.strokeStyle = edgeColor;
+      ctx.strokeRect(4, cy - 35, 20, 70);
 
-      // Simulation drifting noise
-      s.heading += (Math.random() - 0.5) * 0.25;
-      s.altitude += (Math.random() - 0.5) * 1.8;
-      s.airspeed += (Math.random() - 0.5) * 0.8;
-      s.pitch = Math.sin(Date.now() / 3500) * 2.5;
+      const spd = s.airspeed;
+      for (let i = -2; i <= 2; i++) {
+        const roundedSpd = Math.round(spd / 10) * 10 + i * 10;
+        const yCoord = cy + i * -13;
+        ctx.fillStyle = i === 0 ? '#00ff44' : 'rgba(0, 210, 50, 0.45)';
+        ctx.fillText(String(roundedSpd), 6, yCoord + 2.5);
+      }
+      ctx.fillStyle = '#ffb300';
+      ctx.font = 'bold 5px sans-serif';
+      ctx.fillText('IAS', 5, cy - 38);
 
-      // HUD footer
-      ctx!.fillStyle = 'rgba(2, 5, 2, 0.8)';
-      ctx!.fillRect(0, H - 13, W, 13);
-      ctx!.fillStyle = '#00ff44';
-      ctx!.font = '6px "JetBrains Mono", monospace';
-      ctx!.fillText(
-        `HDG:${s.heading.toFixed(0)}° SPD:${s.airspeed.toFixed(0)}KTS ALT:${s.altitude.toFixed(0)}M ${droneArmed ? '⚡ARMED' : 'SAFE'}`,
+      // Altitude (Right tape)
+      ctx.fillStyle = 'rgba(2, 6, 2, 0.7)';
+      ctx.fillRect(W - 24, cy - 35, 20, 70);
+      ctx.strokeStyle = edgeColor;
+      ctx.strokeRect(W - 24, cy - 35, 20, 70);
+
+      const alt = s.altitude;
+      for (let i = -2; i <= 2; i++) {
+        const roundedAlt = Math.round(alt / 100) * 100 + i * 100;
+        const yCoord = cy + i * -13;
+        ctx.fillStyle = i === 0 ? '#00ff44' : 'rgba(0, 210, 50, 0.45)';
+        ctx.fillText(String(roundedAlt), W - 22, yCoord + 2.5);
+      }
+      ctx.fillStyle = '#ffb300';
+      ctx.font = 'bold 5px sans-serif';
+      ctx.fillText('BARO', W - 24, cy - 38);
+
+      // 7. COMPASS TAPE (TOP)
+      ctx.fillStyle = 'rgba(2, 6, 2, 0.7)';
+      ctx.fillRect(cx - 45, 4, 90, 11);
+      ctx.strokeStyle = edgeColor;
+      ctx.strokeRect(cx - 45, 4, 90, 11);
+
+      const hdg = s.heading;
+      for (let i = -3; i <= 3; i++) {
+        const tickHdg = (Math.round(hdg / 10) * 10 + i * 10 + 360) % 360;
+        const xCoord = cx + i * 12;
+        ctx.fillStyle = i === 0 ? '#00ff44' : 'rgba(0, 210, 50, 0.45)';
+        ctx.fillText(String(tickHdg), xCoord - 4, 12);
+        if (i === 0) {
+          ctx.fillStyle = '#00ff44';
+          ctx.fillRect(xCoord - 0.5, 12, 1, 2.5);
+        }
+      }
+
+      // Dynamic flight drifting state
+      s.airspeed += (Math.random() - 0.5) * 0.4;
+      s.altitude += (Math.random() - 0.5) * 0.8;
+      // Change heading faster when combat-vector steering (not loitering)
+      s.heading = (s.heading + (isLoitering ? 0.05 : 0.35)) % 360;
+
+      // 8. TACTICAL CORNER BADGES
+      ctx.fillStyle = '#ffb300';
+      ctx.font = '5.5px "JetBrains Mono", monospace';
+      ctx.fillText(`POSTURE: ${isLoitering ? 'LOITER_HOLD [STABLE]' : 'COMBAT_STEER [HOT]'}`, 4, H - 24);
+
+      // ARMED warning panel under-critical state
+      if (droneArmed) {
+        ctx.fillStyle = '#ff2244';
+        ctx.fillText('⚡ PAYLOAD ARMED - STRIKE AUTHORIZED', 4, H - 17);
+      } else {
+        ctx.fillStyle = 'rgba(0, 255, 68, 0.5)';
+        ctx.fillText('SYSTEM OK - COLD DISCIPLINE ACTIVE', 4, H - 17);
+      }
+
+      // HUD Bottom overlay
+      ctx.fillStyle = 'rgba(2, 5, 2, 0.88)';
+      ctx.fillRect(0, H - 12, W, 12);
+      ctx.fillStyle = droneArmed ? '#ff2244' : '#00ff44';
+      ctx.font = '6px "JetBrains Mono", monospace';
+      ctx.fillText(
+        `WPN:${droneArmed ? 'ARMED' : 'SAFE'}  MODE:${spectralMode}  ALT:${alt.toFixed(0)}m  SPD:${spd.toFixed(0)}kts`,
         4,
         H - 4
       );
 
-      // Dropout glitch lines (1.2% chance)
-      if (Math.random() < 0.012) {
-        const gy = Math.random() * H;
-        const gd = ctx!.getImageData(0, gy, W, 1);
-        ctx!.putImageData(gd, Math.random() * 8 - 4, gy);
+      // Glitch effect on high velocity or strike tracking
+      if (pendingStrike && Math.random() < 0.15) {
+        ctx.fillStyle = 'rgba(255, 34, 68, 0.3)';
+        ctx.fillRect(0, Math.random() * H, W, 1.5);
       }
 
-      rafRef.current = requestAnimationFrame(frameLoop);
+      rafRef.current = requestAnimationFrame(renderLoop);
     }
 
-    rafRef.current = requestAnimationFrame(frameLoop);
+    rafRef.current = requestAnimationFrame(renderLoop);
     return () => {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
-  }, [targetCountryId, droneArmed, isLoitering]);
+  }, [spectralMode, isLoitering, droneArmed, targetCountryId, pendingStrike]);
 
   const toggleArmed = () => {
     audio.sfxKeyClick();
     setDroneArmed(!droneArmed);
-    pushTerminalLine(`Sentinel drone matrix weapons system toggled to ${!droneArmed ? 'ARMED' : 'SAFE'}.`, !droneArmed ? 'WARNING' : 'INFO');
+    pushTerminalLine(`TAC DRONE: Safety locks ${!droneArmed ? 'RELEASED' : 'RESTORED'}. Weapons module is ${!droneArmed ? 'ARMED / HOT' : 'SAFE'}.`, !droneArmed ? 'WARNING' : 'INFO');
   };
 
   const toggleLoiter = () => {
     audio.sfxKeyClick();
     setIsLoitering(!isLoitering);
-    pushTerminalLine(`Sentinel flight path calibrated: ${!isLoitering ? 'LOITER_LOCK ACTIVE' : 'COMBAT_VECTOR STEER'}.`, 'INFO');
+    pushTerminalLine(`TAC DRONE: Flight pattern changed. Mode calibrated to: ${!isLoitering ? 'LOITER HOLD' : 'COMBAT TRANSIT VECTOR'}.`, 'INFO');
   };
 
   const handleFireStrike = () => {
+    if (!droneArmed) {
+      pushTerminalLine('Strike Aborted: Master safety lock active. Secure weapon switch first.', 'WARNING');
+      return;
+    }
+    if (!playerCountryId || !targetCountryId) {
+      pushTerminalLine('Strike Fail: Target coordinate trace unsuccessful. Establish focal territory first.', 'WARNING');
+      return;
+    }
+
+    setPendingStrike(true);
     audio.sfxKlaxon();
-    if (!playerCountryId || !targetCountryId) return;
 
     const scGeo = GEO_COORDS[playerCountryId];
     const tgGeo = GEO_COORDS[targetCountryId];
@@ -279,7 +361,7 @@ export default function DroneFeed() {
     const ty = tgGeo ? tgGeo.cy : 200;
 
     const currentTick = useWorldStore.getState().currentTick;
-    const tickDist = 12; // strikes take some time to traverse map
+    const tickDist = 12;
 
     useWorldStore.getState().applyTickDelta((draft) => {
       draft.activeStrikes.push({
@@ -304,44 +386,95 @@ export default function DroneFeed() {
       });
     });
 
-    useWorldStore.getState().addGlobalEvent(`DRONE COMMAND: Sentinel airborne drone launched kinetic paystrike on locked zone: ${targetCountryId}.`, 'CRITICAL');
-    pushTerminalLine(`SENTINEL UAV: Precision payloads deployed targeting coordinates in ${targetCountryId}. Impact in T-12 ticks.`, 'CRITICAL');
+    useWorldStore.getState().addGlobalEvent(`DRONE ATTACK: Tactical drone launched laser-guided payload into locked zone: ${targetCountryId}`, 'CRITICAL');
+    pushTerminalLine(`SENTINEL COMP: Payload deployed. Active trajectory locks verified coordinates for ${targetCountryId}. Impact in T-12.`, 'CRITICAL');
+
+    setTimeout(() => {
+      setPendingStrike(false);
+    }, 4000);
   };
 
   return (
-    <div className="flex flex-col gap-1 w-full border border-[#1a5c1a] p-1.5 bg-[#030603] rounded h-full justify-between">
-      <div className="text-[8px] font-mono tracking-wider text-[#00ff44] uppercase flex justify-between px-0.5">
-        <span>TAC DRONE MULTISPECTRAL FEED</span>
-        <span style={{ color: droneArmed ? '#ff2244' : '#ffb300' }}>
-          {droneArmed ? '⚡ ARMED' : '+ FEED LOCK'}
+    <div className="flex flex-col gap-1 w-full border border-[#1a5c1a] p-1.5 bg-[#030603] rounded h-full justify-between select-none">
+      {/* Dynamic spectral selection strip */}
+      <div className="text-[8px] font-mono tracking-wider text-[#00ff44] uppercase flex justify-between px-0.5 items-center bg-[#010401] border border-[#1a5c1a]/30 p-1">
+        <span className="flex items-center gap-1">
+          <span className={`w-1.5 h-1.5 rounded-full ${droneArmed ? 'bg-red-500 animate-pulse' : 'bg-green-500'}`} />
+          TAC DRONE MULTISPECTRAL FEED
         </span>
+        <div className="flex gap-1 text-[7.5px] font-black">
+          {(['EO', 'IR', 'SWIR', 'MULTI', 'INDEX'] as const).map((mode) => (
+            <button
+              key={mode}
+              onClick={() => { audio.sfxKeyClick(); setSpectralMode(mode); }}
+              className={`px-1 py-0.5 rounded-[1px] ${
+                spectralMode === mode
+                  ? 'text-[#00ff44] bg-[#00ff44]/10 border border-[#00ff44]/50'
+                  : 'text-gray-500 hover:text-white border border-transparent'
+              }`}
+            >
+              {mode}
+            </button>
+          ))}
+        </div>
       </div>
 
-      <canvas
-        ref={canvasRef}
-        width={192}
-        height={148}
-        className="w-full h-[130px] block select-none border border-[#0d2e0d]"
-        style={{ background: '#020502' }}
-      />
+      {/* Index spectral legend box */}
+      {spectralMode === 'INDEX' && (
+        <div className="flex justify-between items-center text-[6px] font-mono bg-[#050c05] p-0.5 px-2 border-b border-[#1a5c1a]/20">
+          <span className="text-gray-500">SURFACE INDEX ALBEDO:</span>
+          <div className="flex gap-1.5">
+            <span className="text-[#3399ff]">● SHIELD [35%]</span>
+            <span className="text-[#ff9900]">● INFRA [65%]</span>
+            <span className="text-[#ff2244]">● THERMAL [95%]</span>
+          </div>
+        </div>
+      )}
 
-      <div className="flex gap-1 mt-1">
+      {/* Primary Cockpit Canvas HUD */}
+      <div className="relative">
+        <canvas
+          ref={canvasRef}
+          width={192}
+          height={148}
+          className="w-full h-[120px] block border border-[#0d2e0d]"
+          style={{ background: '#020502' }}
+        />
+        <div className="absolute top-1 left-2 text-[6.5px] tracking-wider text-green-500/60 font-mono">
+          UAV_REC_ACTIVE_STEALTH
+        </div>
+        <div className="absolute bottom-1 right-2 text-[6.5px] text-[#ffb300]/60 font-mono">
+          LOCK_C_AOA: {isLoitering ? '3.5' : '1.1'}°
+        </div>
+      </div>
+
+      {/* Core Operational buttons */}
+      <div className="flex gap-1 mt-1 font-mono text-[9px]">
         <button
           onClick={toggleArmed}
-          className={`feed-btn px-1 py-0.5 rounded flex-1 text-center ${droneArmed ? 'armed text-[#ff2244]' : ''}`}
+          className={`feed-btn px-1 py-1 rounded flex-1 text-center font-bold transition-all uppercase ${
+            droneArmed ? 'bg-red-950/45 text-[#ff2244] border-[#ff2244]/60' : 'text-gray-400 hover:text-white'
+          }`}
+          title="Toggles Master safety lever between safety lock and operational hot state"
         >
-          {droneArmed ? '🔴 SAFE' : '⚡ ARM'}
+          {droneArmed ? '⚡ DISARM' : '⚡ ARM PAYLOAD'}
         </button>
+
         <button
           onClick={handleFireStrike}
-          disabled={!droneArmed || !targetCountryId}
-          className="feed-btn px-1 py-0.5 rounded flex-1 text-center text-[#ff2244] disabled:opacity-20"
+          disabled={!droneArmed || !targetCountryId || pendingStrike}
+          className="feed-btn px-1 py-1 rounded flex-1 text-center font-black text-[#ff2244] disabled:opacity-20 transition-all uppercase"
+          title="Fires laser-guided target payload on current territory"
         >
-          FIRE STRIKE
+          {pendingStrike ? 'FIRING...' : '🔴 LAUNCH STRIKE'}
         </button>
+
         <button
           onClick={toggleLoiter}
-          className={`feed-btn px-1 py-0.5 rounded flex-1 text-center ${isLoitering ? 'text-[#00e5ff]' : ''}`}
+          className={`feed-btn px-1 py-1 rounded flex-1 text-center font-bold transition-all uppercase ${
+            isLoitering ? 'text-[#00e5ff] border-[#00e5ff]/40 bg-[#00e5ff]/5' : 'text-gray-400 hover:text-white'
+          }`}
+          title="Switches flight pattern: LOITER HOLD sweeps versus dynamic transit vectors"
         >
           {isLoitering ? 'LOITER ◆' : 'LOITER'}
         </button>
