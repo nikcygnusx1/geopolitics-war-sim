@@ -189,8 +189,8 @@ export default function AllianceGraph() {
     // 2. Perform Link-Analysis Network calculations
     listNodes.forEach((node) => {
       const connected = listLinks.filter((l) => {
-        const sId = typeof l.source === 'string' ? l.source : l.source.id;
-        const tId = typeof l.target === 'string' ? l.target : l.target.id;
+        const sId = l.source ? (typeof l.source === 'string' ? l.source : (l.source as any).id || '') : '';
+        const tId = l.target ? (typeof l.target === 'string' ? l.target : (l.target as any).id || '') : '';
         return sId === node.id || tId === node.id;
       });
 
@@ -199,7 +199,7 @@ export default function AllianceGraph() {
 
       // Vulnerability metric based on war-fronts and external threat alerts
       const activeWars = connected.filter((l) => l.type === 'WAR').length;
-      const embargos = connected.filter((l) => l.type === 'SANCTIONS' && (typeof l.target === 'string' ? l.target : l.target.id) === node.id).length;
+      const embargos = connected.filter((l) => l.type === 'SANCTIONS' && (l.target ? (typeof l.target === 'string' ? l.target : (l.target as any).id || '') : '') === node.id).length;
       node.vulnerabilityIndex = Math.min(100, Math.round(
         (activeWars * 40) + (embargos * 15) + (node.threatLevel === 'RED' ? 25 : node.threatLevel === 'ORANGE' ? 10 : 0)
       ));
@@ -262,7 +262,7 @@ export default function AllianceGraph() {
     const height = 500;
 
     const simulation = d3.forceSimulation<AnalyticalNode>(simNodes)
-      .force('link', d3.forceLink<AnalyticalNode, OntologicalLink>(simLinks).id((d) => d.id).distance((d) => {
+      .force('link', d3.forceLink<AnalyticalNode, OntologicalLink>(simLinks).id((d) => d?.id || '').distance((d) => {
         if (d.type === 'WAR') return 240;
         if (d.type === 'ALLIANCE') return 80;
         if (d.type === 'SANCTIONS') return 140;
@@ -398,8 +398,8 @@ export default function AllianceGraph() {
 
   // Edge and nodes filtering based on Mode state
   const displayedLinks = links.filter((link) => {
-    const sId = typeof link.source === 'object' ? (link.source as any).id : link.source;
-    const tId = typeof link.target === 'object' ? (link.target as any).id : link.target;
+    const sId = link.source ? (typeof link.source === 'object' ? (link.source as any).id || '' : link.source) : '';
+    const tId = link.target ? (typeof link.target === 'object' ? (link.target as any).id || '' : link.target) : '';
     
     // Mode specific filters
     if (activeFocusMode === 'ALLIANCES') return link.type === 'ALLIANCE';
@@ -423,8 +423,8 @@ export default function AllianceGraph() {
     if (activeFocusMode === 'EGO' && selectedNodeId) {
       // Show only selected ego nodes or connected neighbors
       return node.id === selectedNodeId || links.some((l) => {
-        const sId = typeof l.source === 'object' ? (l.source as any).id : l.source;
-        const tId = typeof l.target === 'object' ? (l.target as any).id : l.target;
+        const sId = l.source ? (typeof l.source === 'object' ? (l.source as any).id || '' : l.source) : '';
+        const tId = l.target ? (typeof l.target === 'object' ? (l.target as any).id || '' : l.target) : '';
         return (sId === selectedNodeId && tId === node.id) || (tId === selectedNodeId && sId === node.id);
       });
     }
@@ -657,8 +657,8 @@ export default function AllianceGraph() {
           <g id="link-analysis-workspace">
             {/* 1. RENDER RELATIONSHIP LINKS (Strokes) */}
             {displayedLinks.map((link) => {
-              const srcId = typeof link.source === 'object' ? (link.source as any).id : link.source;
-              const tgtId = typeof link.target === 'object' ? (link.target as any).id : link.target;
+              const srcId = link.source ? (typeof link.source === 'object' ? (link.source as any).id || '' : link.source) : '';
+              const tgtId = link.target ? (typeof link.target === 'object' ? (link.target as any).id || '' : link.target) : '';
 
               const srcPt = coords.find((p) => p.id === srcId);
               const tgtPt = coords.find((p) => p.id === tgtId);
@@ -752,8 +752,8 @@ export default function AllianceGraph() {
               const isDegreePartner = selectedNodeId && (
                 node.id === selectedNodeId || 
                 links.some((l) => {
-                  const sId = typeof l.source === 'object' ? (l.source as any).id : l.source;
-                  const tId = typeof l.target === 'object' ? (l.target as any).id : l.target;
+                  const sId = l.source ? (typeof l.source === 'object' ? (l.source as any).id || '' : l.source) : '';
+                  const tId = l.target ? (typeof l.target === 'object' ? (l.target as any).id || '' : l.target) : '';
                   return (sId === selectedNodeId && tId === node.id) || (tId === selectedNodeId && sId === node.id);
                 })
               );
@@ -932,10 +932,10 @@ export default function AllianceGraph() {
               <div className="grid grid-cols-3 gap-1.5 text-center items-center">
                 <div className="p-2 border border-green-950 bg-black/40 rounded">
                   <span className="text-xl block mb-0.5">
-                    {typeof selectedLinkLabel.source === 'object' ? (selectedLinkLabel.source as any).flag : selectedLinkLabel.source}
+                    {selectedLinkLabel.source ? (typeof selectedLinkLabel.source === 'object' ? (selectedLinkLabel.source as any).flag : (countries[selectedLinkLabel.source]?.flagEmoji || '')) : ''}
                   </span>
                   <span className="text-[9px] text-white font-bold uppercase block truncate">
-                    {typeof selectedLinkLabel.source === 'object' ? (selectedLinkLabel.source as any).name : selectedLinkLabel.source}
+                    {selectedLinkLabel.source ? (typeof selectedLinkLabel.source === 'object' ? (selectedLinkLabel.source as any).name : (countries[selectedLinkLabel.source]?.name || selectedLinkLabel.source)) : ''}
                   </span>
                 </div>
                 <div className="text-[11px] font-bold text-gray-600">
@@ -943,10 +943,10 @@ export default function AllianceGraph() {
                 </div>
                 <div className="p-2 border border-green-950 bg-black/40 rounded">
                   <span className="text-xl block mb-0.5">
-                    {typeof selectedLinkLabel.target === 'object' ? (selectedLinkLabel.target as any).flag : selectedLinkLabel.target}
+                    {selectedLinkLabel.target ? (typeof selectedLinkLabel.target === 'object' ? (selectedLinkLabel.target as any).flag : (countries[selectedLinkLabel.target]?.flagEmoji || '')) : ''}
                   </span>
                   <span className="text-[9px] text-white font-bold uppercase block truncate">
-                    {typeof selectedLinkLabel.target === 'object' ? (selectedLinkLabel.target as any).name : selectedLinkLabel.target}
+                    {selectedLinkLabel.target ? (typeof selectedLinkLabel.target === 'object' ? (selectedLinkLabel.target as any).name : (countries[selectedLinkLabel.target]?.name || selectedLinkLabel.target)) : ''}
                   </span>
                 </div>
               </div>
@@ -1056,13 +1056,13 @@ export default function AllianceGraph() {
               <div className="space-y-1 text-[9px] font-mono leading-none">
                 {displayedLinks
                   .filter((l) => {
-                    const sId = typeof l.source === 'object' ? (l.source as any).id : l.source;
-                    const tId = typeof l.target === 'object' ? (l.target as any).id : l.target;
+                    const sId = l.source ? (typeof l.source === 'object' ? (l.source as any).id || '' : l.source) : '';
+                    const tId = l.target ? (typeof l.target === 'object' ? (l.target as any).id || '' : l.target) : '';
                     return sId === activeFocusDossier.id || tId === activeFocusDossier.id;
                   })
                   .map((link) => {
-                    const sId = typeof link.source === 'object' ? (link.source as any).id : link.source;
-                    const tId = typeof link.target === 'object' ? (link.target as any).id : link.target;
+                    const sId = link.source ? (typeof link.source === 'object' ? (link.source as any).id || '' : link.source) : '';
+                    const tId = link.target ? (typeof link.target === 'object' ? (link.target as any).id || '' : link.target) : '';
                     const counterpartId = sId === activeFocusDossier.id ? tId : sId;
                     const partner = nodes.find((n) => n.id === counterpartId);
 
@@ -1091,8 +1091,8 @@ export default function AllianceGraph() {
                   })}
 
                 {displayedLinks.filter(l => {
-                  const sId = typeof l.source === 'object' ? (l.source as any).id : l.source;
-                  const tId = typeof l.target === 'object' ? (l.target as any).id : l.target;
+                  const sId = l.source ? (typeof l.source === 'object' ? (l.source as any).id || '' : l.source) : '';
+                  const tId = l.target ? (typeof l.target === 'object' ? (l.target as any).id || '' : l.target) : '';
                   return sId === activeFocusDossier.id || tId === activeFocusDossier.id;
                 }).length === 0 && (
                   <div className="text-center py-4 bg-black/10 border border-dashed border-green-950/50 text-gray-600 rounded text-[9px] uppercase font-bold">
