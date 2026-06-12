@@ -278,6 +278,130 @@ class AudioEngine {
     osc1.stop(this.ctx.currentTime + 0.85);
     osc2.stop(this.ctx.currentTime + 0.85);
   }
+
+  startIntroDrone() {
+    if (!this.ctx) return;
+    this.resume();
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(38, this.ctx.currentTime);
+    osc.frequency.linearRampToValueAtTime(42, this.ctx.currentTime + 30);
+    gain.gain.setValueAtTime(0, this.ctx.currentTime);
+    gain.gain.linearRampToValueAtTime(0.08, this.ctx.currentTime + 4);
+    gain.gain.linearRampToValueAtTime(0.12, this.ctx.currentTime + 20);
+    gain.gain.linearRampToValueAtTime(0, this.ctx.currentTime + 31);
+    osc.connect(gain);
+    gain.connect(this.master || this.ctx.destination);
+    osc.start();
+    osc.stop(this.ctx.currentTime + 32);
+
+    // Sub-bass heartbeat pulse every 2.2 seconds
+    const targetCtx = this.ctx;
+    const targetMaster = this.master;
+    const pulseInterval = setInterval(() => {
+      if (!targetCtx || targetCtx.state === 'closed') return;
+      try {
+        const p = targetCtx.createOscillator();
+        const pg = targetCtx.createGain();
+        p.frequency.value = 28;
+        pg.gain.setValueAtTime(0.15, targetCtx.currentTime);
+        pg.gain.exponentialRampToValueAtTime(0.001, targetCtx.currentTime + 0.6);
+        p.connect(pg);
+        p.connect(targetMaster || targetCtx.destination);
+        p.start();
+        p.stop(targetCtx.currentTime + 0.7);
+      } catch (err) {
+        // Handle gracefully if context was closed
+      }
+    }, 2200);
+    setTimeout(() => {
+      clearInterval(pulseInterval);
+    }, 30000);
+  }
+
+  playMarkerPing(type: 'conflict' | 'military' | 'nuclear' | 'economic') {
+    if (!this.ctx) return;
+    this.resume();
+    const FREQS = { conflict: 880, military: 660, nuclear: 440, economic: 1100 };
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.frequency.value = FREQS[type];
+    osc.type = 'sine';
+    gain.gain.setValueAtTime(0.06, this.ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.3);
+    osc.connect(gain);
+    gain.connect(this.sfxGain || this.ctx.destination);
+    osc.start();
+    osc.stop(this.ctx.currentTime + 0.35);
+  }
+
+  playPhaseReveal() {
+    if (!this.ctx) return;
+    this.resume();
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(300, this.ctx.currentTime);
+    osc.frequency.linearRampToValueAtTime(600, this.ctx.currentTime + 0.15);
+    gain.gain.setValueAtTime(0.04, this.ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.2);
+    osc.connect(gain);
+    gain.connect(this.sfxGain || this.ctx.destination);
+    osc.start();
+    osc.stop(this.ctx.currentTime + 0.25);
+  }
+
+  playDocumentBreak() {
+    if (!this.ctx) return;
+    this.resume();
+    
+    try {
+      // Burst of noise for the crack
+      const bufferSize = this.ctx.sampleRate * 0.15;
+      const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.1));
+      }
+      const source = this.ctx.createBufferSource();
+      const gain = this.ctx.createGain();
+      const filter = this.ctx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.frequency.value = 3000;
+      filter.Q.value = 0.5;
+      source.buffer = buffer;
+      gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.15);
+      source.connect(filter);
+      filter.connect(gain);
+      gain.connect(this.sfxGain || this.ctx.destination);
+      source.start();
+    } catch (e) {
+      // Background context issue helper
+    }
+
+    // CLEARANCE CONFIRMED chime
+    const targetCtx = this.ctx;
+    const targetMaster = this.master;
+    setTimeout(() => {
+      if (!targetCtx || targetCtx.state === 'closed') return;
+      try {
+        [880, 1320, 1760].forEach((freq, i) => {
+          const o = targetCtx.createOscillator();
+          const g = targetCtx.createGain();
+          o.frequency.value = freq;
+          o.type = 'sine';
+          g.gain.setValueAtTime(0.08, targetCtx.currentTime + i * 0.06);
+          g.gain.exponentialRampToValueAtTime(0.001, targetCtx.currentTime + i * 0.06 + 0.4);
+          o.connect(g);
+          o.connect(targetMaster || targetCtx.destination);
+          o.start(targetCtx.currentTime + i * 0.06);
+          o.stop(targetCtx.currentTime + i * 0.06 + 0.5);
+        });
+      } catch (err) {}
+    }, 700);
+  }
 }
 
 export const audio = new AudioEngine();
