@@ -30,7 +30,7 @@ export default function AnalysisModeSwitcher() {
   ];
 
   return (
-    <div className="w-full bg-[#020502] border-b border-[#1a3a1a] p-1.5 flex flex-col xl:flex-row gap-2 justify-between items-center text-[10px] font-mono shrink-0 select-none">
+    <div data-testid="onboarding-switcher" className="w-full bg-[#020502] border-b border-[#1a3a1a] p-1.5 flex flex-col xl:flex-row gap-2 justify-between items-center text-[10px] font-mono shrink-0 select-none">
       {/* 1. Primary Analysis Switcher */}
       <div className="flex gap-1 items-center w-full justify-start overflow-x-auto py-0.5">
         <span className="text-gray-500 font-bold uppercase mr-1 tracking-wider text-[9px] shrink-0">WORKSTATION:</span>

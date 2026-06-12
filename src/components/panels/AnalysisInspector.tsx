@@ -154,7 +154,7 @@ export default function AnalysisInspector() {
   };
 
   return (
-    <div className="w-full h-full bg-[#030603] border border-[#1a5c1a] rounded p-3 text-white font-mono text-[11px] overflow-y-auto space-y-4 flex flex-col justify-between scrollbar-thin" style={{ maxHeight: '100%' }}>
+    <div data-testid="onboarding-inspector" className="w-full h-full bg-[#030603] border border-[#1a5c1a] rounded p-3 text-white font-mono text-[11px] overflow-y-auto space-y-4 flex flex-col justify-between scrollbar-thin" style={{ maxHeight: '100%' }}>
       <div className="space-y-4">
         {/* Dual Tab Router Row */}
         <div className="grid grid-cols-2 gap-1 bg-[#010401] p-1 border border-[#1a5c1a]/40 rounded-sm select-none">

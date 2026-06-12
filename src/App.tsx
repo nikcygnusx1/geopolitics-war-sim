@@ -42,6 +42,9 @@ import CommsPanel from './components/hud/CommsPanel';
 import CommsSyncController from './components/hud/CommsSyncController';
 import { useCommsStore } from './store/commsStore';
 
+import { useOnboardingStore } from './store/onboardingStore';
+import OnboardingHints from './components/hud/OnboardingHints';
+
 // New features Phase 5 - 10
 import CinematicIntro from './components/intro/CinematicIntro';
 import GameLobby from './components/intro/GameLobby';
@@ -594,6 +597,7 @@ export default function App() {
       {/* Popups, Alerts & Bazaar overlays */}
       <CountryInspector />
       <AlertBanner />
+      <OnboardingHints />
       {showBazaar && <BlackMarketBazaar onClose={() => setShowBazaar(false)} />}
       <CommsSyncController />
       <CommsPanel isOpen={commsOpen} onClose={() => setCommsOpen(false)} />
@@ -615,6 +619,16 @@ export default function App() {
 
         {/* Global actions: Black Market & Speed controls */}
         <div className="flex gap-2 items-center">
+          <button
+            onClick={() => { audio.playPhaseReveal(); useOnboardingStore.getState().startOnboarding(); }}
+            className="px-2.5 py-1 border border-cyan-800 text-cyan-400 bg-cyan-950/10 hover:bg-cyan-900/40 text-[9px] uppercase font-bold cursor-pointer transition-all"
+            title="Sovereign Command Interactive Tactical Manual"
+          >
+            ❓ SIM GUIDE
+          </button>
+
+          <div className="h-4 w-[1px] bg-[#1a3a1a]" />
+
           <button
             onClick={() => { audio.sfxKeyClick(); setCommsOpen(true); }}
             className={`px-2.5 py-1 border text-[9px] uppercase font-bold cursor-pointer transition-all flex items-center gap-1.5 ${
@@ -681,7 +695,7 @@ export default function App() {
           {/* Coordinated canvas and inspector split */}
           <div className="flex-1 flex overflow-hidden relative">
             {/* Left element: map / graph / timeline active surface */}
-            <div className="flex-1 flex flex-col overflow-hidden h-full relative">
+            <div data-testid="onboarding-surface" className="flex-1 flex flex-col overflow-hidden h-full relative">
               {/* Optional dynamic Layer controller */}
               {(analysisMode === 'MAP' || analysisMode === 'SPLIT') && (
                 <MapControls
@@ -741,7 +755,7 @@ export default function App() {
 
         {/* Right Side: Tab action decks and world intelligence boxes */}
         {!isMaximized && (
-          <div className="flex-1 flex flex-col h-full overflow-y-auto p-4 bg-[#040704] justify-between animate-fade-in scrollbar-thin">
+          <div data-testid="onboarding-actions" className="flex-1 flex flex-col h-full overflow-y-auto p-4 bg-[#040704] justify-between animate-fade-in scrollbar-thin">
           <div>
             {/* Action command tabs button matrices (F1 - F8) */}
             <div className="flex justify-between items-center mb-3">
