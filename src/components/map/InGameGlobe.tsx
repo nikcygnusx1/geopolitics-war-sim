@@ -7,6 +7,7 @@ import { getCentroid } from './countryCentroids';
 import { MAP_THEME } from './mapStyles';
 import { LayerToggleState } from './MapLayerPanel';
 import { useMapSync } from './mapSync';
+import { useLinkedAnalysisStore } from '../../store/linkedAnalysisStore';
 
 /**
  * Maps Longitude & Latitude to 3D spherical positions on the Earth sphere of a given radius.
@@ -422,13 +423,7 @@ export function InGameGlobe({ theme = 'dark', layers }: InGameGlobeProps) {
         const hit = intersects[0].object;
         const mappedId = hit.userData?.countryId;
         if (mappedId) {
-          if (hudMode === 'WAR_ROOM') {
-            if (mappedId !== playerCountryId) {
-              setTargetCountry(mappedId);
-            }
-          } else {
-            setCountryInspector(mappedId);
-          }
+          useLinkedAnalysisStore.getState().selectCountry(mappedId);
         }
       }
     };

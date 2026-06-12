@@ -12,6 +12,7 @@ import { MapCoordinateReadout } from './MapCoordinateReadout';
 import { DARK_BASEMAP_STYLE, LIGHT_BASEMAP_STYLE } from './mapStyles';
 import { useCanonicalMapState } from './mapSelectors';
 import { mapEventPipeline } from './mapEventPipeline';
+import { useLinkedAnalysisStore } from '../../store/linkedAnalysisStore';
 
 import {
   getNormCountryId,
@@ -171,13 +172,7 @@ export function GeoMap({ mode, layers, theme = 'dark' }: GeoMapProps) {
       if (!info.object) return;
       const id = getNormCountryId(info.object);
       if (id) {
-        if (hudMode === 'WAR_ROOM') {
-          if (id !== playerCountryId) {
-            setTargetCountry(id);
-          }
-        } else {
-          setCountryInspector(id);
-        }
+        useLinkedAnalysisStore.getState().selectCountry(id);
       }
     };
 

@@ -21,6 +21,12 @@ import IntelPanel from './components/panels/IntelPanel';
 import SpacePanel from './components/panels/SpacePanel';
 import PopulationPanel from './components/panels/PopulationPanel';
 
+import AnalysisModeSwitcher from './components/map/AnalysisModeSwitcher';
+import TimelineStrip from './components/map/TimelineStrip';
+import TimelineView from './components/panels/TimelineView';
+import AnalysisInspector from './components/panels/AnalysisInspector';
+import { useLinkedAnalysisStore } from './store/linkedAnalysisStore';
+
 // Telemetry & feeds
 import ThermalRecon from './components/telemetry/ThermalRecon';
 import DroneFeed from './components/telemetry/DroneFeed';
@@ -43,6 +49,8 @@ import BlackMarketBazaar from './components/blackmarket/BlackMarketBazaar';
 export default function App() {
   const currentTick = useWorldStore((s) => s.currentTick);
   const countries = useWorldStore((s) => s.countries);
+
+  const analysisMode = useLinkedAnalysisStore((s) => s.analysisMode);
 
   const playerCountryId = usePlayerStore((s) => s.countryId);
   const playerState = usePlayerStore();
@@ -233,22 +241,59 @@ export default function App() {
       <DataTicker />
 
       {/* Major split sections */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Left Side: map, control, and stock ticker scrolling bar */}
-        <div className="w-[55%] flex flex-col border-r border-[#1a3a1a] h-full overflow-hidden shrink-0">
-          <MapControls
-            activeLayer={activeLayer}
-            setActiveLayer={setActiveLayer}
-            viewMode={viewMode}
-            setViewMode={setViewMode}
-          />
+      <div className="flex-1 flex overflow-hidden w-full">
+        {/* Left Side: Coordinated Workstation containing Switcher, Canvas, bottom Timeline, and Side Inspector */}
+        <div className="w-[58%] flex flex-col border-r border-[#1a3a1a] h-full overflow-hidden shrink-0 bg-black">
+          {/* Analysis Workspace switcher command bar */}
+          <AnalysisModeSwitcher />
 
-          <div className="flex-1 relative bg-black overflow-hidden select-none">
-            {viewMode === 'MAP' ? (
-              <WorldMap activeLayer={activeLayer} />
-            ) : (
-              <AllianceGraph />
-            )}
+          {/* Coordinated canvas and inspector split */}
+          <div className="flex-1 flex overflow-hidden relative">
+            {/* Left element: map / graph / timeline active surface */}
+            <div className="flex-1 flex flex-col overflow-hidden h-full relative">
+              {/* Optional dynamic Layer controller */}
+              {(analysisMode === 'MAP' || analysisMode === 'SPLIT') && (
+                <MapControls
+                  activeLayer={activeLayer}
+                  setActiveLayer={setActiveLayer}
+                  viewMode={analysisMode === 'SPLIT' ? 'MAP' : (analysisMode as any)}
+                  setViewMode={() => {}}
+                />
+              )}
+
+              {/* View selection routing */}
+              <div className="flex-1 relative bg-black overflow-hidden select-none">
+                {analysisMode === 'MAP' && (
+                  <WorldMap activeLayer={activeLayer} />
+                )}
+                {analysisMode === 'GRAPH' && (
+                  <AllianceGraph />
+                )}
+                {analysisMode === 'TIMELINE' && (
+                  <TimelineView />
+                )}
+                {analysisMode === 'SPLIT' && (
+                  <div className="h-full flex flex-col divide-y divide-[#1a5c1a]">
+                    <div className="flex-1 relative">
+                      <WorldMap activeLayer={activeLayer} />
+                    </div>
+                    <div className="flex-1 relative">
+                      <AllianceGraph />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Bottom slim timeline strip (visible in Map, Graph, and Split workstation modes) */}
+              {analysisMode !== 'TIMELINE' && (
+                <TimelineStrip />
+              )}
+            </div>
+
+            {/* Live Workstation Inspector Sidebar */}
+            <div className="w-[230px] border-l border-[#1d3c1d] h-full overflow-hidden shrink-0 bg-[#020502] flex flex-col p-1">
+              <AnalysisInspector />
+            </div>
           </div>
 
           {/* Scrolling ticker tape */}

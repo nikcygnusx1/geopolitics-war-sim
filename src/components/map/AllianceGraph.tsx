@@ -4,6 +4,7 @@ import { useWorldStore } from '../../store/worldStore';
 import { usePlayerStore } from '../../store/playerStore';
 import { useUIStore } from '../../store/uiStore';
 import { audio } from '../../utils/audio';
+import { useLinkedAnalysisStore } from '../../store/linkedAnalysisStore';
 import {
   Globe,
   Shield,
@@ -374,20 +375,59 @@ export default function AllianceGraph() {
     setSelectedLinkLabel(null);
     audio.sfxKeyClick();
 
-    if (hudMode === 'WAR_ROOM') {
-      if (id !== playerCountryId) {
-        setTargetCountry(id);
-      }
-    } else {
-      setCountryInspector(id);
-    }
+    // Sync to linked analysis workstation store
+    useLinkedAnalysisStore.getState().selectCountry(id);
   };
 
   const handleLinkClick = (e: React.MouseEvent, link: OntologicalLink) => {
     e.stopPropagation();
     setSelectedLinkLabel(link);
     audio.sfxKeyClick();
+
+    // Sync to linked analysis workstation store
+    const sId = link.source ? (typeof link.source === 'object' ? (link.source as any).id || '' : link.source) : '';
+    const tId = link.target ? (typeof link.target === 'object' ? (link.target as any).id || '' : link.target) : '';
+    useLinkedAnalysisStore.getState().selectEdge({
+      source: sId,
+      target: tId,
+      type: link.type,
+    });
   };
+
+  // Bi-directional synchronization with workstation shared state
+  const globalSelectedCountryId = useLinkedAnalysisStore((s) => s.selectedCountryId);
+  const globalSelectedEdge = useLinkedAnalysisStore((s) => s.selectedEdge);
+
+  useEffect(() => {
+    if (globalSelectedCountryId && globalSelectedCountryId !== selectedNodeId) {
+      setSelectedNodeId(globalSelectedCountryId);
+      setSelectedLinkLabel(null);
+      // Ensure we smooth-focus on the incoming selected coordinate
+      searchAndFocusNode(globalSelectedCountryId);
+    } else if (globalSelectedCountryId === null && selectedNodeId !== null && selectedNodeId !== playerCountryId) {
+      setSelectedNodeId(playerCountryId);
+    }
+  }, [globalSelectedCountryId, coords]);
+
+  useEffect(() => {
+    if (globalSelectedEdge) {
+      const match = links.find((l) => {
+        const sId = l.source ? (typeof l.source === 'object' ? (l.source as any).id || '' : l.source) : '';
+        const tId = l.target ? (typeof l.target === 'object' ? (l.target as any).id || '' : l.target) : '';
+        return (
+          l.type === globalSelectedEdge.type &&
+          ((sId === globalSelectedEdge.source && tId === globalSelectedEdge.target) ||
+           (sId === globalSelectedEdge.target && tId === globalSelectedEdge.source))
+        );
+      });
+      if (match) {
+        setSelectedLinkLabel(match);
+        setSelectedNodeId(null);
+      }
+    } else {
+      setSelectedLinkLabel(null);
+    }
+  }, [globalSelectedEdge, links]);
 
   // Graph logic metrics & filterings
   const getDossierNode = () => {
