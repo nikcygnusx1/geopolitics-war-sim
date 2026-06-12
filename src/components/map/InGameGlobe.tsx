@@ -152,11 +152,55 @@ export function InGameGlobe({ theme = 'dark', layers }: InGameGlobeProps) {
     const globeGroup = new THREE.Group();
     scene.add(globeGroup);
 
-    // BLUE MARBLE RASTER CORES
-    const loader = new THREE.TextureLoader();
-    const dayTex = loader.load('/textures/earth-blue-marble.jpg');
-    const nightTex = loader.load('/textures/earth-night.jpg');
-    const cloudsTex = loader.load('/textures/earth-clouds.png');
+    // --- RESILIENT TEXTURE PIPELINE WITH MULTIPLE CDN FALLBACKS ---
+    const loadTextureWithFallback = (localPath: string, fallbacks: string[]) => {
+      const tex = new THREE.Texture();
+      tex.colorSpace = THREE.SRGBColorSpace;
+      const img = new Image();
+      
+      const urls = [localPath, ...fallbacks];
+      let attemptIndex = 0;
+
+      const tryLoadNext = () => {
+        if (attemptIndex >= urls.length) {
+          console.error(`[GLOBE-INGAME] ❌ All attempts failed for texture: ${localPath}`);
+          return;
+        }
+        const currentUrl = urls[attemptIndex];
+        attemptIndex++;
+        
+        const isLocal = !currentUrl.startsWith('http') && !currentUrl.startsWith('//');
+        img.crossOrigin = isLocal ? null : 'anonymous';
+        img.src = currentUrl;
+      };
+
+      img.onload = () => {
+        tex.image = img;
+        tex.needsUpdate = true;
+        console.log(`[GLOBE-INGAME] ✅ Loaded: ${img.src}`);
+      };
+
+      img.onerror = () => {
+        console.warn(`[GLOBE-INGAME] ⚠ Load failed for: ${img.src}. Trying fallback...`);
+        tryLoadNext();
+      };
+
+      tryLoadNext();
+      return tex;
+    };
+
+    const dayTex = loadTextureWithFallback('/textures/earth-blue-marble.jpg', [
+      'https://cdn.jsdelivr.net/npm/three-globe/example/img/earth-blue-marble.jpg',
+      'https://raw.githubusercontent.com/vasturiano/three-globe/master/example/img/earth-blue-marble.jpg'
+    ]);
+    const nightTex = loadTextureWithFallback('/textures/earth-night.jpg', [
+      'https://cdn.jsdelivr.net/npm/three-globe/example/img/earth-night.jpg',
+      'https://raw.githubusercontent.com/vasturiano/three-globe/master/example/img/earth-night.jpg'
+    ]);
+    const cloudsTex = loadTextureWithFallback('/textures/earth-clouds.png', [
+      'https://cdn.jsdelivr.net/npm/three-globe/example/img/earth-clouds.png',
+      'https://cdn.jsdelivr.net/gh/mrdoob/three.js@dev/examples/textures/planets/earth_clouds_1024.png'
+    ]);
 
     // 1. Solid Earth Core (Day / Night Shaded)
     const earthGeo = new THREE.SphereGeometry(1, 64, 64);
