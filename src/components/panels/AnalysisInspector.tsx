@@ -1,12 +1,15 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useWorldStore } from '../../store/worldStore';
 import { useLinkedAnalysisStore } from '../../store/linkedAnalysisStore';
 import { parseGlobalEvent } from '../../utils/eventConverter';
 import { audio } from '../../utils/audio';
+import { useCopilotStore, CopilotCategory, AssistanceLevel } from '../../store/copilotStore';
+import { usePlayerStore } from '../../store/playerStore';
 
 export default function AnalysisInspector() {
   const countries = useWorldStore((s) => s.countries);
   const globalEventLog = useWorldStore((s) => s.globalEventLog);
+  const currentTick = useWorldStore((s) => s.currentTick);
 
   const {
     selectedCountryId,
@@ -22,9 +25,26 @@ export default function AnalysisInspector() {
     renameInvestigation,
   } = useLinkedAnalysisStore();
 
+  const {
+    assistanceLevel,
+    activeInsights,
+    activeInsightId,
+    activePipeline,
+    setAssistanceLevel,
+    setActiveInsightId,
+    runAnalysis,
+    triggerPipeline,
+  } = useCopilotStore();
+
+  const [inspectorTab, setInspectorTab] = useState<'INSPECT' | 'COPILOT'>('COPILOT');
   const [newInvName, setNewInvName] = useState('');
   const [editingInvId, setEditingInvId] = useState<string | null>(null);
   const [editingInvName, setEditingInvName] = useState('');
+
+  // Dynamically run heuristics on player and time tick events
+  useEffect(() => {
+    runAnalysis();
+  }, [currentTick, runAnalysis]);
 
   // Parse all events to filter recent logs for inspected items
   const allEvents = useMemo(() => {
@@ -136,11 +156,294 @@ export default function AnalysisInspector() {
   return (
     <div className="w-full h-full bg-[#030603] border border-[#1a5c1a] rounded p-3 text-white font-mono text-[11px] overflow-y-auto space-y-4 flex flex-col justify-between scrollbar-thin" style={{ maxHeight: '100%' }}>
       <div className="space-y-4">
-        {/* Dynamic Title / State Badge */}
-        <div className="text-[10px] text-[#00ff44] bg-[#071307] border border-[#113111] px-2 py-1.5 rounded-[1.5px] font-bold flex justify-between items-center uppercase tracking-wider select-none leading-none">
-          <span>📋 Workspace Inspector</span>
-          <span className="text-gray-500 text-[8px] animate-pulse">Scanning Transducers...</span>
+        {/* Dual Tab Router Row */}
+        <div className="grid grid-cols-2 gap-1 bg-[#010401] p-1 border border-[#1a5c1a]/40 rounded-sm select-none">
+          <button
+            onClick={() => { audio.sfxKeyClick(); setInspectorTab('COPILOT'); }}
+            className={`py-1 text-[9px] font-black uppercase text-center cursor-pointer transition-all rounded-[1px] ${
+              inspectorTab === 'COPILOT'
+                ? 'bg-[#153a15] text-[#00ff44] border border-[#00ff44]/70'
+                : 'bg-transparent text-gray-500 hover:text-gray-300'
+            }`}
+          >
+            📡 Operations AI
+          </button>
+          <button
+            onClick={() => { audio.sfxKeyClick(); setInspectorTab('INSPECT'); }}
+            className={`py-1 text-[9px] font-black uppercase text-center cursor-pointer transition-all rounded-[1px] ${
+              inspectorTab === 'INSPECT'
+                ? 'bg-[#153a15] text-[#00ff44] border border-[#00ff44]/70'
+                : 'bg-transparent text-gray-500 hover:text-gray-300'
+            }`}
+          >
+            📋 Inspect Deck
+          </button>
         </div>
+
+        {/* TAB 1: OPERATIONS AI COPILOT DETECTOR ENGINE */}
+        {inspectorTab === 'COPILOT' && (
+          <div className="space-y-3 animate-fade-in">
+            {/* Status indicators */}
+            <div className="p-2 bg-[#061206] border border-[#1a5c1a] rounded-sm space-y-1">
+              <div className="flex justify-between items-center text-[8.5px] uppercase font-bold text-gray-400 font-sans">
+                <span>SYSTEM SIG-COPILOT STATUS:</span>
+                <span className="text-[#00ff44] animate-pulse">● ACTIVE SCAN</span>
+              </div>
+              <p className="text-[7.5px] text-gray-500 uppercase leading-snug">
+                Heuristic detectors scanning regional vectors for trade stresses, nuclear doctrines, and border alliances.
+              </p>
+            </div>
+
+            {/* Assistance level setup */}
+            <div className="space-y-1">
+              <span className="text-[7.5px] text-gray-500 font-bold uppercase tracking-wider block">ADVISORY INTENSITY PROFILE:</span>
+              <div className="grid grid-cols-3 gap-0.5 bg-black/40 p-0.5 border border-green-950 rounded-sm">
+                {(['MINIMAL', 'ASSIST', 'FULL'] as AssistanceLevel[]).map((lvl) => (
+                  <button
+                    key={lvl}
+                    type="button"
+                    onClick={() => { audio.sfxKeyClick(); setAssistanceLevel(lvl); }}
+                    className={`py-0.5 text-[7.5px] uppercase font-extrabold cursor-pointer transition-all rounded-[1px] ${
+                      assistanceLevel === lvl
+                        ? 'bg-[#00e5ff]/20 text-[#00e5ff] font-bold border border-[#00e5ff]/50'
+                        : 'text-gray-550 hover:text-white'
+                    }`}
+                  >
+                    {lvl}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Active Suggestion Pipelines Trigger Board */}
+            <div className="space-y-1">
+              <span className="text-[7.5px] text-gray-500 font-bold uppercase tracking-wider block">PRESETS DIAGNOSIS SWEEP:</span>
+              <div className="grid grid-cols-3 gap-1">
+                <button
+                  type="button"
+                  onClick={() => triggerPipeline('FLASHPOINT')}
+                  className={`p-1 border text-[7.5px] uppercase font-black cursor-pointer rounded-sm flex flex-col items-center justify-center gap-0.5 transition-all text-center leading-none ${
+                    activePipeline === 'FLASHPOINT'
+                      ? 'bg-red-955/45 text-red-500 border-red-500 shadow-[0_0_4px_rgba(239,68,68,0.25)]'
+                      : 'bg-black/35 border-red-955/40 text-red-400 hover:bg-red-900/10'
+                  }`}
+                  title="Detect active warfront boundaries and flashpoint vectors"
+                >
+                  <span className="text-sm">🔥</span>
+                  <span className="truncate w-full block">FLASHPOINT</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => triggerPipeline('CHOKEPOINT')}
+                  className={`p-1 border text-[7.5px] uppercase font-black cursor-pointer rounded-sm flex flex-col items-center justify-center gap-0.5 transition-all text-center leading-none ${
+                    activePipeline === 'CHOKEPOINT'
+                      ? 'bg-amber-955/45 text-amber-500 border-amber-500 shadow-[0_0_4px_rgba(245,158,11,0.25)]'
+                      : 'bg-black/35 border-amber-955/40 text-amber-400 hover:bg-amber-900/10'
+                  }`}
+                  title="Detect critical trade reliance choke points and supply disruptions"
+                >
+                  <span className="text-sm">⚓</span>
+                  <span className="truncate w-full block">CHOKEPOINT</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => triggerPipeline('ALLIANCE')}
+                  className={`p-1 border text-[7.5px] uppercase font-black cursor-pointer rounded-sm flex flex-col items-center justify-center gap-0.5 transition-all text-center leading-none ${
+                    activePipeline === 'ALLIANCE'
+                      ? 'bg-cyan-950/45 text-cyan-400 border-cyan-500 shadow-[0_0_4px_rgba(6,182,212,0.25)]'
+                      : 'bg-black/35 border-cyan-950/45 text-cyan-400 hover:bg-cyan-900/10'
+                  }`}
+                  title="Find internal friction and low opinions between treaty allies"
+                >
+                  <span className="text-sm">💔</span>
+                  <span className="truncate w-full block">ALLIANCES</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => triggerPipeline('CORRIDOR')}
+                  className={`p-1 border text-[7.5px] uppercase font-black cursor-pointer rounded-sm flex flex-col items-center justify-center gap-0.5 transition-all text-center leading-none ${
+                    activePipeline === 'CORRIDOR'
+                      ? 'bg-purple-950/45 text-purple-400 border-purple-500 shadow-[0_0_4px_rgba(168,85,247,0.25)]'
+                      : 'bg-black/35 border-purple-950/45 text-purple-400 hover:bg-purple-900/10'
+                  }`}
+                  title="Examine high-degree hazard hubs and battleground corridors"
+                >
+                  <span className="text-sm">⚡</span>
+                  <span className="truncate w-full block">CORRIDORS</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => triggerPipeline('SANCTION')}
+                  className={`p-1 border text-[7.5px] uppercase font-black cursor-pointer rounded-sm flex flex-col items-center justify-center gap-0.5 transition-all text-center leading-none ${
+                    activePipeline === 'SANCTION'
+                      ? 'bg-orange-950/45 text-orange-400 border-orange-500 shadow-[0_0_4px_rgba(249,115,22,0.25)]'
+                      : 'bg-black/35 border-orange-950/45 text-orange-400 hover:bg-[#7c2d12]/10'
+                  }`}
+                  title="Track strict embargos and debt stress isolation chains"
+                >
+                  <span className="text-sm">⛓️</span>
+                  <span className="truncate w-full block">SANCTIONS</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => { audio.sfxKeyClick(); triggerPipeline(null); }}
+                  className="p-1 border border-zinc-800 bg-black/40 text-gray-500 text-[7.5px] uppercase font-black cursor-pointer rounded-sm hover:text-white hover:border-zinc-500 flex items-center justify-center leading-none"
+                  title="Clear active scans and filters"
+                >
+                  <span>✕ RESET</span>
+                </button>
+              </div>
+            </div>
+
+            {/* AI Advisor Diagnosis Insights Grid */}
+            <div className="space-y-1.5 flex-1 select-none">
+              <div className="flex justify-between items-center text-[7.5px] text-gray-550 font-bold uppercase tracking-wider font-sans">
+                <span>DETECTED SECURITY THREATS ({activeInsights.length}):</span>
+                <span className="text-[#00ff44]">CONFIDENCE MATRIX</span>
+              </div>
+
+              {activeInsights.length === 0 ? (
+                <div className="text-[9px] text-gray-500 italic bg-black/15 py-5 px-3 rounded-sm border border-dashed border-[#1a5c1a]/25 text-center uppercase leading-snug">
+                  🤖 SCANNERS NOMINAL. NO EXCEEDING ANOMALIES RECORDED FOR CURRENT ADVISOR GRADE.
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-[360px] overflow-y-auto scrollbar-thin pr-0.5">
+                  {activeInsights.map((ins) => {
+                    const isFocused = activeInsightId === ins.id;
+                    const sevColor = ins.severity === 'HIGH' ? 'text-red-500 font-extrabold' : 'text-amber-500 font-extrabold';
+
+                    return (
+                      <div
+                        key={ins.id}
+                        id={ins.id}
+                        onClick={() => setActiveInsightId(isFocused ? null : ins.id)}
+                        className={`p-2 border rounded-sm transition-all text-[9.5px] space-y-1.5 cursor-pointer flex flex-col hover:bg-[#071307]/20 ${
+                          isFocused 
+                            ? 'bg-[#0f1d0f]/50 border-[#00ff44] shadow-[0_0_8px_rgba(0,255,68,0.1)]' 
+                            : 'bg-black/35 border-green-950/60'
+                        }`}
+                      >
+                        {/* Title and indicators */}
+                        <div className="flex justify-between items-start gap-1">
+                          <span className="font-extrabold text-white uppercase tracking-tight flex-1 text-[9px] leading-tight">
+                            {ins.title}
+                          </span>
+                          <div className="text-[7.5px] shrink-0 font-bold flex flex-col items-end">
+                            <span className={sevColor}>{ins.severity} ALERT</span>
+                            <span className="text-cyan-400 mt-0.5 font-sans">Certainty: {ins.confidence}%</span>
+                          </div>
+                        </div>
+
+                        {/* Description */}
+                        <p className="text-[9px] text-gray-400 font-sans leading-relaxed">
+                          {ins.description}
+                        </p>
+
+                        {/* Explainable Diagnostic Breakdown */}
+                        {isFocused && (
+                          <div className="p-1.5 bg-[#020502] border border-green-950 rounded-sm text-[8px] font-mono leading-normal text-left space-y-1.5 animate-slide-up select-none">
+                            <div>
+                              <span className="text-gray-550 block font-bold uppercase tracking-wide">factors / signal source:</span>
+                              <p className="text-gray-300 leading-none mt-0.5">{ins.whySurfaced}</p>
+                            </div>
+                            <div>
+                              <span className="text-gray-550 block font-bold uppercase tracking-wide">operational vectors:</span>
+                              <div className="flex flex-wrap gap-1 mt-0.5 leading-none">
+                                {ins.signalsUsed.map((sig, sidx) => (
+                                  <span key={sidx} className="bg-black text-[#00ff44] px-1 border border-[#113111]/40 rounded-[1px] text-[7px] uppercase font-bold text-sans">
+                                    {sig}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                            <div>
+                              <span className="text-gray-555 block font-bold uppercase tracking-wide">potential consequence:</span>
+                              <p className="text-red-400 mt-0.5 leading-tight">{ins.potentialConsequence}</p>
+                            </div>
+
+                            {/* Tactical Command Action Row */}
+                            <div className="border-t border-[#113111]/60 pt-1.5 mt-1 grid grid-cols-2 gap-1 font-sans">
+                              {/* Action A: Bind map centroids and pulse scanning circles */}
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  audio.playPhaseReveal();
+                                  
+                                  const analysisStore = useLinkedAnalysisStore.getState();
+                                  analysisStore.setAnalysisMode(ins.recommendedView.analysisMode);
+                                  analysisStore.setPresetFocusMode(ins.recommendedView.presetFocusMode);
+                                  
+                                  if (ins.entities.countries.length > 0) {
+                                    analysisStore.selectCountry(ins.entities.countries[0]);
+                                  }
+                                }}
+                                className="py-1 px-1 bg-[#1a441a]/40 border border-[#00ff44]/60 text-[#00ff44] hover:bg-[#00ff44]/20 rounded-sm text-[7.5px] uppercase font-bold text-center cursor-pointer transition-all"
+                              >
+                                🗺️ Focus World
+                              </button>
+
+                              {/* Action B: Bind and focus relation graph parameters */}
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  audio.playPhaseReveal();
+
+                                  const analysisStore = useLinkedAnalysisStore.getState();
+                                  analysisStore.setAnalysisMode('GRAPH');
+                                  analysisStore.setPresetFocusMode(ins.recommendedView.presetFocusMode);
+                                  
+                                  if (ins.entities.edges.length > 0) {
+                                    analysisStore.selectEdge(ins.entities.edges[0]);
+                                  } else if (ins.entities.countries.length > 0) {
+                                    analysisStore.selectCountry(ins.entities.countries[0]);
+                                  }
+                                }}
+                                className="py-1 px-1 bg-[#0f2430] border border-[#00d5ff]/60 text-[#00e5ff] hover:bg-[#00e5ff]/20 rounded-sm text-[7.5px] uppercase font-bold text-center cursor-pointer transition-all"
+                              >
+                                🕸️ Trace corridor
+                              </button>
+
+                              {/* Action C: Open specific interactive HUD Tab inside command center */}
+                              {ins.recommendedView.targetTab && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    audio.sfxKeyClick();
+                                    usePlayerStore.getState().setActiveTab(ins.recommendedView.targetTab!);
+                                  }}
+                                  className="py-1 px-1 bg-[#37240c]/45 border border-[#ffb300]/60 text-[#ffb000] hover:bg-[#ffb000]/20 rounded-sm text-[7.5px] uppercase font-bold text-center col-span-2 mt-0.5 cursor-pointer transition-all"
+                                >
+                                  🚨 Activate {ins.recommendedView.targetTab === 3 ? 'War Room Arsenal' : ins.recommendedView.targetTab === 2 ? 'Central Bank vault' : ins.recommendedView.targetTab === 4 ? 'Diplomatic Desk' : 'Intelligence Panel'}
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* TAB 2: REGISTERED WORKSPACE INSPECTOR SELECTIONS */}
+        {inspectorTab === 'INSPECT' && (
+          <div className="space-y-4">
+            {/* Dynamic Title / State Badge */}
+            <div className="text-[10px] text-[#00ff44] bg-[#071307] border border-[#113111] px-2 py-1.5 rounded-[1.5px] font-bold flex justify-between items-center uppercase tracking-wider select-none leading-none">
+              <span>📋 Workspace Inspector</span>
+              <span className="text-gray-500 text-[8px] animate-pulse">Scanning Transducers...</span>
+            </div>
 
         {/* CASE A: No selection */}
         {!countryData && !edgeData && !eventData && (
@@ -216,7 +519,7 @@ export default function AnalysisInspector() {
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-500 uppercase font-bold text-[8px]">REGIME STABILITY:</span>
-                <span className="font-extrabold text-[#00ff44]">{countryData.raw.political.stability}%</span>
+                <span className="font-extrabold text-[#00ff44]">{countryData.raw.political.stabilityIndex}%</span>
               </div>
             </div>
 
@@ -493,6 +796,8 @@ export default function AnalysisInspector() {
           </div>
         )}
       </div>
+    )}
+  </div>
 
       {/* WORKSPACE SAVED INVESTIGATIONS CONTEXT MATRIX */}
       <div className="border-t border-[#1a5c1a]/30 pt-3 mt-3 space-y-2 select-none">

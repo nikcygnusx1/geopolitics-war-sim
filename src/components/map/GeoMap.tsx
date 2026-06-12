@@ -14,6 +14,8 @@ import { useCanonicalMapState } from './mapSelectors';
 import { mapEventPipeline } from './mapEventPipeline';
 import { useLinkedAnalysisStore } from '../../store/linkedAnalysisStore';
 
+import { useCopilotStore } from '../../store/copilotStore';
+
 import {
   getNormCountryId,
   buildCountriesLayer,
@@ -26,6 +28,7 @@ import {
   buildRadarDefenseLayer,
   buildLogisticsCorridorsLayer,
   buildLiveAssetTracesLayer,
+  buildCopilotHighlightsLayer,
 } from './layerBuilders';
 
 interface GeoMapProps {
@@ -55,6 +58,8 @@ export function GeoMap({ mode, layers, theme = 'dark' }: GeoMapProps) {
   const targetCountryId = mapState.targetCountryId;
   const activeLayerName = mapState.activeLayer;
   const currentTick = mapState.currentTick || 0;
+
+  const highlightedCountries = useCopilotStore((s) => s.highlightedCountries);
 
   const setTargetCountry = usePlayerStore((s) => s.setTargetCountry);
   const setCountryInspector = useUIStore((s) => s.setCountryInspector);
@@ -239,9 +244,12 @@ export function GeoMap({ mode, layers, theme = 'dark' }: GeoMapProps) {
     const liveAssetTraces = buildLiveAssetTracesLayer(activeStrikes, currentTick, !!layers.traces);
     if (liveAssetTraces) currentDeckLayers.push(liveAssetTraces);
 
+    const copilotHighlights = buildCopilotHighlightsLayer(highlightedCountries, currentTick);
+    if (copilotHighlights) currentDeckLayers.push(copilotHighlights);
+
     // Apply layers to DeckGL instance
     deckRef.current.setProps({ layers: currentDeckLayers.filter(Boolean) });
-  }, [geoJsonData, countries, activeStrikes, layers, playerCountryId, targetCountryId, hudMode, activeLayerName, currentTick]);
+  }, [geoJsonData, countries, activeStrikes, layers, playerCountryId, targetCountryId, hudMode, activeLayerName, currentTick, highlightedCountries]);
 
   const isDark = theme === 'dark';
 

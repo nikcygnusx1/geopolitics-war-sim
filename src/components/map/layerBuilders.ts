@@ -634,3 +634,65 @@ export function buildLiveAssetTracesLayer(
     },
   });
 }
+
+/**
+ * OPERATIONS LAYERS 5: ANALYST COPILOT CHOKEPOINTS & TARGET DETECTOR HALOS
+ */
+export function buildCopilotHighlightsLayer(
+  highlightedCountryIds: string[],
+  currentTick: number
+) {
+  if (!highlightedCountryIds || highlightedCountryIds.length === 0) return null;
+
+  const data: any[] = [];
+
+  highlightedCountryIds.forEach((id) => {
+    const centroid = getCentroid(id);
+    if (centroid[0] !== 0) {
+      // 1. Core warning radar tracker point
+      data.push({
+        id: `copilot-core-${id}-${currentTick}`,
+        position: centroid,
+        color: [255, 179, 0], // Amber gold
+        radius: 400000,
+        opacity: 180,
+      });
+
+      // 2. Wide sweeping sweep-radar halo (dynamic pulsation)
+      const pulseRadius = 1500000 + Math.sin(currentTick * 0.15) * 500000;
+      data.push({
+        id: `copilot-halo-${id}-${currentTick}`,
+        position: centroid,
+        color: [255, 130, 0], // Darker orange
+        radius: pulseRadius,
+        opacity: 35,
+      });
+
+      // 3. Pinpoint satellite lock glyph circle
+      data.push({
+        id: `copilot-pinpoint-${id}-${currentTick}`,
+        position: centroid,
+        color: [0, 229, 255], // Cyan
+        radius: 2000000,
+        opacity: 20,
+      });
+    }
+  });
+
+  return new ScatterplotLayer({
+    id: 'deck-copilot-highlights',
+    data,
+    getPosition: (d: any) => [d.position[0], d.position[1], 0],
+    getRadius: (d: any) => d.radius,
+    getFillColor: (d: any) => [...d.color, d.opacity] as [number, number, number, number],
+    getLineColor: (d: any) => [...d.color, 200] as [number, number, number, number],
+    lineWidthMinPixels: 1.8,
+    stroked: true,
+    filled: true,
+    pickable: false,
+    updateTriggers: {
+      getRadius: [currentTick],
+    },
+  });
+}
+

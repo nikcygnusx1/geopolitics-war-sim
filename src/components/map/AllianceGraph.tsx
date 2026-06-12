@@ -5,6 +5,7 @@ import { usePlayerStore } from '../../store/playerStore';
 import { useUIStore } from '../../store/uiStore';
 import { audio } from '../../utils/audio';
 import { useLinkedAnalysisStore } from '../../store/linkedAnalysisStore';
+import { useCopilotStore } from '../../store/copilotStore';
 import {
   Globe,
   Shield,
@@ -65,6 +66,8 @@ export default function AllianceGraph() {
   const hudMode = usePlayerStore((s) => s.hudMode);
   const setTargetCountry = usePlayerStore((s) => s.setTargetCountry);
   const setCountryInspector = useUIStore((s) => s.setCountryInspector);
+
+  const highlightedCountries = useCopilotStore((s) => s.highlightedCountries);
 
   const svgRef = useRef<SVGSVGElement>(null);
 
@@ -1284,6 +1287,7 @@ export default function AllianceGraph() {
               const isHovered = node.id === hoveredNodeId;
               const isPlayer = node.id === playerCountryId;
               const isPathMember = calculatedPath.includes(node.id);
+              const isCopilotHighlighted = highlightedCountries.includes(node.id);
 
               // Centrality Visual Sizing Scale
               let radius = Math.max(22, Math.min(36, Math.sqrt(node.powerRating || 1) * 0.95 + 12));
@@ -1334,6 +1338,19 @@ export default function AllianceGraph() {
                       strokeDasharray="4,4"
                       className="animate-spin"
                       style={{ animationDuration: '8s' }}
+                    />
+                  )}
+
+                  {/* Analyst Copilot highlighted targeting aura */}
+                  {isCopilotHighlighted && (
+                    <circle
+                      r={radius + 12}
+                      fill="none"
+                      stroke="#ffb300"
+                      strokeWidth="2.5"
+                      strokeDasharray="3,3"
+                      className="animate-spin"
+                      style={{ animationDuration: '6s' }}
                     />
                   )}
 
