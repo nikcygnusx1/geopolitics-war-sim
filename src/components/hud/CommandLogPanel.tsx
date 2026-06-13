@@ -50,7 +50,7 @@ export default function CommandLogPanel() {
   };
 
   return (
-    <div className="border border-[#1a5c1a] bg-[#020502]/90 backdrop-blur-md rounded p-3 flex flex-col font-mono text-[10.5px] shrink-0 overflow-hidden shadow-[0_0_15px_rgba(0,255,100,0.05)] w-full mb-3" style={{ minHeight: '190px', maxHeight: '280px' }}>
+    <div className="gotham-panel gotham-panel--secondary p-3 flex flex-col font-mono text-[10.5px] shrink-0 overflow-hidden w-full mb-3" data-classification="SECRET" style={{ minHeight: '190px', maxHeight: '280px' }}>
       {/* Header and Filter Buttons */}
       <div className="flex justify-between items-center border-b border-[#1a5c1a]/50 pb-2 mb-2 select-none">
         <span className="text-[10px] font-black uppercase text-[#00ff44] tracking-widest flex items-center gap-1.5 animate-pulse">

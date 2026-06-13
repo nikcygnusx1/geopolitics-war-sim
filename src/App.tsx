@@ -61,6 +61,20 @@ import { getTickIncrement } from './sim/militaryEngine';
 import { useEconomyStore } from './store/economyStore';
 import { useUIStore } from './store/uiStore';
 
+const getTabClassification = (tabId: number): string => {
+  switch (tabId) {
+    case 1: return "TOP SECRET"; // Government
+    case 2: return "CONFIDENTIAL"; // Central bank
+    case 3: return "TOP SECRET"; // Arsenal
+    case 4: return "SECRET"; // Diplomacy
+    case 5: return "RESTRICTED"; // Research
+    case 6: return "TOP SECRET"; // Intel
+    case 7: return "SECRET"; // Space
+    case 8: return "RESTRICTED"; // Population
+    default: return "CONFIDENTIAL";
+  }
+};
+
 export default function App() {
   const currentTick = useWorldStore((s) => s.currentTick);
   const countries = useWorldStore((s) => s.countries);
@@ -803,8 +817,12 @@ export default function App() {
               </div>
             </div>
 
-            {/* Active panel — customized with .instrument-block design system */}
-            <div className="instrument-block mb-3.5" style={{ minHeight: '340px' }}>
+            {/* Active panel — customized with .gotham-panel and .gotham-panel--primary system */}
+            <div 
+              className="gotham-panel gotham-panel--primary mb-3.5" 
+              data-classification={getTabClassification(playerState.activeTab)}
+              style={{ minHeight: '340px' }}
+            >
               {playerState.activeTab === 1 && <GovernmentPanel />}
               {playerState.activeTab === 2 && <CentralBankPanel />}
               {playerState.activeTab === 3 && <ArsenalPanel />}

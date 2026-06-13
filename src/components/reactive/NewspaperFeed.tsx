@@ -97,8 +97,8 @@ export default function NewspaperFeed() {
   }, [currentTick, countries, selectedCountryId, selectedEdge]);
 
   return (
-    <div className="border border-[#1a5c1a] bg-[#030603] p-4 flex flex-col font-mono text-green-400 font-bold justify-between h-full select-none">
-      <div className="border-b border-[#1a5c1a] pb-2 mb-3 text-center">
+    <div className="gotham-panel gotham-panel--secondary p-4 flex flex-col font-mono text-green-400 font-bold justify-between h-full select-none" data-classification="CONFIDENTIAL">
+      <div className="border-b border-[#1a5c1a]/55 pb-2 mb-3 text-center">
         <span className="text-[11px] font-display text-shadow tracking-widest text-[#00ff44] uppercase block">
           🗞 The World Herald
         </span>

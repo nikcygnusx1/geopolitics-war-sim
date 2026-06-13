@@ -93,17 +93,35 @@ export default function CountryInspector() {
           {/* Col 2: Economics and Military */}
           <div className="space-y-4">
             {/* Economic details */}
-            <div className="combat-panel flex flex-col gap-1.5">
-              <h3 className="font-bold border-b border-[#1a3a1a] pb-1 text-[10px] text-phosphor-cyan">
+            <div className="flex flex-col gap-1.5 border border-[rgba(61,90,99,0.25)] bg-[#030604] p-1.5 rounded">
+              <h3 className="font-bold pb-1 text-[10px] text-phosphor-cyan uppercase tracking-wider">
                 MACRO FISCAL TELEMETRY
               </h3>
-              <div className="grid grid-cols-2 gap-2 text-[10px] uppercase">
-                <div>GDP Core Size: <span className="text-[#00ff44] font-bold">${econ.gdpB.toFixed(1)}B</span></div>
-                <div>Treasury reserves: <span className="text-[#00ff44] font-bold">${econ.treasuryCashB.toFixed(1)}B</span></div>
-                <div>Debt-to-GDP: <span className="text-[#00ff44]">{econ.debtToGdpRatio}%</span></div>
-                <div>Inflation Velocity: <span className={econ.inflationRate > 15 ? 'text-phosphor-red' : 'text-phosphor-amber'}>{econ.inflationRate.toFixed(1)}%</span></div>
-                <div>Interest Index: <span className="text-phosphor-cyan">{econ.interestRate}%</span></div>
-                <div>Currency Strength: <span className="text-[#00ff44]">{econ.currencyStrength} VAL</span></div>
+              <div className="gotham-data-grid text-[10px] uppercase">
+                <div className="gotham-data-cell">
+                  <span className="data-label">GDP Core Size</span>
+                  <span className="data-value text-[#00ff44]">${econ.gdpB.toFixed(1)}B</span>
+                </div>
+                <div className="gotham-data-cell">
+                  <span className="data-label">Treasury Reserves</span>
+                  <span className="data-value text-[#00ff44]">${econ.treasuryCashB.toFixed(1)}B</span>
+                </div>
+                <div className="gotham-data-cell">
+                  <span className="data-label">Debt-to-GDP</span>
+                  <span className="data-value text-[#00ff44]">{econ.debtToGdpRatio}%</span>
+                </div>
+                <div className="gotham-data-cell">
+                  <span className="data-label">Inflation Velocity</span>
+                  <span className={`data-value ${econ.inflationRate > 15 ? 'text-phosphor-red' : 'text-phosphor-amber'}`}>{econ.inflationRate.toFixed(1)}%</span>
+                </div>
+                <div className="gotham-data-cell">
+                  <span className="data-label">Interest Index</span>
+                  <span className="data-value text-phosphor-cyan">{econ.interestRate}%</span>
+                </div>
+                <div className="gotham-data-cell">
+                  <span className="data-label">Currency Strength</span>
+                  <span className="data-value text-[#00ff44]">{econ.currencyStrength} VAL</span>
+                </div>
               </div>
             </div>
 
