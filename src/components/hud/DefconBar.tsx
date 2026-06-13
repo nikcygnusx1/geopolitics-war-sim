@@ -8,12 +8,12 @@ export const DefconBar: React.FC = () => {
   const currentDefcon = useDefconStore((state) => state.currentDefconLevel);
   const playerCountryId = usePlayerStore((state) => state.countryId);
   
-  // Clocks (Section 4.3)
+  // Clocks
   const calendarDate = useClockStore((state) => state.currentCalendarDate);
   const sessionElapsed = useClockStore((state) => state.sessionElapsedSeconds);
   const currentTick = useClockStore((state) => state.currentTick);
 
-  // Palette details
+  // Palette details for legacy safety
   const palette = DEFCON_PALETTES[currentDefcon];
 
   const levels = [
@@ -26,73 +26,90 @@ export const DefconBar: React.FC = () => {
 
   return (
     <div 
-      className="w-full bg-[#030603] border-b border-[#1a5c1a] relative z-40 select-none py-1 px-4 flex justify-between items-center"
+      id="defcon-bar-root"
+      className="w-full bg-[#020502] border-b relative z-40 select-none py-1.5 px-4 flex justify-between items-center transition-all duration-300"
       style={{
-        borderBottom: `2px solid ${palette.primary}`,
-        boxShadow: `0 2px 10px ${palette.panelBg}`,
-        animation: currentDefcon === 1 ? 'blink 1.2s infinite' : 'none'
+        borderBottom: `2.5px solid var(--defcon-accent)`,
+        boxShadow: `0 2px 14px var(--defcon-accent-soft)`,
+        animation: currentDefcon === 1 ? 'flicker 1.5s infinite' : 'none'
       }}
     >
+      {/* Top micro line accent */}
+      <div 
+        className="absolute top-0 left-0 right-0 h-[1.5px] opacity-70"
+        style={{ backgroundColor: 'var(--defcon-accent)' }}
+      />
+
       {/* HUD left brand */}
-      <div className="flex items-center gap-2">
-        <span 
-          className="classification text-[#00ff44]"
-          style={{ color: palette.primary, textShadow: currentDefcon <= 2 ? `0 0 5px ${palette.primary}` : 'none' }}
-        >
-          TOP SECRET SOVEREIGN COMMAND EYES ONLY
-        </span>
-        <span className="chrome text-gray-600">/</span>
-        <span className="chrome text-white">
-          COGNATE: {playerCountryId}
+      <div className="flex items-center gap-3">
+        <div className="flex items-center gap-1.5">
+          <span className="w-1.5 h-1.5 rounded-full inline-block animate-pulse" style={{ backgroundColor: 'var(--defcon-accent)', boxShadow: 'var(--defcon-accent-glow)' }} />
+          <span 
+            className="classification font-bold tracking-widest text-[9.5px]"
+            style={{ 
+              color: 'var(--defcon-accent)', 
+              textShadow: 'var(--green-glow-sm)'
+            }}
+          >
+            TOP SECRET SOVEREIGN COMMAND EYES ONLY
+          </span>
+        </div>
+        <span className="chrome text-gray-700 font-bold">/</span>
+        <span className="chrome text-gray-300 text-[9.5px] font-black tracking-wider bg-white/5 px-2 py-0.5 rounded border border-white/5 uppercase">
+          COGNATE DIRECTORY: {playerCountryId || 'SEC-01'}
         </span>
       </div>
 
-      {/* DEFCON status pips inside HUD with correct palette indicators (Section 6.3) */}
-      <div className="flex items-center gap-3">
-        <span className="chrome text-gray-500">DEFCON:</span>
-        <div className="flex gap-2">
+      {/* DEFCON status pips inside HUD with smooth transitioning indicators */}
+      <div className="flex items-center gap-3 bg-black/40 border border-white/5 px-3 py-1 rounded-sm shadow-inner">
+        <span className="chrome text-[9.5px] font-extrabold text-gray-500 tracking-wider">DEFCON APERTURE STATE:</span>
+        <div className="flex gap-1.5">
           {levels.map((lvl) => {
             const isActive = lvl.value === currentDefcon;
             return (
               <div 
                 key={lvl.value}
-                className="flex items-center gap-1.5 px-2 py-0.5 border rounded-sm"
+                id={`defcon-pip-btn-${lvl.value}`}
+                className="flex items-center gap-1.5 px-2.5 py-0.5 border rounded-sm"
                 style={{
-                  borderColor: isActive ? palette.primary : '#0d2e0d',
-                  backgroundColor: isActive ? `${palette.primary}12` : 'transparent',
-                  color: isActive ? palette.primary : '#335533',
-                  opacity: isActive ? 1 : 0.4
+                  borderColor: isActive ? 'var(--defcon-accent)' : 'rgba(255, 255, 255, 0.04)',
+                  backgroundColor: isActive ? 'var(--defcon-accent-soft)' : 'transparent',
+                  color: isActive ? 'var(--defcon-accent)' : '#444c45',
+                  opacity: isActive ? 1 : 0.45,
+                  boxShadow: isActive ? 'var(--green-glow-sm)' : 'none'
                 }}
               >
                 <div 
                   className="w-1.5 h-1.5 rounded-full" 
                   style={{
-                    backgroundColor: isActive ? palette.primary : '#0d2e0d',
-                    boxShadow: isActive ? `0 0 4px ${palette.primary}` : 'none'
+                    backgroundColor: isActive ? 'var(--defcon-accent)' : '#19241b',
+                    boxShadow: isActive ? 'var(--defcon-accent-glow)' : 'none'
                   }}
                 />
-                <span className="data-inline text-[8px] font-bold tracking-wider">{lvl.name}</span>
+                <span className="data-inline text-[8px] font-black tracking-widest">{lvl.name}</span>
               </div>
             );
           })}
         </div>
       </div>
 
-      {/* Clocks & Chronos Display (Section 4.3) */}
-      <div className="flex items-center gap-4">
-        <div className="flex items-center gap-1.5 text-[#ffb300]">
-          <span className="chrome">📅 Date:</span>
-          <span className="data-inline font-bold tracking-wider uppercase">{fmtDate(calendarDate)}</span>
+      {/* Clocks & Chronos Display */}
+      <div className="flex items-center gap-4 text-[9.5px]">
+        <div className="flex items-center gap-1.5 border border-white/5 bg-black/30 px-2 py-0.5 rounded">
+          <span className="chrome text-gray-500 font-bold uppercase tracking-wider">📅 date:</span>
+          <span className="data-inline font-black tracking-wider uppercase animate-pulse" style={{ color: 'var(--defcon-accent)' }}>{fmtDate(calendarDate)}</span>
         </div>
         
-        <div className="flex items-center gap-1.5 text-[#00ff44]">
-          <span className="chrome">⏱ Session:</span>
-          <span className="data-inline font-bold tracking-wider">{fmtSession(sessionElapsed)}</span>
+        <div className="flex items-center gap-1.5 border border-white/5 bg-black/30 px-2 py-0.5 rounded">
+          <span className="chrome text-gray-500 font-bold uppercase tracking-wider">⏱ elapsed:</span>
+          <span className="data-inline font-black tracking-widest text-[#00ff44]">{fmtSession(sessionElapsed)}</span>
         </div>
 
-        <div className="flex items-center gap-1 bg-[#102010] p-1 border border-[#0d2e0d] text-[#00ff44]">
-          <span className="chrome text-gray-500">TICK:</span>
-          <span className="data-inline font-bold">{String(currentTick).padStart(4, '0')}</span>
+        <div className="flex items-center gap-1.5 border px-2 py-0.5 bg-[#0a100a]/70 rounded" style={{ borderColor: 'var(--defcon-accent)' }}>
+          <span className="chrome text-gray-500 font-extrabold tracking-wider">TICK:</span>
+          <span className="data-inline font-black tracking-widest animate-pulse" style={{ color: 'var(--defcon-accent)' }}>
+            {String(currentTick).padStart(4, '0')}
+          </span>
         </div>
       </div>
     </div>

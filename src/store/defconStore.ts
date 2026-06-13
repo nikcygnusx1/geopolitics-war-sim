@@ -71,6 +71,18 @@ export function applyDefconPalette(level: DefconLevel) {
   root.style.setProperty('--color-border', palette.border);
   root.style.setProperty('--bg-panel', palette.panelBg);
   root.style.setProperty('--glow-primary', palette.glow);
+
+  if (typeof document !== 'undefined' && document.body) {
+    const body = document.body;
+    // Remove any existing defcon classes
+    Array.from(body.classList).forEach((cls) => {
+      if (cls.startsWith('defcon-')) {
+        body.classList.remove(cls);
+      }
+    });
+    // Add the new class
+    body.classList.add(`defcon-${level}`);
+  }
 }
 
 interface DefconStoreActions {
@@ -104,4 +116,17 @@ export const useDefconStore = create<{ currentDefconLevel: DefconLevel } & Defco
     applyDefconPalette(5);
   },
 }));
+
+// Automatic client-side synchronization subscription
+if (typeof window !== 'undefined') {
+  // Synchronous initial call
+  setTimeout(() => {
+    applyDefconPalette(useDefconStore.getState().currentDefconLevel);
+  }, 0);
+
+  useDefconStore.subscribe((state) => {
+    applyDefconPalette(state.currentDefconLevel);
+  });
+}
+
 export default useDefconStore;

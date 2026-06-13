@@ -54,6 +54,8 @@ import NewspaperFeed from './components/reactive/NewspaperFeed';
 import UnSecurityCouncil from './components/reactive/UnSecurityCouncil';
 import BlackMarketBazaar from './components/blackmarket/BlackMarketBazaar';
 import CommandLogPanel from './components/hud/CommandLogPanel';
+import DefconBar from './components/hud/DefconBar';
+import { useDefconStore, applyDefconPalette } from './store/defconStore';
 import { GEO_COORDS } from './data/geoCoords';
 import { getTickIncrement } from './sim/militaryEngine';
 import { useEconomyStore } from './store/economyStore';
@@ -73,6 +75,12 @@ export default function App() {
   const playerCountryId = usePlayerStore((s) => s.countryId);
   const playerState = usePlayerStore();
   const setTickSpeed = usePlayerStore((s) => s.setTickSpeed);
+
+  useEffect(() => {
+    // Synchronize DEFCON variables and classes on initial mount
+    const level = useDefconStore.getState().currentDefconLevel;
+    applyDefconPalette(level);
+  }, []);
 
   // Intro and game states
   const [showIntro, setShowIntro] = useState(true);
@@ -604,6 +612,9 @@ export default function App() {
       {showBazaar && <BlackMarketBazaar onClose={() => setShowBazaar(false)} />}
       <CommsSyncController />
       <CommsPanel isOpen={commsOpen} onClose={() => setCommsOpen(false)} />
+
+      {/* Top command status HUD bar */}
+      <DefconBar />
 
       {/* Header bar */}
       <header className="w-full h-11 bg-[#040804] border-b border-[#1a3a1a] flex justify-between items-center px-4 shrink-0 select-none">

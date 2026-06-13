@@ -58,8 +58,179 @@
 
   /* Current defcon accent (updated dynamically) */
   --defcon-accent: var(--defcon-5-accent);
+}
 
-  /* === TYPOGRAPHY === */
+/* ========================================================
+   1. CSS BODY CLASS SYSTEM & GLOBAL TRANSITION
+   ======================================================== */
+
+/* Global transition over 1500ms for all paint-related styles */
+*, *::before, *::after {
+  transition: color 1500ms cubic-bezier(0.4, 0, 0.2, 1),
+              border-color 1500ms cubic-bezier(0.4, 0, 0.2, 1),
+              background-color 1500ms cubic-bezier(0.4, 0, 0.2, 1),
+              box-shadow 1500ms cubic-bezier(0.4, 0, 0.2, 1),
+              text-shadow 1500ms cubic-bezier(0.4, 0, 0.2, 1),
+              fill 1500ms cubic-bezier(0.4, 0, 0.2, 1),
+              stroke 1500ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+body {
+  /* Dynamic style bindings that fall back to standard */
+  --defcon-accent: #00e5c8;
+  --defcon-accent-rgb: 0, 229, 200;
+  --defcon-accent-soft: rgba(0, 229, 200, 0.15);
+  --defcon-accent-glow: 0 0 10px rgba(0, 229, 200, 0.85);
+  --defcon-accent-border: 1px solid rgba(0, 229, 200, 0.4);
+}
+
+/* DEFCON 5 select state (Teal) */
+body.defcon-5 {
+  --defcon-accent: #00e5c8;
+  --defcon-accent-rgb: 0, 229, 200;
+  --defcon-accent-soft: rgba(0, 229, 200, 0.15);
+  --defcon-accent-glow: 0 0 10px rgba(0, 229, 200, 0.85), 0 0 25px rgba(0, 229, 200, 0.2);
+  --defcon-accent-border: 1px solid rgba(0, 229, 200, 0.45);
+
+  /* Override general HUD colors for total integration */
+  --color-green: #00e5c8;
+  --color-green-mid: #00bfa7;
+  --color-green-dim: #005a4e;
+  --color-green-bright: #6efbec;
+  --color-green-glow: rgba(0, 229, 200, 0.15);
+  --green-100: #6efbec;
+  --green-300: #00e5c8;
+  --green-400: #00bfa7;
+  --green-500: #008f7c;
+  --green-700: #005a4e;
+  --green-900: #00302a;
+  
+  --color-border: #005a4e;
+  --color-border-hot: #00e5c8;
+  --color-grid: rgba(0, 229, 200, 0.04);
+  
+  --green-glow: 0 0 8px rgba(0, 229, 200, 0.6), 0 0 16px rgba(0, 229, 200, 0.15);
+  --green-glow-sm: 0 0 4px rgba(0, 229, 200, 0.5);
+  --glow-green: 0 0 6px #00e5c8, 0 0 12px rgba(0, 229, 200, 0.15);
+}
+
+/* DEFCON 4 select state (Amber) */
+body.defcon-4 {
+  --defcon-accent: #f5a623;
+  --defcon-accent-rgb: 245, 166, 35;
+  --defcon-accent-soft: rgba(245, 166, 35, 0.15);
+  --defcon-accent-glow: 0 0 10px rgba(245, 166, 35, 0.85), 0 0 25px rgba(245, 166, 35, 0.2);
+  --defcon-accent-border: 1px solid rgba(245, 166, 35, 0.45);
+
+  --color-green: #f5a623;
+  --color-green-mid: #cc840e;
+  --color-green-dim: #7a4e04;
+  --color-green-bright: #fcd58b;
+  --color-green-glow: rgba(245, 166, 35, 0.15);
+  --green-100: #fcd58b;
+  --green-300: #f5a623;
+  --green-400: #cc840e;
+  --green-500: #a36603;
+  --green-700: #7a4e04;
+  --green-900: #422a02;
+
+  --color-border: #7a4e04;
+  --color-border-hot: #f5a623;
+  --color-grid: rgba(245, 166, 35, 0.04);
+  
+  --green-glow: 0 0 8px rgba(245, 166, 35, 0.6), 0 0 16px rgba(245, 166, 35, 0.15);
+  --green-glow-sm: 0 0 4px rgba(245, 166, 35, 0.5);
+  --glow-green: 0 0 6px #f5a623, 0 0 12px rgba(245, 166, 35, 0.15);
+}
+
+/* DEFCON 3 select state (Orange) */
+body.defcon-3 {
+  --defcon-accent: #ff8c00;
+  --defcon-accent-rgb: 255, 140, 0;
+  --defcon-accent-soft: rgba(255, 140, 0, 0.15);
+  --defcon-accent-glow: 0 0 10px rgba(255, 140, 0, 0.85), 0 0 25px rgba(255, 140, 0, 0.2);
+  --defcon-accent-border: 1px solid rgba(255, 140, 0, 0.45);
+
+  --color-green: #ff8c00;
+  --color-green-mid: #d47000;
+  --color-green-dim: #824400;
+  --color-green-bright: #ffbe6d;
+  --color-green-glow: rgba(255, 140, 0, 0.15);
+  --green-100: #ffbe6d;
+  --green-300: #ff8c00;
+  --green-400: #d47000;
+  --green-500: #a85600;
+  --green-700: #824400;
+  --green-900: #472500;
+
+  --color-border: #824400;
+  --color-border-hot: #ff8c00;
+  --color-grid: rgba(255, 140, 0, 0.04);
+  
+  --green-glow: 0 0 8px rgba(255, 140, 0, 0.6), 0 0 16px rgba(255, 140, 0, 0.15);
+  --green-glow-sm: 0 0 4px rgba(255, 140, 0, 0.5);
+  --glow-green: 0 0 6px #ff8c00, 0 0 12px rgba(255, 140, 0, 0.15);
+}
+
+/* DEFCON 2 select state (Deep Orange) */
+body.defcon-2 {
+  --defcon-accent: #ff4500;
+  --defcon-accent-rgb: 255, 69, 0;
+  --defcon-accent-soft: rgba(255, 69, 0, 0.15);
+  --defcon-accent-glow: 0 0 10px rgba(255, 69, 0, 0.85), 0 0 25px rgba(255, 69, 0, 0.3);
+  --defcon-accent-border: 1px solid rgba(255, 69, 0, 0.45);
+
+  --color-green: #ff4500;
+  --color-green-mid: #cc3700;
+  --color-green-dim: #7d2200;
+  --color-green-bright: #ff9166;
+  --color-green-glow: rgba(255, 69, 0, 0.15);
+  --green-100: #ff9166;
+  --green-300: #ff4500;
+  --green-400: #cc3700;
+  --green-500: #a32c00;
+  --green-700: #7d2200;
+  --green-900: #451300;
+
+  --color-border: #7d2200;
+  --color-border-hot: #ff4500;
+  --color-grid: rgba(255, 69, 0, 0.04);
+  
+  --green-glow: 0 0 8px rgba(255, 69, 0, 0.6), 0 0 16px rgba(255, 69, 0, 0.15);
+  --green-glow-sm: 0 0 4px rgba(255, 69, 0, 0.5);
+  --glow-green: 0 0 6px #ff4500, 0 0 12px rgba(255, 69, 0, 0.15);
+}
+
+/* DEFCON 1 select state (Blood Red) */
+body.defcon-1 {
+  --defcon-accent: #ff0022;
+  --defcon-accent-rgb: 255, 0, 34;
+  --defcon-accent-soft: rgba(255, 0, 34, 0.15);
+  --defcon-accent-glow: 0 0 15px rgba(255, 0, 34, 0.95), 0 0 35px rgba(255, 0, 34, 0.4);
+  --defcon-accent-border: 1px solid rgba(255, 0, 34, 0.5);
+
+  --color-green: #ff0022;
+  --color-green-mid: #cc001b;
+  --color-green-dim: #800011;
+  --color-green-bright: #ff667d;
+  --color-green-glow: rgba(255, 0, 34, 0.25);
+  --green-100: #ff667d;
+  --green-300: #ff0022;
+  --green-400: #cc001b;
+  --green-500: #ab0016;
+  --green-700: #800011;
+  --green-900: #470009;
+
+  --color-border: #800011;
+  --color-border-hot: #ff0022;
+  --color-grid: rgba(255, 0, 34, 0.05);
+  
+  --green-glow: 0 0 8px rgba(255, 0, 34, 0.6), 0 0 16px rgba(255, 0, 34, 0.15);
+  --green-glow-sm: 0 0 4px rgba(255, 0, 34, 0.5);
+  --glow-green: 0 0 6px #ff0022, 0 0 12px rgba(255, 0, 34, 0.15);
+}
+
+:root {
   --font-display: "Chakra Petch", monospace;
   --font-mono:    "JetBrains Mono", monospace;
 
@@ -767,11 +938,11 @@ body::after {
 .section-label {
   font: 700 9px/1 var(--font-display);
   letter-spacing: 0.18em;
-  color: #00aa2e;
+  color: var(--color-green-mid);
   text-transform: uppercase;
   margin-bottom: 10px;
   padding-bottom: 6px;
-  border-bottom: 1px solid #0d2e0d;
+  border-bottom: 1px solid var(--color-border);
   display: flex;
   align-items: center;
   gap: 6px;
@@ -781,9 +952,9 @@ body::after {
   content: '';
   width: 4px;
   height: 4px;
-  background: #00ff44;
+  background: var(--color-green);
   border-radius: 50%;
-  box-shadow: 0 0 4px #00ff44;
+  box-shadow: var(--green-glow-sm);
   flex-shrink: 0;
   animation: blink 2.5s ease-in-out infinite;
 }
@@ -792,8 +963,8 @@ body::after {
 /* Tier 1: Primary values (GDP, treasury, key metrics) */
 .val-primary {
   font: 700 22px/1 var(--font-mono);
-  color: #00ff44;
-  text-shadow: 0 0 6px rgba(0,255,68,0.8), 0 0 12px rgba(0,255,68,0.3);
+  color: var(--color-green);
+  text-shadow: var(--green-glow);
   letter-spacing: -0.01em;
   display: block;
 }
@@ -801,18 +972,18 @@ body::after {
 /* Tier 2: Secondary values (rates, deltas, sub-stats) */
 .val-secondary {
   font: 400 12px/1 var(--font-mono);
-  color: #88ffaa;
+  color: var(--color-green-bright);
   display: block;
 }
 .val-secondary.neg { color: #ff2244; }
-.val-secondary.pos { color: #00ff44; }
+.val-secondary.pos { color: var(--color-green); }
 .val-secondary.warn { color: #ffb300; }
 
 /* Tier 3: Labels */
 .val-label {
   font: 400 9px/1 var(--font-display);
   letter-spacing: 0.14em;
-  color: #00aa2e;
+  color: var(--color-green-mid);
   text-transform: uppercase;
   display: block;
   margin-bottom: 2px;
@@ -834,10 +1005,10 @@ input[type='range'].sovereign-slider::-webkit-slider-runnable-track {
   height: 2px;
   background: linear-gradient(
     to right,
-    #00ff44 0%,
-    #00ff44 var(--pct, 50%),
-    #1a5c1a var(--pct, 50%),
-    #1a5c1a 100%
+    var(--color-green) 0%,
+    var(--color-green) var(--pct, 50%),
+    var(--color-green-dim) var(--pct, 50%),
+    var(--color-green-dim) 100%
   );
   border-radius: 0;
 }
@@ -845,9 +1016,9 @@ input[type='range'].sovereign-slider::-webkit-slider-runnable-track {
 input[type='range'].sovereign-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   width: 12px; height: 12px;
-  background: #00ff44;
+  background: var(--color-green);
   clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
-  box-shadow: 0 0 6px #00ff44;
+  box-shadow: var(--green-glow-sm);
   margin-top: -5px;
   cursor: grab;
   transition: transform 0.1s;
@@ -863,9 +1034,9 @@ input[type='range'].sovereign-slider::-webkit-slider-thumb:active {
   font: 700 9px/1 var(--font-display);
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: #00ff44;
+  color: var(--color-green);
   background: transparent;
-  border: 1px solid #1a5c1a;
+  border: 1px solid var(--color-border);
   padding: 7px 12px;
   cursor: pointer;
   clip-path: polygon(4px 0, calc(100% - 4px) 0, 100% 4px,
@@ -875,10 +1046,10 @@ input[type='range'].sovereign-slider::-webkit-slider-thumb:active {
   white-space: nowrap;
 }
 .btn-sovereign:hover {
-  background: rgba(0,255,68,0.08);
-  border-color: #00ff44;
-  box-shadow: 0 0 8px rgba(0,255,68,0.3);
-  color: #88ffaa;
+  background: var(--defcon-accent-soft);
+  border-color: var(--color-green);
+  box-shadow: var(--green-glow);
+  color: var(--color-green-bright);
 }
 .btn-sovereign.danger {
   color: #ff2244; border-color: #4a0010;
@@ -888,9 +1059,9 @@ input[type='range'].sovereign-slider::-webkit-slider-thumb:active {
   box-shadow: 0 0 8px rgba(255,34,68,0.3);
 }
 .btn-sovereign.active {
-  background: rgba(0,255,68,0.15);
-  border-color: #00ff44;
-  box-shadow: inset 0 0 12px rgba(0,255,68,0.1);
+  background: var(--defcon-accent-soft);
+  border-color: var(--color-green);
+  box-shadow: inset 0 0 12px var(--color-green-glow);
 }
 .btn-sovereign:disabled {
   opacity: 0.3; cursor: not-allowed;
@@ -901,24 +1072,24 @@ input[type='range'].sovereign-slider::-webkit-slider-thumb:active {
   font: 400 7px/1 var(--font-display);
   letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: #00aa2e;
+  color: var(--color-green-mid);
   background: rgba(0,20,5,0.8);
-  border: 1px solid #0d2e0d;
+  border: 1px solid var(--color-border);
   padding: 5px 8px;
   cursor: pointer;
   transition: all 0.1s;
   white-space: nowrap;
 }
-.feed-btn:hover { border-color: #00ff44; color: #00ff44; }
+.feed-btn:hover { border-color: var(--color-green); color: var(--color-green); }
 .feed-btn.armed { color: #ff2244; border-color: #4a0010; }
 .feed-btn.active { color: #00ccff; border-color: #005566; }
 .feed-btn:disabled { opacity: 0.25; cursor: default; }
 
 .feed-select {
   font: 400 7.5px/1 var(--font-mono);
-  color: #00aa2e;
+  color: var(--color-green-mid);
   background: rgba(0,20,5,0.9);
-  border: 1px solid #0d2e0d;
+  border: 1px solid var(--color-border);
   padding: 4px 6px;
   outline: none;
   cursor: pointer;
