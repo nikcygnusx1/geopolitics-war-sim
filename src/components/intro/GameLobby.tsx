@@ -7,6 +7,7 @@ import { useConsequenceStore } from '../../store/consequenceStore';
 import { ScenarioId } from '../../types';
 import { audio } from '../../utils/audio';
 import { motion, AnimatePresence } from 'motion/react';
+import { DurationSelector } from '../lobby/DurationSelector';
 import {
   Globe,
   Sliders,
@@ -870,82 +871,18 @@ export default function GameLobby({ onStartScenario, onOpenWorldBuilder }: GameL
               </div>
 
               {/* CLOCK METRIC CONFIGURATION */}
+              <DurationSelector
+                durationMode={durationMode}
+                setDurationMode={setDurationMode}
+                timedTicks={timedTicks}
+                setTimedTicks={setTimedTicks}
+                tickScale={tickScale}
+                setTickScale={setTickScale}
+                audio={audio}
+              />
+
               <div className="space-y-2 bg-black/40 p-2 rounded border border-green-500/10">
-                <span className="text-[9px] text-[#00e5ff] font-bold uppercase tracking-widest block border-b border-[#1a5c1a]/15 pb-1">
-                  I. SYSTEM DURATION & METRICS
-                </span>
-
-                <div className="space-y-1.5 font-bold text-[9px] text-gray-400">
-                  <div
-                    onClick={() => { audio.sfxKeyClick(); setDurationMode('SCENARIO'); }}
-                    className={`flex items-center justify-between p-1.5 rounded cursor-pointer border transition-all ${
-                      durationMode === 'SCENARIO' ? 'border-[#00ff44] bg-[#071708] text-white' : 'border-[#1a5c1a]/20 bg-black/20 hover:border-green-800'
-                    }`}
-                  >
-                    <div className="flex items-center gap-1.5">
-                      <span className={`w-1.5 h-1.5 rounded-full ${durationMode === 'SCENARIO' ? 'bg-[#00ff44] animate-ping' : 'bg-green-900'}`} />
-                      <span>SCENARIO OBJECTIVE</span>
-                    </div>
-                    <span className="text-[7px] text-gray-500">MISSION END</span>
-                  </div>
-                  
-                  <div
-                    onClick={() => { audio.sfxKeyClick(); setDurationMode('TIMED'); }}
-                    className={`flex items-center justify-between p-1.5 rounded cursor-pointer border transition-all ${
-                      durationMode === 'TIMED' ? 'border-[#00ff44] bg-[#071708] text-white' : 'border-[#1a5c1a]/20 bg-black/20 hover:border-green-800'
-                    }`}
-                  >
-                    <div className="flex items-center gap-1.5">
-                      <span className={`w-1.5 h-1.5 rounded-full ${durationMode === 'TIMED' ? 'bg-[#00ff44] animate-ping' : 'bg-green-900'}`} />
-                      <span>TIMED SIMULATION</span>
-                    </div>
-                    {durationMode === 'TIMED' ? (
-                      <input
-                        type="number"
-                        value={timedTicks}
-                        onClick={(e) => e.stopPropagation()}
-                        onChange={(e) => setTimedTicks(Math.max(5, parseInt(e.target.value) || 100))}
-                        className="w-12 bg-black border border-green-500 font-bold text-[#00ff44] text-[8.5px] text-center rounded outline-none py-px"
-                      />
-                    ) : (
-                      <span className="text-[7px] text-gray-500">100 TICKS</span>
-                    )}
-                  </div>
-
-                  <div
-                    onClick={() => { audio.sfxKeyClick(); setDurationMode('ENDLESS'); }}
-                    className={`flex items-center justify-between p-1.5 rounded cursor-pointer border transition-all ${
-                      durationMode === 'ENDLESS' ? 'border-[#00ff44] bg-[#071708] text-white' : 'border-[#1a5c1a]/20 bg-black/20 hover:border-green-800'
-                    }`}
-                  >
-                    <div className="flex items-center gap-1.5">
-                      <span className={`w-1.5 h-1.5 rounded-full ${durationMode === 'ENDLESS' ? 'bg-[#00ff44] animate-ping' : 'bg-green-900'}`} />
-                      <span>ENDLESS EXECUTION</span>
-                    </div>
-                    <span className="text-[7px] text-gray-500">NO LIMIT</span>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2 mt-1 pt-1.5 border-t border-[#1a5c1a]/10">
-                  <div className="space-y-1">
-                    <label className="text-[8px] text-gray-400 uppercase block font-bold">FRQ SCALE:</label>
-                    <div className="grid grid-cols-3 gap-1">
-                      {(['DAY', 'WEEK', 'MONTH'] as const).map(scale => (
-                        <button
-                          key={scale}
-                          onClick={() => { audio.sfxKeyClick(); setTickScale(scale); }}
-                          className={`text-[8px] font-bold py-1 border rounded cursor-pointer transition-all ${
-                            tickScale === scale 
-                              ? 'border-[#00ff44] bg-[#071708] text-[#00ff44] font-extrabold' 
-                              : 'border-[#1a5c1a]/20 bg-black/30 text-gray-500 hover:text-white'
-                          }`}
-                        >
-                          {scale.substring(0, 1)}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
+                <div className="grid grid-cols-1 gap-2 mt-1">
                   <div className="space-y-1">
                     <label className="text-[8px] text-gray-400 uppercase block font-bold">DOCKET START:</label>
                     <input

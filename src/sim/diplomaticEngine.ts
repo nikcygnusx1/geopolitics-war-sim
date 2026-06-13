@@ -1,4 +1,5 @@
 import { WorldState } from '../types';
+import { dampenOpinionDelta } from '../utils/pacing';
 
 export function processRelations(draft: WorldState) {
   const countryIds = Object.keys(draft.countries);
@@ -20,7 +21,8 @@ export function processRelations(draft: WorldState) {
 
       // 2. Active war penalty
       if (a.atWarWith.includes(bId)) {
-        currentOpinion = Math.max(-100, currentOpinion - 3.5);
+        const drop = dampenOpinionDelta(-3.5, draft.pacingPreset);
+        currentOpinion = Math.max(-100, currentOpinion + drop);
       }
 
       // 3. Shared alliance bonus
@@ -38,7 +40,8 @@ export function processRelations(draft: WorldState) {
 
       // 5. HAARP targeting penalty
       if (b.haarpActive && b.haarpTargetCountryId === aId) {
-        currentOpinion = Math.max(-100, currentOpinion - 10.0);
+        const drop = dampenOpinionDelta(-10.0, draft.pacingPreset);
+        currentOpinion = Math.max(-100, currentOpinion + drop);
         a.political.popularUnrest = Math.min(100, a.political.popularUnrest + 2);
       }
 

@@ -408,4 +408,26 @@ export interface WorldState {
   nuclearExchangeOccurred: boolean;
   globalEventLog: { tick: number; text: string; severity: 'INFO' | 'WARNING' | 'CRITICAL' | 'SYSTEM' }[];
   currentTick: number;
+  lastWarDeclarationTick?: number;
+  pacingPreset?: PacingPreset;
 }
+
+export type TickDuration = "day" | "week" | "month";
+export type MaxTicks = number | "endless";
+
+export interface PacingPreset {
+  tickDuration: TickDuration;
+  maxTicks: MaxTicks;
+  warDeclarationCooldown: number;
+  escalationDamper: number;
+  earlyGameProtection: number;
+}
+
+export type DurationMode = "scenario" | "timed" | "endless";
+
+export interface DurationConfig {
+  mode: DurationMode;
+  tickDuration: TickDuration;
+  tickBudget?: number;
+}
+

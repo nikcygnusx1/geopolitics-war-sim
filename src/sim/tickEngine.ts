@@ -1,5 +1,6 @@
 import { useWorldStore } from '../store/worldStore';
 import { usePlayerStore } from '../store/playerStore';
+import { useClockStore } from '../store/clockStore';
 import { pollScenarioStatus } from './scenarioEngine';
 import { processFactions } from './factionEngine';
 import { processFiscal } from './fiscalEngine';
@@ -10,6 +11,13 @@ import { processSentiment } from './propagandaEngine';
 import { processAllAI } from './aiDecisionEngine';
 import { processComplexPhase2Geopolitics } from './geopoliticalEngine';
 import { CovertOp, WorldState } from '../types';
+import { dampenOpinionDelta } from '../utils/pacing';
+
+export const TICK_INTERVALS: Record<"day" | "week" | "month", number> = {
+  day: 2000,
+  week: 3500,
+  month: 6000
+};
 
 let tickIntervalId: any = null;
 
@@ -22,14 +30,19 @@ export function restartTickTimer() {
   const speed = usePlayerStore.getState().tickSpeed;
   if (speed === 'PAUSED') return;
 
-  let delay = 2000;
-  if (speed === 'FAST') delay = 800;
-  if (speed === 'ULTRA') delay = 300;
+  const rawDuration = useClockStore.getState().tickDuration ?? "WEEK";
+  const tickDuration = rawDuration.toLowerCase() as "day" | "week" | "month";
+  const interval = TICK_INTERVALS[tickDuration] ?? 2000;
+
+  let delay = interval;
+  if (speed === 'FAST') delay = Math.round(interval / 2.5);
+  if (speed === 'ULTRA') delay = Math.round(interval / 5.5);
 
   tickIntervalId = setInterval(() => {
     executeSimulationStep();
   }, delay);
 }
+
 
 export function stopTickTimer() {
   if (tickIntervalId) {
@@ -155,7 +168,8 @@ function advanceCovertIntelligenceOps(draft: WorldState, playerCountryId: string
 
             const target = draft.countries[op.targetCountryId];
             if (target) {
-              target.opinions[id] = Math.max(-100, (target.opinions[id] ?? 0) - 40);
+              const drop = dampenOpinionDelta(-40, draft.pacingPreset);
+              target.opinions[id] = Math.max(-100, (target.opinions[id] ?? 0) + drop);
               target.lastEventLog.unshift(`Counter-Espionage: Exposed and captured clandestine assets linked to ${id}!`);
             }
 

@@ -2,15 +2,34 @@ import { WorldState, PlayerState, ScenarioId } from '../types';
 import { SCENARIOS } from '../data/scenarios';
 import { usePlayerStore } from '../store/playerStore';
 import { useWorldStore } from '../store/worldStore';
+import { useClockStore } from '../store/clockStore';
 
 export function pollScenarioStatus(world: WorldState, player: PlayerState) {
+  const durationMode = useClockStore.getState().durationMode;
+  if (durationMode === 'ENDLESS') return;
+
   const scId = player.activeScenario;
   const config = SCENARIOS[scId];
   if (!config || player.gameOver || player.victoryAchieved) return;
 
-  const currentScenarioTick = world.currentTick - player.scenarioStartTick;
+  if (durationMode === 'TIMED') {
+    const budget = useClockStore.getState().timedDurationTicks ?? 100;
+    if (world.currentTick < budget) {
+      return; // Do not check win/loss until budget is hit
+    }
+    // At budget, evaluate outcome
+    const won = config.winCondition(world, player);
+    if (won) {
+      usePlayerStore.getState().setVictory(config.winMessage);
+      useWorldStore.getState().addGlobalEvent(`TIMED OUTCOME: SUCCESS - ${config.winMessage}`, 'SYSTEM');
+    } else {
+      usePlayerStore.getState().setGameOver("TIMED RESOLUTION COMPLETE: Target objectives were not met within the tick budget.");
+      useWorldStore.getState().addGlobalEvent(`TIMED OUTCOME: FAIL - Objectives not completed.`, 'CRITICAL');
+    }
+    return;
+  }
 
-  // Let's copy state elements for polling
+  // Classic SCENARIO mode
   const won = config.winCondition(world, player);
   const lost = config.lossCondition(world, player);
 
@@ -36,13 +55,16 @@ export function initScenario(scenarioId: ScenarioId, countryId: string) {
     draft.currentTick = 0;
     
     const config = SCENARIOS[scenarioId];
-    if (config && config.initialMutations) {
-      config.initialMutations(draft, countryId);
+    if (config) {
+      draft.pacingPreset = config.pacingPreset;
+      if (config.initialMutations) {
+        config.initialMutations(draft, countryId);
+      }
     }
 
     draft.globalEventLog.unshift({
       tick: 0,
-      text: `Sovereign Directive Activated: [${config.name}]. Sovereign state: ${countryId}. Clear theater parameters immediately.`,
+      text: `Sovereign Directive Activated: [${config?.name}]. Sovereign state: ${countryId}. Clear theater parameters immediately.`,
       severity: 'SYSTEM',
     });
   });
@@ -50,3 +72,4 @@ export function initScenario(scenarioId: ScenarioId, countryId: string) {
   // 4. Final sync of player state cash B
   usePlayerStore.getState().syncCashFromCountry();
 }
+

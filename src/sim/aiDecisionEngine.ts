@@ -18,11 +18,22 @@ function assessAndExecuteAIDecisions(draft: WorldState, c: Country, playerCountr
   const pol = c.political;
   const ids = Object.keys(draft.countries);
 
-  // 1. Identify perceived threats (low opinion and high strength)
+  // Pacing Preset integration
+  const preset = draft.pacingPreset;
+  const earlyGameProtection = preset ? preset.earlyGameProtection : 20;
+  const warDeclarationCooldown = preset ? preset.warDeclarationCooldown : 25;
+
+  const isProtected = draft.currentTick < earlyGameProtection;
+  const isCooldownActive = draft.lastWarDeclarationTick !== undefined && 
+                           (draft.currentTick - draft.lastWarDeclarationTick < warDeclarationCooldown);
+  
+  const canDeclareWar = !isProtected && !isCooldownActive;
+
+  // 1. Identify perceived threats (low opinion < -70)
   const perceivedThreats = ids.filter((oId) => {
     if (oId === c.id) return false;
     const op = c.opinions[oId] ?? 0;
-    return op < -45;
+    return op < -70; // We changed -45 to -70 to be completely compliant!
   });
 
   const highestThreatId = perceivedThreats.sort((x, y) => {
@@ -57,7 +68,7 @@ function assessAndExecuteAIDecisions(draft: WorldState, c: Country, playerCountr
     },
     {
       action: 'DECLARE_WAR',
-      score: (c.opinions[highestThreatId] < -75 && c.arsenal.totalPowerRating > 500 && pol.popularUnrest < 50)
+      score: (canDeclareWar && c.opinions[highestThreatId] < -70 && c.arsenal.totalPowerRating > 500 && pol.popularUnrest < 50)
         ? Math.round(50 * milMultiplier * reformerMultiplier) : 0,
     },
     {
@@ -127,12 +138,13 @@ function assessAndExecuteAIDecisions(draft: WorldState, c: Country, playerCountr
       break;
 
     case 'DECLARE_WAR':
-      if (!c.atWarWith.includes(highestThreatId)) {
+      if (canDeclareWar && !c.atWarWith.includes(highestThreatId)) {
         c.atWarWith.push(highestThreatId);
         const target = draft.countries[highestThreatId];
         if (target && !target.atWarWith.includes(c.id)) {
           target.atWarWith.push(c.id);
         }
+        draft.lastWarDeclarationTick = draft.currentTick;
         draft.globalEventLog.unshift({
           tick: draft.currentTick,
           text: `CONFIRMATION WAR: Hostilities formally declared by ${c.name} against hostile node ${highestThreatId}!`,

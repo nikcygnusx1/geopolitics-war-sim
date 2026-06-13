@@ -1,4 +1,4 @@
-import { ScenarioId, WorldState, PlayerState, ThreatLevel } from '../types';
+import { ScenarioId, WorldState, PlayerState, ThreatLevel, PacingPreset } from '../types';
 
 export interface Scenario {
   id: ScenarioId;
@@ -14,7 +14,64 @@ export interface Scenario {
   winMessage: string;
   lossMessage: string;
   initialMutations: (world: WorldState, playerCountryId: string) => void;
+  pacingPreset: PacingPreset;
 }
+
+export const SANDBOX_PACING: PacingPreset = {
+  tickDuration: "week",
+  maxTicks: "endless",
+  warDeclarationCooldown: 30,
+  escalationDamper: 0.2,
+  earlyGameProtection: 50
+};
+
+export const KASHMIR_FLASHPOINT_PACING: PacingPreset = {
+  tickDuration: "day",
+  maxTicks: 800,
+  warDeclarationCooldown: 20,
+  escalationDamper: 0.3,
+  earlyGameProtection: 20
+};
+
+export const TECH_WAR_PACING: PacingPreset = {
+  tickDuration: "week",
+  maxTicks: 1200,
+  warDeclarationCooldown: 40,
+  escalationDamper: 0.15,
+  earlyGameProtection: 60
+};
+
+export const GLOBAL_HEGEMONY_PACING: PacingPreset = {
+  tickDuration: "month",
+  maxTicks: "endless",
+  warDeclarationCooldown: 45,
+  escalationDamper: 0.12,
+  earlyGameProtection: 100
+};
+
+export const RESOURCE_SHOCK_PACING: PacingPreset = {
+  tickDuration: "week",
+  maxTicks: 900,
+  warDeclarationCooldown: 35,
+  escalationDamper: 0.18,
+  earlyGameProtection: 40
+};
+
+export const NUCLEAR_BRINK_PACING: PacingPreset = {
+  tickDuration: "day",
+  maxTicks: 700,
+  warDeclarationCooldown: 25,
+  escalationDamper: 0.25,
+  earlyGameProtection: 25
+};
+
+export const ARCTIC_CLAIM_PACING: PacingPreset = {
+  tickDuration: "week",
+  maxTicks: 750,
+  warDeclarationCooldown: 28,
+  escalationDamper: 0.22,
+  earlyGameProtection: 30
+};
 
 export const SCENARIOS: Record<ScenarioId, Scenario> = {
   MENA_SPARK: {
@@ -28,6 +85,7 @@ export const SCENARIOS: Record<ScenarioId, Scenario> = {
     lossDescription: 'Any nuclear missiles launched globally OR 60 ticks expire under conflict.',
     winMessage: 'Ceasefire negotiated and validated by the Security Council. MENA de-escalated. Sovereign stability restored.',
     lossMessage: 'Nuclear exchange detected. Multiple high-yield impacts over capital zones. Catastrophic sovereign fallout.',
+    pacingPreset: NUCLEAR_BRINK_PACING,
     winCondition: (world) => {
       const il = world.countries['IL'];
       const ir = world.countries['IR'];
@@ -79,6 +137,7 @@ export const SCENARIOS: Record<ScenarioId, Scenario> = {
     lossDescription: 'Any ballistic missiles launched by IN or PK, OR 45 ticks expire.',
     winMessage: 'Bilateral LOC demilitarization completed. UN peacekeepers deployed. Threat returned to nominal.',
     lossMessage: 'Failure. LOC boundary breached. High-alt nuclear launch arcs confirmed. Intercept operations compromised.',
+    pacingPreset: KASHMIR_FLASHPOINT_PACING,
     winCondition: (world) => {
       const ind = world.countries['IN'];
       const pak = world.countries['PK'];
@@ -126,6 +185,7 @@ export const SCENARIOS: Record<ScenarioId, Scenario> = {
     lossDescription: 'Oil spot price breaches $250 per barrel OR 30 ticks expire.',
     winMessage: 'Hormuz maritime routes declared clear. Brent crude index restored to nominal. Trade flowing.',
     lossMessage: 'Oil hyper-crisis triggered. Inflation rate spikes 15% worldwide causing widespread sovereign debt failures.',
+    pacingPreset: RESOURCE_SHOCK_PACING,
     winCondition: (world) => {
       const ir = world.countries['IR'];
       const oil = world.commodityMarkets.find(m => m.type === 'OIL');
@@ -171,6 +231,7 @@ export const SCENARIOS: Record<ScenarioId, Scenario> = {
     lossDescription: 'Any Eurozone anchor experiences debt stress > 97% OR 50 ticks pass.',
     winMessage: 'Eurobond bailouts secured. Central bank rates stabilized. Financial contagion halted.',
     lossMessage: 'Sovereign default cascades. Public infrastructure shuttered, widespread civil breakdown.',
+    pacingPreset: GLOBAL_HEGEMONY_PACING,
     winCondition: (world) => {
       return ['DE', 'FR', 'GB'].every(id => {
         const c = world.countries[id];
@@ -209,6 +270,7 @@ export const SCENARIOS: Record<ScenarioId, Scenario> = {
     lossDescription: 'All player offensive cyber assets are compromised/destroyed OR CN GDP surpasses US GDP by 20%.',
     winMessage: 'Quantum cryptography grid successfully deployed. Silicon market embargo siphoned off.',
     lossMessage: 'Offensive digital network compromised. Silicon wafer tech dominance ceded to CN.',
+    pacingPreset: TECH_WAR_PACING,
     winCondition: (world, player) => {
       const pc = world.countries[player.countryId];
       const cn = world.countries['CN'];
@@ -260,6 +322,7 @@ export const SCENARIOS: Record<ScenarioId, Scenario> = {
     lossDescription: 'Direct shooting war (atWarWith) breaks out between US and RU or CN OR 70 ticks pass.',
     winMessage: 'Trade alignment successfully brokered. Polar mineral sector security validated by Arctic Council.',
     lossMessage: 'Direct military escalation. Severe sovereign conflict breaks out across Arctic pipelines.',
+    pacingPreset: ARCTIC_CLAIM_PACING,
     winCondition: (world, player) => {
       const pc = world.countries[player.countryId];
       if (!pc) return false;
