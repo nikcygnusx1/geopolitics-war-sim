@@ -3,6 +3,7 @@ import { useWorldStore } from '../../store/worldStore';
 import { usePlayerStore } from '../../store/playerStore';
 import { useCinematicQueue } from './useCinematicQueue';
 import { Country, BallisticStrike } from '../../types';
+import { audio } from '../../utils/audio';
 
 export default function CinematicsSyncController() {
   const enqueueCinematic = useCinematicQueue((s) => s.enqueueCinematic);
@@ -48,6 +49,7 @@ export default function CinematicsSyncController() {
                 sourceCountry: srcC ? { id: cId, name: srcC.name, flagEmoji: srcC.flagEmoji } : undefined,
                 targetCountry: tgtC ? { id: enemyId, name: tgtC.name, flagEmoji: tgtC.flagEmoji } : undefined,
               });
+              audio.sfxWarKlaxon();
             }
           }
         });
@@ -62,6 +64,7 @@ export default function CinematicsSyncController() {
                 sourceCountry: srcC ? { id: cId, name: srcC.name, flagEmoji: srcC.flagEmoji } : undefined,
                 targetCountry: tgtC ? { id: enemyId, name: tgtC.name, flagEmoji: tgtC.flagEmoji } : undefined,
               });
+              audio.sfxPeaceResolution();
             }
           }
         });
@@ -82,6 +85,7 @@ export default function CinematicsSyncController() {
             leaderName: nextLeader,
             oldLeaderName: prevLeader,
           });
+          audio.sfxCoupStaticBurst();
         }
       });
 

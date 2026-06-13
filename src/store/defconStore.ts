@@ -99,14 +99,8 @@ export const useDefconStore = create<{ currentDefconLevel: DefconLevel } & Defco
       set({ currentDefconLevel: level });
       applyDefconPalette(level);
       
-      // Fire SFX
-      if (level < current) {
-        if (level === 1) {
-          audio.sfxKlaxon();
-        } else {
-          audio.sfxKlaxon();
-        }
-      }
+      // Fire synthesized harmony chord signature on DEFCON level transition
+      audio.playDefconTransition(level);
       audio.updateAmbientScore(level);
     }
   },
@@ -114,6 +108,8 @@ export const useDefconStore = create<{ currentDefconLevel: DefconLevel } & Defco
   resetDefcon: () => {
     set({ currentDefconLevel: 5 });
     applyDefconPalette(5);
+    audio.playDefconTransition(5);
+    audio.updateAmbientScore(5);
   },
 }));
 
