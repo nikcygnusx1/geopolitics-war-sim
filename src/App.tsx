@@ -28,10 +28,10 @@ import AnalysisInspector from './components/panels/AnalysisInspector';
 import { useLinkedAnalysisStore } from './store/linkedAnalysisStore';
 
 // Telemetry & feeds
-import ThermalRecon from './components/telemetry/ThermalRecon';
-import DroneFeed from './components/telemetry/DroneFeed';
-import CyberFeed from './components/telemetry/CyberFeed';
-import HaarpRadar from './components/telemetry/HaarpRadar';
+import ThermalRecon, { SatelliteWorkstation } from './components/telemetry/ThermalRecon';
+import DroneFeed, { DroneWorkstation } from './components/telemetry/DroneFeed';
+import CyberFeed, { CyberWorkstation } from './components/telemetry/CyberFeed';
+import HaarpRadar, { HaarpWorkstation } from './components/telemetry/HaarpRadar';
 import TerminalShell from './components/shared/TerminalShell';
 import AlertBanner from './components/shared/AlertBanner';
 import DataTicker from './components/shared/DataTicker';
@@ -62,6 +62,9 @@ import { useUIStore } from './store/uiStore';
 export default function App() {
   const currentTick = useWorldStore((s) => s.currentTick);
   const countries = useWorldStore((s) => s.countries);
+
+  const expandedWorkstation = useUIStore((s) => s.expandedWorkstation);
+  const setExpandedWorkstation = useUIStore((s) => s.setExpandedWorkstation);
 
   const analysisMode = useLinkedAnalysisStore((s) => s.analysisMode);
   const isMaximized = useLinkedAnalysisStore((s) => s.isMaximized);
@@ -816,6 +819,20 @@ export default function App() {
 
       {/* Bottom telemetry text logs shell console */}
       <TerminalShell />
+
+      {/* Expanded Subsystem Workstations */}
+      {expandedWorkstation === 'SATELLITE' && (
+        <SatelliteWorkstation onClose={() => setExpandedWorkstation(null)} />
+      )}
+      {expandedWorkstation === 'DRONE' && (
+        <DroneWorkstation onClose={() => setExpandedWorkstation(null)} />
+      )}
+      {expandedWorkstation === 'CYBER' && (
+        <CyberWorkstation onClose={() => setExpandedWorkstation(null)} />
+      )}
+      {expandedWorkstation === 'HAARP' && (
+        <HaarpWorkstation onClose={() => setExpandedWorkstation(null)} />
+      )}
 
       {/* Game loss or win overlay modals */}
       {resolution !== 'ONGOING' && (

@@ -19,6 +19,7 @@ interface UIState {
   strikeConfirmModalOpen: boolean;
   terminalLines: TerminalLine[];
   alerts: UIAlert[];
+  expandedWorkstation: 'SATELLITE' | 'DRONE' | 'CYBER' | 'HAARP' | null;
 }
 
 interface UIStoreActions {
@@ -29,11 +30,13 @@ interface UIStoreActions {
   pushAlert: (alert: Omit<UIAlert, 'id'>) => void;
   dismissAlert: (id: string) => void;
   resetUI: () => void;
+  setExpandedWorkstation: (workstation: 'SATELLITE' | 'DRONE' | 'CYBER' | 'HAARP' | null) => void;
 }
 
 export const useUIStore = create<UIState & UIStoreActions>((set) => ({
   countryInspectorId: null,
   strikeConfirmModalOpen: false,
+  expandedWorkstation: null,
   terminalLines: [
     { id: 'start_1', type: 'SYSTEM', text: 'Sovereign Command Simulator CLI v2.0-Alpha loaded.' },
     { id: 'start_2', type: 'INFO', text: 'Enter "/help" to list all available system operations.' }
@@ -42,6 +45,7 @@ export const useUIStore = create<UIState & UIStoreActions>((set) => ({
 
   setCountryInspector: (id) => set({ countryInspectorId: id }),
   setStrikeConfirmModalOpen: (open) => set({ strikeConfirmModalOpen: open }),
+  setExpandedWorkstation: (workstation) => set({ expandedWorkstation: workstation }),
 
   pushTerminalLine: (text, type = 'INFO') => set(produce((draft) => {
     draft.terminalLines.push({
@@ -70,6 +74,7 @@ export const useUIStore = create<UIState & UIStoreActions>((set) => ({
   resetUI: () => set({
     countryInspectorId: null,
     strikeConfirmModalOpen: false,
+    expandedWorkstation: null,
     terminalLines: [
       { id: 'start_reset', type: 'SYSTEM', text: 'Command interface recalibrated and cleared.' }
     ],
