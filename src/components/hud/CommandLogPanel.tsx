@@ -94,6 +94,60 @@ export default function CommandLogPanel() {
     }
   };
 
+  const handleTriggerCinematicEvent = (type: 'WAR' | 'NUKE' | 'COUP' | 'CRASH' | 'PEACE') => {
+    audio.sfxKeyClick();
+    if (!playerCountryId) return;
+
+    if (type === 'WAR') {
+      useWorldStore.getState().applyTickDelta((draft) => {
+        const c = draft.countries[playerCountryId];
+        const enemy = draft.countries['RU'];
+        if (c && enemy) {
+          if (!c.atWarWith.includes('RU')) c.atWarWith.push('RU');
+          if (!enemy.atWarWith.includes(playerCountryId)) enemy.atWarWith.push(playerCountryId);
+        }
+      });
+    } else if (type === 'NUKE') {
+      const tick = useWorldStore.getState().currentTick;
+      useWorldStore.getState().addStrike({
+        id: `drill-strike-${Date.now()}`,
+        sourceCountryId: playerCountryId,
+        targetCountryId: 'RU',
+        weaponType: 'ICBM',
+        warheadYieldMT: 4.5,
+        progressPct: 0,
+        status: 'IN_FLIGHT',
+        bezier: {
+          startX: 500,
+          startY: 250,
+          controlX: 450,
+          controlY: 100,
+          endX: 400,
+          endY: 200,
+        },
+        launchTick: tick,
+        impactTick: tick + 5,
+        isRetaliatory: false,
+        interceptAttempted: false,
+      });
+    } else if (type === 'COUP') {
+      useWorldStore.getState().updateCountry(playerCountryId, (draft) => {
+        draft.political.leaderName = `General Junta Chief V${Math.floor(Math.random() * 9 + 1)}`;
+      });
+    } else if (type === 'CRASH') {
+      useWorldStore.getState().updateCountry(playerCountryId, (draft) => {
+        draft.economic.treasuryCashB = 0.35;
+      });
+    } else if (type === 'PEACE') {
+      useWorldStore.getState().applyTickDelta((draft) => {
+        const c = draft.countries[playerCountryId];
+        const enemy = draft.countries['RU'];
+        if (c) c.atWarWith = c.atWarWith.filter((x) => x !== 'RU');
+        if (enemy) enemy.atWarWith = enemy.atWarWith.filter((x) => x !== playerCountryId);
+      });
+    }
+  };
+
   // Categorize log entries on the fly safely using our exact semantic matcher
   const categorizedEvents = useMemo(() => {
     return globalEventLog.map((evt) => {
@@ -212,7 +266,7 @@ export default function CommandLogPanel() {
       </div>
 
       {/* Sovereign Command simulated crisis diagnostic injector */}
-      <div className="border-t border-[#1a5c1a]/40 mt-2 pt-2 flex flex-col gap-1.5 select-none shrink-0">
+      <div className="border-t border-[#1a5c1a]/40 mt-2 pt-2 flex flex-col gap-1.5 select-none shrink-0 border-b pb-1">
         <div className="text-[7.5px] text-gray-500 font-bold uppercase tracking-widest flex justify-between items-center">
           <span>⚠️ EMERGENCY DRILL SIMULATOR</span>
           <span className="text-[#00ff44] animate-pulse">● ONLINE</span>
@@ -245,6 +299,51 @@ export default function CommandLogPanel() {
             title="Cease crisis drill: Restore starting Sovereign parameters"
           >
             Stand Down
+          </button>
+        </div>
+      </div>
+
+      {/* Cinematic Overlays Injector Core */}
+      <div className="mt-1 pt-1 flex flex-col gap-1 select-none shrink-0">
+        <div className="text-[7.5px] text-gray-500 font-bold uppercase tracking-widest flex justify-between items-center">
+          <span>🎞️ T2.3 CINEMATIC CONTROLLER</span>
+          <span className="text-[#00ffcc]">READY</span>
+        </div>
+        <div className="grid grid-cols-5 gap-1">
+          <button
+            onClick={() => handleTriggerCinematicEvent('WAR')}
+            className="px-1 py-1 bg-[#240c0c] border border-red-750 text-red-400 hover:bg-red-900/60 rounded transition-all text-[6.5px] font-black uppercase cursor-pointer"
+            title="Fires a WAR_DECLARATION cinematic state transition between player and RU"
+          >
+            WAR
+          </button>
+          <button
+            onClick={() => handleTriggerCinematicEvent('NUKE')}
+            className="px-1 py-1 bg-[#2b1c05] border border-[#f5a623]/40 text-[#f5a623] hover:bg-[#3d2706] rounded transition-all text-[6.5px] font-black uppercase cursor-pointer"
+            title="Launches a simulated Thermonuclear ICBM to trigger client overlay cinematic"
+          >
+            NUKE
+          </button>
+          <button
+            onClick={() => handleTriggerCinematicEvent('COUP')}
+            className="px-1 py-1 bg-[#061c06] border border-green-900 text-green-400 hover:bg-[#0c310c] rounded transition-all text-[6.5px] font-black uppercase cursor-pointer"
+            title="Forces a country coup d'état leadership rollover event"
+          >
+            COUP
+          </button>
+          <button
+            onClick={() => handleTriggerCinematicEvent('CRASH')}
+            className="px-1 py-1 bg-[#1e071e] border border-fuchsia-950 text-fuchsia-400 hover:bg-[#340b34] rounded transition-all text-[6.5px] font-black uppercase cursor-pointer"
+            title="Depletes the national reserves below $1B to force an insolvency DEFAULT stamp"
+          >
+            CRASH
+          </button>
+          <button
+            onClick={() => handleTriggerCinematicEvent('PEACE')}
+            className="px-1 py-1 bg-[#041a1a] border border-teal-900 text-teal-400 hover:bg-[#083535] rounded transition-all text-[6.5px] font-black uppercase cursor-pointer"
+            title="Mediates a Ceasefire and terminates the ongoing WAR with RU"
+          >
+            PEACE
           </button>
         </div>
       </div>

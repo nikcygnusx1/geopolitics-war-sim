@@ -42,6 +42,9 @@ import CommsPanel from './components/hud/CommsPanel';
 import CommsSyncController from './components/hud/CommsSyncController';
 import { useCommsStore } from './store/commsStore';
 
+import CinematicsSyncController from './components/cinematics/CinematicsSyncController';
+import CinematicsManager from './components/cinematics/CinematicsManager';
+
 import { useOnboardingStore } from './store/onboardingStore';
 import OnboardingHints from './components/hud/OnboardingHints';
 import AnimatedValue from './components/shared/AnimatedValue';
@@ -701,6 +704,8 @@ export default function App() {
       {showBazaar && <BlackMarketBazaar onClose={() => setShowBazaar(false)} />}
       <CommsSyncController />
       <CommsPanel isOpen={commsOpen} onClose={() => setCommsOpen(false)} />
+      <CinematicsSyncController />
+      <CinematicsManager />
 
       {/* Top command status HUD bar */}
       <DefconBar />
