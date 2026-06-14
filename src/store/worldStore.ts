@@ -49,6 +49,41 @@ export const useWorldStore = create<WorldState & WorldStoreActions>((set) => ({
   currentTick: 0,
   scheduledConsequences: [],
   recentResolvedConsequences: [],
+  aiOperationsLog: [
+    {
+      tick: -12,
+      countryId: 'RU',
+      countryName: 'Russia',
+      action: 'FSB Cyber Infiltration',
+      targetCountryId: 'US',
+      targetCountryName: 'United States',
+      description: 'Breached command communications targeting classified nuclear submarine coordinates in the North Sea.',
+      secrecyScore: 88,
+      impactScore: 65,
+    },
+    {
+      tick: -8,
+      countryId: 'CN',
+      countryName: 'China',
+      action: 'Industrial Espionage',
+      targetCountryId: 'US',
+      targetCountryName: 'United States',
+      description: 'Acquired advanced semiconductor fabrication blueprint schemas using front commercial logistics corporations.',
+      secrecyScore: 92,
+      impactScore: 78,
+    },
+    {
+      tick: -5,
+      countryId: 'IR',
+      countryName: 'Iran',
+      action: 'Proxy Centrifuges Funding',
+      targetCountryId: 'KP',
+      targetCountryName: 'North Korea',
+      description: 'Financed raw military centrifuge parts shipment undetected via custom registered maritime container vessels.',
+      secrecyScore: 85,
+      impactScore: 70,
+    }
+  ],
 
   applyTickDelta: (updater) => set(produce((draft: WorldState & WorldStoreActions) => {
     updater(draft);
@@ -131,6 +166,41 @@ export const useWorldStore = create<WorldState & WorldStoreActions>((set) => ({
       currentTick: 0,
       scheduledConsequences: [],
       recentResolvedConsequences: [],
+      aiOperationsLog: [
+        {
+          tick: -12,
+          countryId: 'RU',
+          countryName: 'Russia',
+          action: 'FSB Cyber Infiltration',
+          targetCountryId: 'US',
+          targetCountryName: 'United States',
+          description: 'Breached command communications targeting classified nuclear submarine coordinates in the North Sea.',
+          secrecyScore: 88,
+          impactScore: 65,
+        },
+        {
+          tick: -8,
+          countryId: 'CN',
+          countryName: 'China',
+          action: 'Industrial Espionage',
+          targetCountryId: 'US',
+          targetCountryName: 'United States',
+          description: 'Acquired advanced semiconductor fabrication blueprint schemas using front commercial logistics corporations.',
+          secrecyScore: 92,
+          impactScore: 78,
+        },
+        {
+          tick: -5,
+          countryId: 'IR',
+          countryName: 'Iran',
+          action: 'Proxy Centrifuges Funding',
+          targetCountryId: 'KP',
+          targetCountryName: 'North Korea',
+          description: 'Financed raw military centrifuge parts shipment undetected via custom registered maritime container vessels.',
+          secrecyScore: 85,
+          impactScore: 70,
+        }
+      ],
     });
   },
 

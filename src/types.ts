@@ -410,6 +410,18 @@ export interface PlayerState {
   checkpointState?: any;
 }
 
+export interface AIOperationLogEntry {
+  tick: number;
+  countryId: string;
+  countryName: string;
+  action: string;
+  targetCountryId?: string;
+  targetCountryName?: string;
+  description: string;
+  secrecyScore: number;
+  impactScore: number;
+}
+
 export interface WorldState {
   countries: { [id: string]: Country };
   activeStrikes: BallisticStrike[];
@@ -423,6 +435,7 @@ export interface WorldState {
   pacingPreset?: PacingPreset;
   scheduledConsequences?: ScheduledConsequence[];
   recentResolvedConsequences?: ScheduledConsequence[];
+  aiOperationsLog?: AIOperationLogEntry[];
 }
 
 export type TickDuration = "day" | "week" | "month";

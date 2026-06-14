@@ -124,6 +124,22 @@ function assessAndExecuteAIDecisions(draft: WorldState, c: Country, playerCountr
         if (draft.countries[ally]) {
           draft.countries[ally].opinions[c.id] = Math.min(100, (draft.countries[ally].opinions[c.id] || 0) + 15);
         }
+        
+        const allyNation = draft.countries[ally];
+        if (allyNation) {
+          if (!draft.aiOperationsLog) draft.aiOperationsLog = [];
+          draft.aiOperationsLog.unshift({
+            tick: draft.currentTick,
+            countryId: c.id,
+            countryName: c.name,
+            action: 'Secret Coalition Treaty',
+            targetCountryId: ally,
+            targetCountryName: allyNation.name,
+            description: `Drafted mutual military defense support pacts and strategic tech cooperative protocols.`,
+            secrecyScore: 78,
+            impactScore: 50,
+          });
+        }
       }
       break;
 
@@ -149,6 +165,19 @@ function assessAndExecuteAIDecisions(draft: WorldState, c: Country, playerCountr
           targetNation.political.stabilityIndex = Math.max(0, targetNation.political.stabilityIndex - 5);
           targetNation.lastEventLog.unshift(`Covert signals breached! High popular unrest sparked by foreign influence.`);
           ConsequenceEngine.register('STAGE_COUP', { sourceCountryId: c.id, targetCountryId: highestThreatId }, draft);
+
+          if (!draft.aiOperationsLog) draft.aiOperationsLog = [];
+          draft.aiOperationsLog.unshift({
+            tick: draft.currentTick,
+            countryId: c.id,
+            countryName: c.name,
+            action: 'Subversive Signals Infiltration',
+            targetCountryId: highestThreatId,
+            targetCountryName: targetNation.name,
+            description: `Breached media and signal channels to fuel internal popular unrest and destabilize civilian leadership.`,
+            secrecyScore: 92,
+            impactScore: 65,
+          });
         }
       }
       break;
@@ -167,6 +196,21 @@ function assessAndExecuteAIDecisions(draft: WorldState, c: Country, playerCountr
           severity: 'CRITICAL',
         });
         ConsequenceEngine.register('DECLARE_WAR', { sourceCountryId: c.id, targetCountryId: highestThreatId }, draft);
+
+        if (target) {
+          if (!draft.aiOperationsLog) draft.aiOperationsLog = [];
+          draft.aiOperationsLog.unshift({
+            tick: draft.currentTick,
+            countryId: c.id,
+            countryName: c.name,
+            action: 'Full-Scale War Mobilization',
+            targetCountryId: highestThreatId,
+            targetCountryName: target.name,
+            description: `Terminated bilateral dialogue and declared active martial deployment on theater borders.`,
+            secrecyScore: 10,
+            impactScore: 90,
+          });
+        }
       }
       break;
 
@@ -216,6 +260,22 @@ function assessAndExecuteAIDecisions(draft: WorldState, c: Country, playerCountr
           text: `Tactical Warning: Radar confirmation of tactical ${activeType.type} active in airspace! Source: ${c.id} → Target: ${highestThreatId}. Target impacts projected.`,
           severity: 'CRITICAL',
         });
+
+        const targetNation = draft.countries[highestThreatId];
+        if (!draft.aiOperationsLog) draft.aiOperationsLog = [];
+        draft.aiOperationsLog.unshift({
+          tick: draft.currentTick,
+          countryId: c.id,
+          countryName: c.name,
+          action: isNuke ? 'Strategic Nuclear Launch' : 'Tactical Ballistic Strike',
+          targetCountryId: highestThreatId,
+          targetCountryName: targetNation?.name || highestThreatId,
+          description: isNuke 
+            ? `Transmitted code-level release keys for high-yield ballistic nuclear warheads.`
+            : `Deployed supersonic bombardment units against targeted capital defense installations.`,
+          secrecyScore: 12,
+          impactScore: 95,
+        });
       }
       break;
 
@@ -248,6 +308,19 @@ function assessAndExecuteAIDecisions(draft: WorldState, c: Country, playerCountr
           severity: 'WARNING',
         });
         c.lastEventLog.unshift(`Imposed dynamic bilateral sanctions on hostile target ${highestThreatId}.`);
+
+        if (!draft.aiOperationsLog) draft.aiOperationsLog = [];
+        draft.aiOperationsLog.unshift({
+          tick: draft.currentTick,
+          countryId: c.id,
+          countryName: c.name,
+          action: 'Bilateral Trade Sanctions',
+          targetCountryId: highestThreatId,
+          targetCountryName: targetCountry.name,
+          description: `Enacted asset locks and customs cargo search protocols to restrict industrial import capacity.`,
+          secrecyScore: 35,
+          impactScore: 55,
+        });
       }
       break;
 

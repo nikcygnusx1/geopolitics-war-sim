@@ -38,6 +38,7 @@ import TerminalShell from './components/shared/TerminalShell';
 import AlertBanner from './components/shared/AlertBanner';
 import DataTicker from './components/shared/DataTicker';
 import CountryInspector from './components/popups/CountryInspector';
+import { PostGameDebrief } from './components/debrief/PostGameDebrief';
 
 // Immersion upgrade: Comms
 import CommsPanel from './components/hud/CommsPanel';
@@ -171,6 +172,7 @@ export default function App() {
 
   const playerCountryId = usePlayerStore((s) => s.countryId);
   const playerState = usePlayerStore();
+  const worldState = useWorldStore();
   const setTickSpeed = usePlayerStore((s) => s.setTickSpeed);
   const suspicion = useBlackMarketStore((s) => s.internationalSuspicion);
 
@@ -1012,61 +1014,22 @@ export default function App() {
 
       {/* Unified Campaign Resolution Modals with Checkpoint Rollback */}
       {((resolution !== 'ONGOING') || (playerState.aftermathActive && showChoices && !spectatingAftermath)) && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/95 backdrop-blur-md">
-          <div className={`w-full max-w-lg border-2 p-6 rounded text-center font-mono ${
-            (resolution === 'VICTORY' || playerState.aftermathType === 'VICTORY') 
-              ? 'border-[#00ff44] text-[#00ff44] bg-[#021c02]' 
-              : 'border-[#ff2244] text-[#ff2244] bg-[#1a0004]'
-          }`}>
-            <h2 className="text-2xl font-bold tracking-widest text-shadow mb-3 uppercase">
-              {(resolution === 'VICTORY' || playerState.aftermathType === 'VICTORY') 
-                ? '🏆 CAMPAIGN ACCOMPLISHED' 
-                : '💀 SYSTEM DEFEATED'}
-            </h2>
-            <p className="text-xs mb-6 normal-case leading-relaxed">
-              {(resolution === 'VICTORY' || playerState.aftermathType === 'VICTORY')
-                ? `Your sovereign command decisions have achieved victory: ${playerState.victoryReason || playerState.aftermathReason}`
-                : `Sovereign command has collapsed: ${playerState.gameOverReason || playerState.aftermathReason}`}
-            </p>
-
-            <div className="flex flex-col gap-3 max-w-xs mx-auto">
-              {playerState.checkpointState && (
-                <button
-                  onClick={() => {
-                    setSpectatingAftermath(false);
-                    playerState.rollbackToCheckpoint();
-                  }}
-                  className={`px-4 py-2.5 border rounded font-bold uppercase tracking-wider text-xs cursor-pointer transition-all ${
-                    (resolution === 'VICTORY' || playerState.aftermathType === 'VICTORY')
-                      ? 'border-[#00ff44] text-[#00ff44] hover:bg-[#00ff44]/15 bg-[#00ff44]/5'
-                      : 'border-[#ff2244] text-[#ff2244] hover:bg-[#ff2244]/15 bg-[#ff2244]/5'
-                  }`}
-                >
-                  Roll Back to Last Checkpoint (Tick {playerState.checkpointState.world.currentTick})
-                </button>
-              )}
-
-              <button
-                onClick={() => {
-                  stopTickTimer();
-                  window.location.reload();
-                }}
-                className="px-4 py-2.5 bg-transparent border border-gray-600 hover:border-current text-gray-300 hover:text-white rounded font-bold uppercase tracking-wider text-xs cursor-pointer transition-all"
-              >
-                Restart Fresh Simulation
-              </button>
-
-              {playerState.aftermathActive && (
-                <button
-                  onClick={() => setSpectatingAftermath(true)}
-                  className="px-4 py-2 bg-transparent border border-dashed border-gray-700 hover:border-gray-500 text-gray-500 hover:text-gray-400 rounded font-semibold uppercase tracking-wider text-[10px] cursor-pointer transition-all"
-                >
-                  Spectate Ruined Aftermath
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
+        <PostGameDebrief
+          id="tactical-post-game-debrief-overlay"
+          worldState={worldState}
+          playerState={{
+            ...playerState,
+            rollbackToCheckpoint: () => {
+              setSpectatingAftermath(false);
+              playerState.rollbackToCheckpoint();
+            }
+          }}
+          onSpectate={() => setSpectatingAftermath(true)}
+          onRestart={() => {
+            stopTickTimer();
+            window.location.reload();
+          }}
+        />
       )}
     </div>
   );
