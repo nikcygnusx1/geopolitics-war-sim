@@ -1,6 +1,8 @@
 import { WorldState } from '../types';
 import { usePropagandaStore } from '../store/propagandaStore';
 import { usePlayerStore } from '../store/playerStore';
+import { useLeaderStore } from '../store/leaderStore';
+import { ConsequenceEngine } from './consequenceEngine';
 
 // SECTION 10: 10 Core Template Strings driven by active operation metadata
 function generateHeraldHeadline(
@@ -178,6 +180,47 @@ export function processSentiment(draft: WorldState) {
     });
 
     pol.leaderApprovalRating = Math.max(1, Math.min(100, Math.round(baseApproval)));
+
+    // Periodic Elections for Democracies
+    if (pol.ideology === 'DEMOCRACY') {
+      if (pol.electionDueTick === undefined || pol.electionDueTick === 0) {
+        pol.electionDueTick = currentTick + 30 + Math.floor(Math.random() * 20); // every 30-50 ticks
+      }
+
+      if (currentTick >= pol.electionDueTick) {
+        // Run Election!
+        const randVal = Math.random() * 100;
+        // Re-election chance base on leader approval rating
+        const reelectChance = pol.leaderApprovalRating;
+        
+        if (randVal < reelectChance) {
+          // Current leader is re-elected! Set next due
+          pol.electionDueTick = currentTick + 35 + Math.floor(Math.random() * 15);
+          draft.globalEventLog.unshift({
+            tick: currentTick,
+            text: `🗳️ DEMOCRATIC ELECTION: Voters in ${c.name} have re-elected President ${pol.leaderName} with an approval rating of ${pol.leaderApprovalRating}%. Continues current geopolitical posture.`,
+            severity: 'INFO',
+          });
+          c.lastEventLog.unshift(`President ${pol.leaderName} re-elected for a new term.`);
+        } else {
+          // Replaced by new leader
+          const oldLeaderName = pol.leaderName;
+          const newElected = useLeaderStore.getState().generateNewLeader(id, 'ELECTION', currentTick);
+          useLeaderStore.getState().setLeader(id, newElected);
+          pol.leaderName = newElected.name;
+          pol.electionDueTick = currentTick + 35 + Math.floor(Math.random() * 15);
+          
+          ConsequenceEngine.register('REGIME_CHANGE', { sourceCountryId: id }, draft);
+          
+          draft.globalEventLog.unshift({
+            tick: currentTick,
+            text: `🗳️ DEMOCRATIC ELECTION: ${c.name} has elected a new leader! President ${newElected.name} (TEMPERAMENT: ${newElected.type}) replaces ${oldLeaderName}.`,
+            severity: 'INFO',
+          });
+          c.lastEventLog.unshift(`President ${newElected.name} wins general election, taking command.`);
+        }
+      }
+    }
 
     // Dynamic unrest decay or increase based on economy, approval and target narrative collapse
     let unrestDelta = 0;

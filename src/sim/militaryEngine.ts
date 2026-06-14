@@ -1,6 +1,7 @@
 import { WorldState, BallisticStrike, StrikeDamage, WeaponType } from '../types';
 import { WEAPON_METADATA } from '../constants';
 import { useMilitaryStore } from '../store/militaryStore';
+import { ConsequenceEngine } from './consequenceEngine';
 
 export function getTickIncrement(type: WeaponType): number {
   switch (type) {
@@ -180,8 +181,13 @@ function applyStrikeDamage(draft: WorldState, strike: BallisticStrike) {
   target.economic.gdpB = Math.max(1.0, target.economic.gdpB - rawGdpLoss);
 
   // Set as atWarWith each other automatically
-  if (!source.atWarWith.includes(target.id)) source.atWarWith.push(target.id);
-  if (!target.atWarWith.includes(source.id)) target.atWarWith.push(source.id);
+  if (!source.atWarWith.includes(target.id)) {
+    source.atWarWith.push(target.id);
+    ConsequenceEngine.register('DECLARE_WAR', { sourceCountryId: source.id, targetCountryId: target.id }, draft);
+  }
+  if (!target.atWarWith.includes(source.id)) {
+    target.atWarWith.push(source.id);
+  }
 
   const damageReport: StrikeDamage = {
     stabilityLoss: Math.round(stabilityLoss * 10) / 10,

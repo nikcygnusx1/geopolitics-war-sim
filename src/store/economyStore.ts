@@ -98,6 +98,7 @@ export const useEconomyStore = create<EconomyState & EconomyStoreActions>((set, 
         c.economic.sanctionedBy.push(sourceId);
       }
     });
+    useWorldStore.getState().registerConsequenceChain('IMPOSE_SANCTIONS', { sourceCountryId: sourceId, targetCountryId: targetId });
     useWorldStore.getState().addGlobalEvent(`Sanctions: ${sourceId} imposes strict trade embargo on all imports/exports with ${targetId}.`, 'WARNING');
   },
 

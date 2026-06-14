@@ -4,9 +4,12 @@ import { usePlayerStore } from '../../store/playerStore';
 import { useFogOfWarStore } from '../../store/fogOfWarStore';
 import { useClockStore } from '../../store/clockStore';
 import { getLeaderProfile } from '../../data/leaders';
+import { useLeaderStore } from '../../store/leaderStore';
 import { LeaderPortrait } from './LeaderPortrait';
 import { fmtB, fmtDate, fmtPop } from '../../utils/format';
 import { audio } from '../../utils/audio';
+import { LeaderPersonality } from '../../types';
+import { generateLeaderPortrait } from '../../utils/portraitGenerator';
 
 interface DossierCardProps {
   countryId: string;
@@ -29,7 +32,8 @@ export const DossierCard: React.FC<DossierCardProps> = ({ countryId, onClose }) 
   if (!country) return null;
 
   const intelLevel = fogEntry ? fogEntry.intelLevel : 0;
-  const leader = getLeaderProfile(countryId);
+  const staticLeader = getLeaderProfile(countryId);
+  const activeLeader = useLeaderStore((state) => state.leadersByCountryId[countryId]);
 
   // Redacted helpers
   const isRedacted = (requiredLevel: number) => intelLevel < requiredLevel;
@@ -220,14 +224,78 @@ export const DossierCard: React.FC<DossierCardProps> = ({ countryId, onClose }) 
                   <LeaderPortrait countryId={countryId} />
                   <div className="text-center mt-2 w-full">
                     <span className="chrome-header text-white block truncate leading-tight">
-                      {renderValueOrRedacted(1, leader.name)}
+                      {renderValueOrRedacted(1, activeLeader?.name || staticLeader.name)}
                     </span>
                     <span className="chrome-subtle text-gray-400 block">
-                      {renderValueOrRedacted(1, `${leader.title} — AGE ${leader.age}`)}
+                      {renderValueOrRedacted(1, `${staticLeader.title} — AGE ${activeLeader ? (staticLeader.age - 5 + Math.floor(activeLeader.hawkDoveScore % 10)) : staticLeader.age}`)}
                     </span>
                     <span className="chrome text-[#ffb300] block mt-1">
-                      {renderValueOrRedacted(1, `POWER CHRONO: ${leader.yearsInPower} YRS`)}
+                      {renderValueOrRedacted(1, `POWER CHRONO: ${(activeLeader?.source === 'INITIAL' ? staticLeader.yearsInPower : 0) + Math.floor((currentTick - (activeLeader?.installedAtTick || 0)) / 10)} YRS`)}
                     </span>
+
+                    {/* Classified Temperament Details panel */}
+                    {!isRedacted(1) && activeLeader && (
+                      <div className="mt-3 p-1.5 bg-black/50 border border-[#1a5c1a]/40 rounded text-left text-[8px] font-mono leading-normal space-y-1">
+                        <div className="flex justify-between items-center border-b border-[#0d1f0d] pb-0.5">
+                          <span className="text-gray-500 uppercase">TEMPERAMENT:</span>
+                          <select
+                            value={activeLeader.type}
+                            onChange={(e) => {
+                              const newType = e.target.value as LeaderPersonality;
+                              const currentTick = useWorldStore.getState().currentTick;
+                              const currentLeader = useLeaderStore.getState().getLeader(countryId);
+                              if (currentLeader) {
+                                const rand = Math.random;
+                                const updatedLeader = {
+                                  ...currentLeader,
+                                  type: newType,
+                                  hawkDoveScore: Math.round(
+                                    newType === LeaderPersonality.HAWK ? (80 + rand() * 20) :
+                                    newType === LeaderPersonality.DOVE ? (10 + rand() * 20) :
+                                    newType === LeaderPersonality.PRAGMATIST ? (40 + rand() * 25) :
+                                    newType === LeaderPersonality.IDEOLOGUE ? (55 + rand() * 30) :
+                                    (rand() * 100)
+                                  ),
+                                  riskTolerance: Math.round(
+                                    newType === LeaderPersonality.HAWK ? (70 + rand() * 30) :
+                                    newType === LeaderPersonality.DOVE ? (15 + rand() * 35) :
+                                    newType === LeaderPersonality.PRAGMATIST ? (40 + rand() * 30) :
+                                    newType === LeaderPersonality.IDEOLOGUE ? (50 + rand() * 25) :
+                                    (30 + rand() * 70)
+                                  ),
+                                  portraitSeed: `${countryId}_re_${newType}_${currentTick}_${Date.now()}`
+                                };
+                                updatedLeader.portraitDataUrl = generateLeaderPortrait(newType, updatedLeader.portraitSeed);
+                                useLeaderStore.getState().setLeader(countryId, updatedLeader);
+                                useWorldStore.getState().addGlobalEvent(
+                                  `Intel Action: ${country.name} leader personality re-assigned to ${newType}. Modifiers updated.`,
+                                  'WARNING'
+                                );
+                              }
+                            }}
+                            className="bg-black/80 border border-[#1a5c1a]/60 text-[8px] px-1 py-0.5 rounded font-mono text-[#00ff44] focus:outline-none focus:border-[#00ff44] cursor-pointer"
+                          >
+                            <option value="HAWK" className="text-red-500 bg-black">HAWK</option>
+                            <option value="DOVE" className="text-green-400 bg-black font-bold">DOVE</option>
+                            <option value="PRAGMATIST" className="text-cyan-400 bg-black">PRAGMATIST</option>
+                            <option value="IDEOLOGUE" className="text-amber-400 bg-black">IDEOLOGUE</option>
+                            <option value="UNPREDICTABLE" className="text-fuchsia-400 bg-black">UNPREDICTABLE</option>
+                          </select>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-500 uppercase">HAWKISHNESS:</span>
+                          <span className="text-[#00ff44] font-bold">{activeLeader.hawkDoveScore}%</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-500 uppercase">RISK TOLERANCE:</span>
+                          <span className="text-white font-bold">{activeLeader.riskTolerance}%</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-500 uppercase">ENTRY PATH:</span>
+                          <span className="text-gray-400 uppercase font-bold text-[7px]">{activeLeader.source}</span>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 

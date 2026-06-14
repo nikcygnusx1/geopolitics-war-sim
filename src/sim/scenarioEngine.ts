@@ -1,4 +1,4 @@
-import { WorldState, PlayerState, ScenarioId } from '../types';
+import { WorldState, PlayerState, ScenarioId, LeaderPersonality } from '../types';
 import { SCENARIOS } from '../data/scenarios';
 import { usePlayerStore } from '../store/playerStore';
 import { useWorldStore } from '../store/worldStore';
@@ -43,9 +43,9 @@ export function pollScenarioStatus(world: WorldState, player: PlayerState) {
   }
 }
 
-export function initScenario(scenarioId: ScenarioId, countryId: string) {
+export function initScenario(scenarioId: ScenarioId, countryId: string, leaderOverrides?: Record<string, LeaderPersonality>) {
   // 1. Reset world state
-  useWorldStore.getState().resetWorld();
+  useWorldStore.getState().resetWorld(leaderOverrides);
 
   // Reset and initialize tactical units state
   useUnitStore.getState().resetUnits();

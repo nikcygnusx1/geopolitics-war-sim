@@ -8,6 +8,18 @@ import { MAP_THEME } from './mapStyles';
 import { LayerToggleState } from './MapLayerPanel';
 import { useMapSync } from './mapSync';
 import { useLinkedAnalysisStore } from '../../store/linkedAnalysisStore';
+import { useUnitStore } from '../../store/unitStore';
+import { latLonToVec3 } from '../intro/GlobeMarkers';
+import {
+  MilitaryLoader,
+  WakeSystemManager,
+  BubbleSystemManager,
+  RocketExhaustManager,
+  createProceduralCarrier,
+  createProceduralSubmarine,
+  createProceduralFighter,
+  createProceduralMissile
+} from './MilitaryAsset3D';
 
 /**
  * Maps Longitude & Latitude to 3D spherical positions on the Earth sphere of a given radius.
@@ -63,10 +75,23 @@ export function InGameGlobe({ theme = 'dark', layers }: InGameGlobeProps) {
   const [activeDiagnosticSat, setActiveDiagnosticSat] = useState<string | null>(null);
 
   // Group references to inject runtime graphics from React/Zustand updates
+  const sceneRef = useRef<THREE.Scene | null>(null);
   const pinsGroupRef = useRef<THREE.Group | null>(null);
   const arcsGroupRef = useRef<THREE.Group | null>(null);
   const sparksGroupRef = useRef<THREE.Group | null>(null);
   const satellitesGroupRef = useRef<THREE.Group | null>(null);
+  const militaryGroupRef = useRef<THREE.Group | null>(null);
+
+  // Live trackers for luxury military presentations
+  const loaderRef = useRef<MilitaryLoader | null>(null);
+  const wakesRef = useRef<Record<string, WakeSystemManager>>({});
+  const bubblesRef = useRef<Record<string, BubbleSystemManager>>({});
+  const exhaustRef = useRef<Record<string, RocketExhaustManager>>({});
+  const prevPositionsRef = useRef<Record<string, THREE.Vector3>>({});
+  const subAltitudesRef = useRef<Record<string, number>>({});
+  const jetRollsRef = useRef<Record<string, number>>({});
+  const escortsMeshRef = useRef<THREE.InstancedMesh | null>(null);
+  const units = useUnitStore((s) => s.units);
 
   // Mesh/Light refs for theme transitions
   const earthMeshRef = useRef<THREE.Mesh | null>(null);
@@ -141,6 +166,7 @@ export function InGameGlobe({ theme = 'dark', layers }: InGameGlobeProps) {
 
     // SCENE & CAMERA CONFIG
     const scene = new THREE.Scene();
+    sceneRef.current = scene;
     scene.fog = new THREE.FogExp2(isDark ? 0x020508 : 0xf4f4f5, 0.28);
 
     const camera = new THREE.PerspectiveCamera(38, W / H, 0.1, 100);
@@ -301,6 +327,12 @@ export function InGameGlobe({ theme = 'dark', layers }: InGameGlobeProps) {
     const satellitesGroup = new THREE.Group();
     globeGroup.add(satellitesGroup);
     satellitesGroupRef.current = satellitesGroup;
+
+    const military = new THREE.Group();
+    globeGroup.add(military);
+    militaryGroupRef.current = military;
+
+    loaderRef.current = new MilitaryLoader();
 
     // PROCEDURAL SATELLITE STRUCTURE INJECTION
     satellitesRef.current.forEach((sat) => {
@@ -615,6 +647,158 @@ export function InGameGlobe({ theme = 'dark', layers }: InGameGlobeProps) {
         }
       }
 
+      // 7. HIGH-FIDELITY 3D MILITARY ASSET GRAPHICS ENGINE
+      const military = militaryGroupRef.current;
+      if (military) {
+        military.children.forEach((mesh: any) => {
+          if (mesh.userData && mesh.userData.unitId) {
+            const unitId = mesh.userData.unitId;
+            const targetPos = mesh.userData.targetPos as THREE.Vector3;
+            
+            // Submarine Altitude Overrides
+            if (mesh.userData.type === 'Submarine') {
+              const status = mesh.userData.status;
+              const targetDepthOffset = (status === 'MOVING') ? -0.015 : 0.003;
+              let currentDepth = subAltitudesRef.current[unitId];
+              if (currentDepth === undefined) currentDepth = targetDepthOffset;
+              currentDepth += (targetDepthOffset - currentDepth) * 0.05; // 2 seconds transition rate at 60fps
+              subAltitudesRef.current[unitId] = currentDepth;
+
+              const normal = targetPos.clone().normalize();
+              mesh.userData.interpTargetPos = normal.clone().multiplyScalar(1.0 + currentDepth);
+            } else {
+              mesh.userData.interpTargetPos = targetPos;
+            }
+
+            const interpTarget = mesh.userData.interpTargetPos as THREE.Vector3;
+            const lastPos = mesh.position.clone();
+            
+            // 8-ticks butter-smooth continuous coordinate slide
+            mesh.position.lerp(interpTarget, 0.08);
+
+            const normal = mesh.position.clone().normalize();
+            const motionVec = mesh.position.clone().sub(prevPositionsRef.current[unitId] || lastPos);
+
+            if (motionVec.lengthSq() > 1e-8) {
+              const forward = motionVec.clone().projectOnPlane(normal).normalize();
+              const right = new THREE.Vector3().crossVectors(forward, normal).normalize();
+              const up = new THREE.Vector3().crossVectors(right, forward).normalize();
+
+              const rotMatrix = new THREE.Matrix4().makeBasis(right, up, forward);
+              mesh.quaternion.setFromRotationMatrix(rotMatrix);
+
+              const prevHeading = prevPositionsRef.current[unitId + '_h'] || forward.clone();
+
+              // Emit Carrier wake foam particles
+              if (mesh.userData.type === 'CarrierGroup') {
+                if (wakesRef.current[unitId]) {
+                  wakesRef.current[unitId].emit(mesh.position, forward);
+                }
+              }
+
+              // Emit Submarine bubbles
+              else if (mesh.userData.type === 'Submarine') {
+                if (bubblesRef.current[unitId]) {
+                  bubblesRef.current[unitId].emit(mesh.position, forward);
+                }
+              }
+
+              // Apply Fighter banking / rolling
+              else if (mesh.userData.type === 'AirWing') {
+                const cross = prevHeading.clone().cross(forward);
+                const dot = cross.dot(normal);
+                const turnAngle = prevHeading.angleTo(forward) * (dot > 0 ? 1 : -1);
+                const targetRoll = THREE.MathUtils.clamp(turnAngle * 22.0, -Math.PI / 4, Math.PI / 4);
+
+                let currentRoll = jetRollsRef.current[unitId] || 0;
+                currentRoll += (targetRoll - currentRoll) * 0.12;
+                jetRollsRef.current[unitId] = currentRoll;
+
+                mesh.rotateOnAxis(new THREE.Vector3(0, 0, 1), currentRoll);
+              }
+
+              prevPositionsRef.current[unitId + '_h'] = forward.clone();
+            } else {
+              // Stationary heading alignment
+              const up = normal.clone();
+              const right = new THREE.Vector3(1, 0, 0).projectOnPlane(up).normalize();
+              const forward = new THREE.Vector3().crossVectors(up, right).normalize();
+              const rotMatrix = new THREE.Matrix4().makeBasis(right, up, forward);
+              mesh.quaternion.setFromRotationMatrix(rotMatrix);
+            }
+
+            prevPositionsRef.current[unitId] = mesh.position.clone();
+          }
+        });
+
+        // Update Escort Destroyer instances matrix
+        const escMesh = escortsMeshRef.current;
+        if (escMesh) {
+          let insCount = 0;
+          military.children.forEach((mesh: any) => {
+            if (mesh.userData?.type === 'CarrierGroup') {
+              const carrierMatrix = mesh.matrixWorld;
+
+              // Back-Left and Back-Right tactical destroyers
+              const leftRear = new THREE.Vector3(-0.024, -0.001, -0.02);
+              leftRear.applyMatrix4(carrierMatrix);
+
+              const rightRear = new THREE.Vector3(0.024, -0.001, -0.025);
+              rightRear.applyMatrix4(carrierMatrix);
+
+              const q = mesh.quaternion;
+              const sizeScale = new THREE.Vector3(0.45, 0.45, 0.45);
+
+              const m1 = new THREE.Matrix4().compose(leftRear, q, sizeScale);
+              const m2 = new THREE.Matrix4().compose(rightRear, q, sizeScale);
+
+              if (insCount + 1 < escMesh.count) {
+                escMesh.setMatrixAt(insCount++, m1);
+                escMesh.setMatrixAt(insCount++, m2);
+              }
+            }
+          });
+
+          const zeroMatrix = new THREE.Matrix4().makeScale(0, 0, 0);
+          while (insCount < escMesh.count) {
+            escMesh.setMatrixAt(insCount++, zeroMatrix);
+          }
+
+          escMesh.instanceMatrix.needsUpdate = true;
+        }
+      }
+
+      // 8. UPDATE ACTIVE PARTICLE SYSTEMS
+      Object.values(wakesRef.current).forEach((w: any) => w.update());
+      Object.values(bubblesRef.current).forEach((b: any) => b.update());
+      Object.values(exhaustRef.current).forEach((e: any) => e.update());
+
+      // 9. ANIMATE ACTIVE PROJECTS (Active flying ICBMs / Air Patrols)
+      arcs.children.forEach((c: any) => {
+        if (c.userData?.isMissile && c.userData?.curve) {
+          // Progress location
+          const pt = c.userData.curve.getPointAt(c.userData.pct);
+          c.position.copy(pt);
+
+          // Rotate missile forward along tangent
+          const tangent = c.userData.curve.getTangentAt(c.userData.pct).normalize();
+          const upVector = pt.clone().normalize();
+          const right = new THREE.Vector3().crossVectors(tangent, upVector).normalize();
+          const correctedUp = new THREE.Vector3().crossVectors(right, tangent).normalize();
+
+          const rotMat = new THREE.Matrix4().makeBasis(right, correctedUp, tangent);
+          c.quaternion.setFromRotationMatrix(rotMat);
+
+          // Emit exhaust particles
+          const rocketId = c.userData.strikeId;
+          if (rocketId && exhaustRef.current[rocketId]) {
+            const backDir = tangent.clone().negate().normalize();
+            const rearPos = pt.clone().addScaledVector(tangent, -0.015);
+            exhaustRef.current[rocketId].emit(rearPos, backDir);
+          }
+        }
+      });
+
       renderer.render(scene, camera);
     };
 
@@ -631,6 +815,24 @@ export function InGameGlobe({ theme = 'dark', layers }: InGameGlobeProps) {
       window.removeEventListener('mouseup', onMouseUp);
       resizeObserver.disconnect();
       renderer.dispose();
+
+      // Dispose of military models and particle systems to prevent GPU memory leaks
+      Object.values(wakesRef.current).forEach((w: any) => w.destroy());
+      Object.values(bubblesRef.current).forEach((b: any) => b.destroy());
+      Object.values(exhaustRef.current).forEach((e: any) => e.destroy());
+      wakesRef.current = {};
+      bubblesRef.current = {};
+      exhaustRef.current = {};
+      
+      if (escortsMeshRef.current) {
+        escortsMeshRef.current.geometry.dispose();
+        if (Array.isArray(escortsMeshRef.current.material)) {
+          escortsMeshRef.current.material.forEach((m) => m.dispose());
+        } else {
+          escortsMeshRef.current.material.dispose();
+        }
+      }
+
       try {
         mountRef.current?.removeChild(dom);
       } catch (err) {}
@@ -714,7 +916,8 @@ export function InGameGlobe({ theme = 'dark', layers }: InGameGlobeProps) {
     const pins = pinsGroupRef.current;
     const arcs = arcsGroupRef.current;
     const sparks = sparksGroupRef.current;
-    if (!pins || !arcs || !sparks) return;
+    const activeScene = sceneRef.current;
+    if (!pins || !arcs || !sparks || !activeScene) return;
 
     // Helper to safely eject children elements
     const clearGroup = (g: THREE.Group) => {
@@ -859,7 +1062,8 @@ export function InGameGlobe({ theme = 'dark', layers }: InGameGlobeProps) {
     // 2. BALLISTIC ARC MODELS (Traversing missile trails)
     const displayStrikes = layers.conflicts || layers.nuclear || layers.political;
     if (displayStrikes) {
-      activeStrikes.forEach((strike) => {
+      (activeStrikes || []).forEach((strike) => {
+        if (!strike || !strike.id) return;
         const srcCent = getCentroid(strike.sourceCountryId);
         const tgtCent = getCentroid(strike.targetCountryId);
 
@@ -868,14 +1072,14 @@ export function InGameGlobe({ theme = 'dark', layers }: InGameGlobeProps) {
         const pStart = latLngToVector3(srcCent[1], srcCent[0], 1.0);
         const pEnd = latLngToVector3(tgtCent[1], tgtCent[0], 1.0);
 
-        // Generate dynamic curves over the spherical terrain
+        // Generate dynamic curves over the spherical terrain using CatmullRomCurve3
         const midPoint = new THREE.Vector3().addVectors(pStart, pEnd).multiplyScalar(0.5);
         const dist = pStart.distanceTo(pEnd);
-        const arcHeight = Math.min(0.45, Math.max(0.12, dist * 0.25));
+        const arcHeight = Math.min(0.55, Math.max(0.15, dist * 0.35));
         const pMid = midPoint.normalize().multiplyScalar(1.0 + arcHeight);
 
-        const curve = new THREE.QuadraticBezierCurve3(pStart, pMid, pEnd);
-        const pts = curve.getPoints(36);
+        const curve = new THREE.CatmullRomCurve3([pStart, pMid, pEnd]);
+        const pts = curve.getPoints(48);
         const arcGeo = new THREE.BufferGeometry().setFromPoints(pts);
 
         const isNuke = strike.warheadYieldMT && strike.warheadYieldMT > 0;
@@ -884,29 +1088,55 @@ export function InGameGlobe({ theme = 'dark', layers }: InGameGlobeProps) {
         const arcMat = new THREE.LineBasicMaterial({
           color: trailColor,
           transparent: true,
-          opacity: strike.status === 'IN_FLIGHT' ? 0.8 : 0.18,
+          opacity: strike.status === 'IN_FLIGHT' ? 0.4 : 0.15,
         });
 
         const line = new THREE.Line(arcGeo, arcMat);
         arcs.add(line);
 
-        // Render traveling projectile plasma heads
+        // Render volumetric missile flight trail using TubeGeometry
         if (strike.status === 'IN_FLIGHT') {
-          const phGeo = new THREE.SphereGeometry(0.012, 8, 8);
-          const phMat = new THREE.MeshBasicMaterial({
+          const tubeGeo = new THREE.TubeGeometry(curve, 36, 0.002, 6, false);
+          const tubeMat = new THREE.MeshBasicMaterial({
             color: trailColor,
             transparent: true,
-            opacity: 0.95,
+            opacity: 0.16,
+            blending: THREE.AdditiveBlending,
           });
-          const phMesh = new THREE.Mesh(phGeo, phMat);
+          const tubeMesh = new THREE.Mesh(tubeGeo, tubeMat);
+          arcs.add(tubeMesh);
+        }
+
+        // Render traveling 3D rocket bodies with real active engines
+        if (strike.status === 'IN_FLIGHT') {
+          const phMesh = createProceduralMissile();
+          const pct = Math.min(0.99, Math.max(0.01, strike.progressPct / 100));
+
           phMesh.userData = {
-            isSpark: true,
+            isMissile: true,
+            strikeId: strike.id,
             curve,
-            pct: Math.min(0.99, Math.max(0.01, strike.progressPct / 100)),
+            pct,
           };
-          const startPos = curve.getPointAt(phMesh.userData.pct);
+
+          const startPos = curve.getPointAt(pct);
           phMesh.position.copy(startPos);
+
+          const tangent = curve.getTangentAt(pct).normalize();
+          const upVector = startPos.clone().normalize();
+          const right = new THREE.Vector3().crossVectors(tangent, upVector).normalize();
+          const correctedUp = new THREE.Vector3().crossVectors(right, tangent).normalize();
+
+          const rotMat = new THREE.Matrix4().makeBasis(right, correctedUp, tangent);
+          phMesh.quaternion.setFromRotationMatrix(rotMat);
+
           arcs.add(phMesh);
+
+          // Configure exhaust trails
+          if (!exhaustRef.current[strike.id]) {
+            exhaustRef.current[strike.id] = new RocketExhaustManager();
+            activeScene.add(exhaustRef.current[strike.id].getMesh());
+          }
         }
 
         // Add fading shock rings to Completed launch impacts
@@ -1061,7 +1291,124 @@ export function InGameGlobe({ theme = 'dark', layers }: InGameGlobeProps) {
       });
     }
 
-  }, [activeStrikes, countries, playerCountryId, targetCountryId, theme, layers]);
+    // 7. DEPLOY CINEMATIC, HIGH-FIDELITY 3D MILITARY ASSETS (Carriers, Submarines, Fighter Wings)
+    const military = militaryGroupRef.current;
+    if (military && activeScene) {
+      clearGroup(military);
+
+      // Create InstancedMesh for Destroyers (Fleet Escorts accompanying Carriers)
+      const carrierUnits = units.filter((u) => u.type === 'CarrierGroup');
+      const maxDestroyers = carrierUnits.length * 2;
+
+      if (escortsMeshRef.current) {
+        military.remove(escortsMeshRef.current);
+        escortsMeshRef.current.geometry.dispose();
+        if (Array.isArray(escortsMeshRef.current.material)) {
+          escortsMeshRef.current.material.forEach((m) => m.dispose());
+        } else {
+          escortsMeshRef.current.material.dispose();
+        }
+        escortsMeshRef.current = null;
+      }
+
+      if (maxDestroyers > 0) {
+        const destGeo = new THREE.CylinderGeometry(0, 0.0035, 0.024, 5);
+        const destMat = new THREE.MeshPhongMaterial({
+          color: 0x4d555c,
+          emissive: 0x050607,
+          shininess: 35,
+          flatShading: true,
+        });
+        const escMesh = new THREE.InstancedMesh(destGeo, destMat, maxDestroyers);
+        escMesh.name = "destroyerEscorts";
+        military.add(escMesh);
+        escortsMeshRef.current = escMesh;
+      }
+
+      // Render actual 3D Military Assets
+      (units || []).forEach((unit) => {
+        if (!unit || !unit.id || !unit.position) return;
+        // Position targets based on altitude layers
+        const isAir = unit.type === 'AirWing';
+        const baseRadius = isAir ? 1.055 : 1.018;
+        const targetVec = latLonToVec3(unit.position.lat, unit.position.lon, baseRadius);
+
+        // Pivot group representing the unit
+        const pivot = new THREE.Group();
+        pivot.name = `unit_${unit.id}`;
+
+        // Retain smooth interpolation history
+        const prevPos = prevPositionsRef.current[unit.id];
+        if (prevPos) {
+          pivot.position.copy(prevPos);
+        } else {
+          pivot.position.copy(targetVec);
+          prevPositionsRef.current[unit.id] = targetVec.clone();
+        }
+
+        pivot.userData = {
+          unitId: unit.id,
+          type: unit.type,
+          status: unit.status,
+          owner: unit.owner,
+          targetPos: targetVec,
+        };
+
+        military.add(pivot);
+
+        // Map class models or fallbacks
+        let modelKey: 'carrier' | 'sub' | 'fighter' | 'missile' = 'carrier';
+        let modelUrl = '/models/carrier.glb';
+
+        if (unit.type === 'CarrierGroup') {
+          modelKey = 'carrier';
+          modelUrl = '/models/carrier.glb';
+
+          // Emit trail Wake in world coordinates
+          if (!wakesRef.current[unit.id]) {
+            wakesRef.current[unit.id] = new WakeSystemManager();
+            activeScene.add(wakesRef.current[unit.id].getMesh());
+          }
+        } else if (unit.type === 'Submarine') {
+          modelKey = 'sub';
+          modelUrl = '/models/submarine.glb';
+
+          // Emit dive bubbles in world coordinates
+          if (!bubblesRef.current[unit.id]) {
+            bubblesRef.current[unit.id] = new BubbleSystemManager();
+            activeScene.add(bubblesRef.current[unit.id].getMesh());
+          }
+        } else if (unit.type === 'AirWing') {
+          modelKey = 'fighter';
+          modelUrl = '/models/fighter.glb';
+        } else {
+          return; // Skip non-moving profiles (such as static silos)
+        }
+
+        if (loaderRef.current) {
+          loaderRef.current.loadModel(modelKey, modelUrl, (loadedMesh) => {
+            const isPlayer = unit.owner === playerCountryId;
+            loadedMesh.traverse((childElement) => {
+              if (childElement instanceof THREE.Mesh && childElement.material) {
+                const mats = Array.isArray(childElement.material) ? childElement.material : [childElement.material];
+                mats.forEach((m) => {
+                  if (m instanceof THREE.MeshPhongMaterial || m instanceof THREE.MeshStandardMaterial) {
+                    if (isPlayer) {
+                      m.emissive.setHex(0x00260c);
+                    } else if (unit.owner === targetCountryId) {
+                      m.emissive.setHex(0x2d0003);
+                    }
+                  }
+                });
+              }
+            });
+            pivot.add(loadedMesh);
+          });
+        }
+      });
+    }
+
+  }, [activeStrikes, countries, playerCountryId, targetCountryId, theme, layers, units]);
 
   return (
     <div className="relative w-full h-full" id="tactical-3d-sphere-monitor">

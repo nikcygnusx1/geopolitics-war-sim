@@ -1,4 +1,6 @@
 import { WorldState, Country } from '../types';
+import { useLeaderStore } from '../store/leaderStore';
+import { ConsequenceEngine } from './consequenceEngine';
 
 export function processFactions(draft: WorldState) {
   Object.keys(draft.countries).forEach((id) => {
@@ -73,7 +75,14 @@ function executeCoup(draft: WorldState, c: Country) {
   const pol = c.political;
   const econ = c.economic;
 
-  pol.leaderName = `General Committee of Internal Salvation`;
+  // Register the consequence chain
+  ConsequenceEngine.register('STAGE_COUP', { sourceCountryId: c.id }, draft);
+
+  // Generate and set junta leader deterministically
+  const juntaLeader = useLeaderStore.getState().generateNewLeader(c.id, 'COUP', draft.currentTick);
+  useLeaderStore.getState().setLeader(c.id, juntaLeader);
+
+  pol.leaderName = juntaLeader.name;
   econ.treasuryCashB = Math.max(0, econ.treasuryCashB - (econ.gdpB * 0.05)); // Looting
   pol.popularUnrest = Math.min(100, pol.popularUnrest + 25);
   pol.stabilityIndex = Math.max(5, pol.stabilityIndex - 30);
@@ -84,8 +93,8 @@ function executeCoup(draft: WorldState, c: Country) {
 
   draft.globalEventLog.unshift({
     tick: draft.currentTick,
-    text: `COUP DETAT: Military hardliners declare Martial Emergency in ${c.name}. Ruling cabinet replaced by junta committees.`,
+    text: `COUP DETAT: Military hardliners declare Martial Emergency in ${c.name}. General ${juntaLeader.name} (TEMPERAMENT: ${juntaLeader.type}) gains full executive power!`,
     severity: 'CRITICAL',
   });
-  c.lastEventLog.unshift(`Government overthrown! General Committee takes absolute control of supreme defense nodes.`);
+  c.lastEventLog.unshift(`Government overthrown! General ${juntaLeader.name} takes control of supreme defense nodes.`);
 }

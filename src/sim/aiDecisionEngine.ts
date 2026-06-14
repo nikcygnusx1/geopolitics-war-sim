@@ -1,6 +1,8 @@
 import { WorldState, Country, WeaponType } from '../types';
 import { getTickIncrement } from './militaryEngine';
 import { GEO_COORDS } from '../data/geoCoords';
+import { useLeaderStore } from '../store/leaderStore';
+import { ConsequenceEngine } from './consequenceEngine';
 
 export function processAllAI(draft: WorldState, playerCountryId: string) {
   Object.keys(draft.countries).forEach((id) => {
@@ -42,6 +44,11 @@ function assessAndExecuteAIDecisions(draft: WorldState, c: Country, playerCountr
     return opX - opY; // lowest opinion first
   })[0] || 'US';
 
+  // Retrieve authoritative leader indicators & modifiers
+  const leaderStore = useLeaderStore.getState();
+  const leader = leaderStore.getLeader(c.id);
+  const leaderMods = leaderStore.getLeaderModifiers(c.id, highestThreatId, draft.currentTick);
+
   // 2. Score candidate actions
   const milFaction = pol.factions.find((f) => f.type === 'MILITARY_HARDLINERS');
   const reformerFaction = pol.factions.find((f) => f.type === 'REFORMERS');
@@ -49,14 +56,17 @@ function assessAndExecuteAIDecisions(draft: WorldState, c: Country, playerCountr
   const milMultiplier = milFaction ? (1.0 + milFaction.strengthIndex / 100) : 1.0;
   const reformerMultiplier = reformerFaction ? (1.0 - reformerFaction.strengthIndex / 100) : 1.0;
 
+  // Custom variable war threshold from leader personality (-70 base +/- delta)
+  const varWarThreshold = -70 - leaderMods.warThresholdDelta;
+
   const decisions = [
     {
       action: 'IMPROVE_DEFENSES',
-      score: econ.debtStressIndex < 60 ? (35 + pol.coupRiskLevel * 0.4) : 5,
+      score: econ.debtStressIndex < 60 ? Math.round((35 + pol.coupRiskLevel * 0.4) * (2.0 - leaderMods.riskToleranceMultiplier)) : 5,
     },
     {
       action: 'NEGOTIATE_ALLIANCE',
-      score: perceivedThreats.length > 0 ? (20 + perceivedThreats.length * 15) : 10,
+      score: perceivedThreats.length > 0 ? Math.round((20 + perceivedThreats.length * 15) * leaderMods.diplomacyAcceptMultiplier) : 10,
     },
     {
       action: 'ISSUE_BONDS',
@@ -64,21 +74,26 @@ function assessAndExecuteAIDecisions(draft: WorldState, c: Country, playerCountr
     },
     {
       action: 'LAUNCH_COVERT_OP',
-      score: (c.intelligence.blackBudgetB > 5 && perceivedThreats.length > 0) ? 45 : 10,
+      score: (c.intelligence.blackBudgetB > 5 && perceivedThreats.length > 0) ? Math.round(45 * leaderMods.riskToleranceMultiplier) : 10,
     },
     {
       action: 'DECLARE_WAR',
-      score: (canDeclareWar && c.opinions[highestThreatId] < -70 && c.arsenal.totalPowerRating > 500 && pol.popularUnrest < 50)
-        ? Math.round(50 * milMultiplier * reformerMultiplier) : 0,
+      score: (canDeclareWar && c.opinions[highestThreatId] < varWarThreshold && c.arsenal.totalPowerRating > 500 && pol.popularUnrest < 50)
+        ? Math.round(50 * milMultiplier * reformerMultiplier * leaderMods.escalationRate) : 0,
     },
     {
       action: 'FIRE_MISSILE',
-      score: (c.atWarWith.includes(highestThreatId) && econ.treasuryCashB > 0 && Math.random() < 0.25)
-        ? Math.round(75 * milMultiplier) : 0,
+      score: (c.atWarWith.includes(highestThreatId) && econ.treasuryCashB > 0 && Math.random() < (0.25 * leaderMods.riskToleranceMultiplier))
+        ? Math.round(75 * milMultiplier * leaderMods.retaliationBias) : 0,
     },
     {
       action: 'SEEK_CEASEFIRE',
-      score: (c.atWarWith.length > 0 && pol.stabilityIndex < 30) ? 80 : 5,
+      score: (c.atWarWith.length > 0 && pol.stabilityIndex < 30) ? Math.round(80 * (2.0 - leaderMods.riskToleranceMultiplier)) : 5,
+    },
+    {
+      action: 'SANCTION_TARGET',
+      score: (c.opinions[highestThreatId] < -45 && !draft.countries[highestThreatId]?.economic.sanctionedBy.includes(c.id))
+        ? Math.round(40 * leaderMods.sanctionsLikelihoodMultiplier * (milFaction ? (1.0 + milFaction.strengthIndex / 120) : 1.0)) : 0,
     },
     {
       action: 'PRINT_MONEY',
@@ -133,6 +148,7 @@ function assessAndExecuteAIDecisions(draft: WorldState, c: Country, playerCountr
           targetNation.political.popularUnrest = Math.min(100, targetNation.political.popularUnrest + 10);
           targetNation.political.stabilityIndex = Math.max(0, targetNation.political.stabilityIndex - 5);
           targetNation.lastEventLog.unshift(`Covert signals breached! High popular unrest sparked by foreign influence.`);
+          ConsequenceEngine.register('STAGE_COUP', { sourceCountryId: c.id, targetCountryId: highestThreatId }, draft);
         }
       }
       break;
@@ -150,6 +166,7 @@ function assessAndExecuteAIDecisions(draft: WorldState, c: Country, playerCountr
           text: `CONFIRMATION WAR: Hostilities formally declared by ${c.name} against hostile node ${highestThreatId}!`,
           severity: 'CRITICAL',
         });
+        ConsequenceEngine.register('DECLARE_WAR', { sourceCountryId: c.id, targetCountryId: highestThreatId }, draft);
       }
       break;
 
@@ -205,16 +222,33 @@ function assessAndExecuteAIDecisions(draft: WorldState, c: Country, playerCountr
     case 'SEEK_CEASEFIRE':
       c.atWarWith.forEach((warId) => {
         const opposing = draft.countries[warId];
-        if (opposing && opposing.opinions[c.id] > -50) {
-          c.atWarWith = c.atWarWith.filter((x) => x !== warId);
-          opposing.atWarWith = opposing.atWarWith.filter((x) => x !== c.id);
-          draft.globalEventLog.unshift({
-            tick: draft.currentTick,
-            text: `Diplomacy: Ceasefire formal agreement signed between ${c.name} and ${opposing.name}. Escapes war matrix.`,
-            severity: 'INFO',
-          });
+        if (opposing) {
+          const oppMods = useLeaderStore.getState().getLeaderModifiers(warId, c.id, draft.currentTick);
+          const ceasefireThreshold = -50 * oppMods.diplomacyAcceptMultiplier;
+          if (opposing.opinions[c.id] > ceasefireThreshold) {
+            c.atWarWith = c.atWarWith.filter((x) => x !== warId);
+            opposing.atWarWith = opposing.atWarWith.filter((x) => x !== c.id);
+            draft.globalEventLog.unshift({
+              tick: draft.currentTick,
+              text: `Diplomacy: Ceasefire formal agreement signed between ${c.name} and ${opposing.name}. Escapes war matrix.`,
+              severity: 'INFO',
+            });
+          }
         }
       });
+      break;
+
+    case 'SANCTION_TARGET':
+      const targetCountry = draft.countries[highestThreatId];
+      if (targetCountry && !targetCountry.economic.sanctionedBy.includes(c.id)) {
+        targetCountry.economic.sanctionedBy.push(c.id);
+        draft.globalEventLog.unshift({
+          tick: draft.currentTick,
+          text: `Diplomacy: ${c.name} (TEMPERAMENT: ${leader?.type || 'UNKNOWN'}) imposes dynamic unilateral trade sanctions on ${targetCountry.name}! Re-routing trade channels.`,
+          severity: 'WARNING',
+        });
+        c.lastEventLog.unshift(`Imposed dynamic bilateral sanctions on hostile target ${highestThreatId}.`);
+      }
       break;
 
     case 'PRINT_MONEY':

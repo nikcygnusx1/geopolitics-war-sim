@@ -51,6 +51,8 @@ export default function DiplomacyPanel() {
       draft.opinions[countryId] = Math.min(100, (draft.opinions[countryId] ?? 0) + (aidAmount * 3));
     });
 
+    useWorldStore.getState().registerConsequenceChain('DISPATCH_FOREIGN_AID', { sourceCountryId: countryId, targetCountryId: tradeTgtId, aidAmount });
+
     useWorldStore.getState().addGlobalEvent(`State Ministry: Sent $${aidAmount}B in direct ${aidType} aid to ${tradeTgtId}.`, 'INFO');
     
     useUIStore.getState().pushAlert({
@@ -97,6 +99,8 @@ export default function DiplomacyPanel() {
         draft.tradePartners.push(countryId);
       }
     });
+
+    useWorldStore.getState().registerConsequenceChain('SIGN_ALLIANCE', { sourceCountryId: countryId, targetCountryId: tradeTgtId });
 
     useWorldStore.getState().addGlobalEvent(`TREATY SIGNED: Signed Mutual Defense Alliance with ${tradeTgtId}. Borders aligned.`, 'INFO');
     

@@ -1,5 +1,6 @@
 import { WorldState } from '../types';
 import { dampenOpinionDelta } from '../utils/pacing';
+import { useLeaderStore } from '../store/leaderStore';
 
 export function processRelations(draft: WorldState) {
   const countryIds = Object.keys(draft.countries);
@@ -15,13 +16,17 @@ export function processRelations(draft: WorldState) {
 
       if (!a || !b) continue;
 
+      // Authoritative modifiers lookup
+      const leaderStore = useLeaderStore.getState();
+      const leaderMods = leaderStore.getLeaderModifiers(aId, bId, draft.currentTick);
+
       // 1. Natural opinion drift
       let currentOpinion = a.opinions[bId] ?? 0;
       currentOpinion += (0 - currentOpinion) * 0.005;
 
-      // 2. Active war penalty
+      // 2. Active war penalty (multiplied by escalation rate)
       if (a.atWarWith.includes(bId)) {
-        const drop = dampenOpinionDelta(-3.5, draft.pacingPreset);
+        const drop = dampenOpinionDelta(-3.5, draft.pacingPreset) * leaderMods.escalationRate;
         currentOpinion = Math.max(-100, currentOpinion + drop);
       }
 
@@ -38,9 +43,9 @@ export function processRelations(draft: WorldState) {
         currentOpinion = Math.min(100, currentOpinion + (sharedEnemies.length * 0.5));
       }
 
-      // 5. HAARP targeting penalty
+      // 5. HAARP targeting penalty (multiplied by escalation rate)
       if (b.haarpActive && b.haarpTargetCountryId === aId) {
-        const drop = dampenOpinionDelta(-10.0, draft.pacingPreset);
+        const drop = dampenOpinionDelta(-10.0, draft.pacingPreset) * leaderMods.escalationRate;
         currentOpinion = Math.max(-100, currentOpinion + drop);
         a.political.popularUnrest = Math.min(100, a.political.popularUnrest + 2);
       }
@@ -60,14 +65,17 @@ export function processRelations(draft: WorldState) {
       const usOpinion = c.opinions['US'] ?? 0;
       const cnOpinion = c.opinions['CN'] ?? 0;
 
-      if (usOpinion > 70) {
+      const leaderMods = useLeaderStore.getState().getLeaderModifiers(id, undefined, draft.currentTick);
+      const joinThreshold = 70 / leaderMods.diplomacyAcceptMultiplier;
+
+      if (usOpinion > joinThreshold) {
         c.allianceBlock = 'NATO';
         draft.globalEventLog.unshift({
           tick: draft.currentTick,
           text: `Diplomacy: ${c.name} formally joins NATO Alliance block.`,
           severity: 'INFO',
         });
-      } else if (cnOpinion > 70) {
+      } else if (cnOpinion > joinThreshold) {
         c.allianceBlock = 'SCO';
         draft.globalEventLog.unshift({
           tick: draft.currentTick,

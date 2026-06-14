@@ -1,9 +1,11 @@
 import { create } from 'zustand';
 import { produce } from 'immer';
-import { WorldState, Country, BallisticStrike, CommodityMarket, ArmsDeal, ThreatLevel } from '../types';
+import { WorldState, Country, BallisticStrike, CommodityMarket, ArmsDeal, ThreatLevel, LeaderPersonality, MajorActionType, ScheduledConsequence } from '../types';
 import { INITIAL_COUNTRIES } from '../data/countries';
 import { COMMODITY_BASELINES } from '../constants';
 import { useBlackMarketStore } from './blackMarketStore';
+import { useLeaderStore } from './leaderStore';
+import { ConsequenceEngine } from '../sim/consequenceEngine';
 
 interface WorldStoreActions {
   applyTickDelta: (updater: (draft: WorldState) => void) => void;
@@ -13,7 +15,12 @@ interface WorldStoreActions {
   updateCommodity: (type: keyof typeof COMMODITY_BASELINES, updater: (market: CommodityMarket) => void) => void;
   addGlobalEvent: (text: string, severity?: WorldState['globalEventLog'][0]['severity']) => void;
   setGlobalThreatLevel: (level: ThreatLevel) => void;
-  resetWorld: () => void;
+  resetWorld: (leaderOverrides?: Record<string, LeaderPersonality>) => void;
+  registerConsequenceChain: (actionType: MajorActionType, context: { sourceCountryId: string; targetCountryId?: string; [key: string]: any }) => void;
+  enqueueConsequence: (consequence: ScheduledConsequence) => void;
+  resolveScheduledConsequence: (id: string) => void;
+  tickConsequences: (currentTick: number) => void;
+  clearExpiredHistory: () => void;
 }
 
 export const useWorldStore = create<WorldState & WorldStoreActions>((set) => ({
@@ -40,6 +47,8 @@ export const useWorldStore = create<WorldState & WorldStoreActions>((set) => ({
     { tick: 0, text: 'Space Reconnaissance constellation online. Multi-spectrum radars standing by.', severity: 'INFO' }
   ],
   currentTick: 0,
+  scheduledConsequences: [],
+  recentResolvedConsequences: [],
 
   applyTickDelta: (updater) => set(produce((draft: WorldState & WorldStoreActions) => {
     updater(draft);
@@ -58,6 +67,10 @@ export const useWorldStore = create<WorldState & WorldStoreActions>((set) => ({
       text: `Tactical Warning: Ballistic target trace detected in airspace! Source: ${strike.sourceCountryId} → Target: ${strike.targetCountryId}. Classified unit type: ${strike.weaponType}.`,
       severity: 'CRITICAL',
     });
+
+    const isNuclear = strike.weaponType === 'ICBM' || strike.weaponType === 'SLBM' || (strike.warheadYieldMT !== undefined && strike.warheadYieldMT > 0);
+    const actionType = isNuclear ? 'NUCLEAR_ESCALATION' : 'LAUNCH_STRIKE';
+    ConsequenceEngine.register(actionType, { sourceCountryId: strike.sourceCountryId, targetCountryId: strike.targetCountryId }, draft);
   })),
 
   resolveStrike: (strikeId, status) => set(produce((draft: WorldState & WorldStoreActions) => {
@@ -90,8 +103,9 @@ export const useWorldStore = create<WorldState & WorldStoreActions>((set) => ({
     draft.globalThreatLevel = level;
   })),
 
-  resetWorld: () => {
+  resetWorld: (leaderOverrides) => {
     useBlackMarketStore.getState().resetMarket();
+    useLeaderStore.getState().initializeLeadersForAllCountries(0, leaderOverrides);
     set({
       countries: JSON.parse(JSON.stringify(INITIAL_COUNTRIES)),
       activeStrikes: [],
@@ -115,6 +129,31 @@ export const useWorldStore = create<WorldState & WorldStoreActions>((set) => ({
         { tick: 0, text: 'Sovereign Command Simulator systems reset. Stand by for directive input.', severity: 'SYSTEM' }
       ],
       currentTick: 0,
+      scheduledConsequences: [],
+      recentResolvedConsequences: [],
     });
   },
+
+  registerConsequenceChain: (actionType, context) => set(produce((draft: WorldState & WorldStoreActions) => {
+    ConsequenceEngine.register(actionType, context, draft);
+  })),
+
+  enqueueConsequence: (consequence) => set(produce((draft: WorldState & WorldStoreActions) => {
+    if (!draft.scheduledConsequences) draft.scheduledConsequences = [];
+    draft.scheduledConsequences.push(consequence);
+  })),
+
+  resolveScheduledConsequence: (id) => set(produce((draft: WorldState & WorldStoreActions) => {
+    if (!draft.scheduledConsequences) draft.scheduledConsequences = [];
+    const c = draft.scheduledConsequences.find((x) => x.id === id);
+    if (c) c.resolved = true;
+  })),
+
+  tickConsequences: (currentTick) => set(produce((draft: WorldState & WorldStoreActions) => {
+    ConsequenceEngine.tick(currentTick, draft);
+  })),
+
+  clearExpiredHistory: () => set(produce((draft: WorldState & WorldStoreActions) => {
+    draft.recentResolvedConsequences = [];
+  })),
 }));

@@ -243,7 +243,7 @@ export default function App() {
   };
 
   // Initiate scenario from lobby selection
-  const selectScenario = (id: ScenarioId, playableCountryId?: string) => {
+  const selectScenario = (id: ScenarioId, playableCountryId?: string, customOptions?: any) => {
     const config = SCENARIOS[id];
     if (!config) return;
 
@@ -251,7 +251,7 @@ export default function App() {
 
     const selectedCountryId = playableCountryId || config.playableCountryIds[0] || 'US';
 
-    initScenario(id, selectedCountryId);
+    initScenario(id, selectedCountryId, customOptions?.leaderOverrides);
 
     setScenarioSelected(id);
     setLobbyActive(false);

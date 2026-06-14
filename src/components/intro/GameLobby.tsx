@@ -4,7 +4,8 @@ import { useClockStore } from '../../store/clockStore';
 import { useDefconStore } from '../../store/defconStore';
 import { useFogOfWarStore } from '../../store/fogOfWarStore';
 import { useConsequenceStore } from '../../store/consequenceStore';
-import { ScenarioId } from '../../types';
+import { ScenarioId, LeaderPersonality } from '../../types';
+import { useLeaderStore } from '../../store/leaderStore';
 import { audio } from '../../utils/audio';
 import { motion, AnimatePresence } from 'motion/react';
 import { DurationSelector } from '../lobby/DurationSelector';
@@ -87,6 +88,91 @@ export default function GameLobby({ onStartScenario, onOpenWorldBuilder }: GameL
 
   // Preset Selection state
   const [selectedPreset, setSelectedPreset] = useState<PresetKey>('CUSTOM');
+
+  // Pre-game leader overrides and tabs
+  const [activeTab, setActiveTab] = useState<'HOTSPOTS' | 'LEADERS'>('LEADERS');
+  const [leaderOverrides, setLeaderOverrides] = useState<Record<string, LeaderPersonality>>({});
+
+  const getDefaultLeaderPersonality = (countryId: string): LeaderPersonality => {
+    const initialMap: Record<string, LeaderPersonality> = {
+      US: LeaderPersonality.PRAGMATIST,
+      CN: LeaderPersonality.HAWK,
+      RU: LeaderPersonality.HAWK,
+      IL: LeaderPersonality.IDEOLOGUE,
+      IR: LeaderPersonality.IDEOLOGUE,
+      GB: LeaderPersonality.DOVE,
+      DE: LeaderPersonality.DOVE,
+      JP: LeaderPersonality.PRAGMATIST,
+      KP: LeaderPersonality.HAWK,
+      TW: LeaderPersonality.DOVE,
+      PK: LeaderPersonality.UNPREDICTABLE,
+      IN: LeaderPersonality.PRAGMATIST,
+    };
+    return initialMap[countryId] || LeaderPersonality.PRAGMATIST;
+  };
+
+  const getDeterministicLeaderPreview = (countryId: string, personality: LeaderPersonality) => {
+    return useLeaderStore.getState().generateNewLeader(countryId, 'INITIAL', 0, personality);
+  };
+
+  const handleOverrideLeader = (countryId: string, personality: LeaderPersonality) => {
+    setLeaderOverrides(prev => ({
+      ...prev,
+      [countryId]: personality
+    }));
+  };
+
+  const handleResetLeader = (countryId: string) => {
+    setLeaderOverrides(prev => {
+      const copy = { ...prev };
+      delete copy[countryId];
+      return copy;
+    });
+  };
+
+  const applyLeaderPreset = (preset: 'DEFAULT' | 'COLD_WAR_HOT' | 'DIPLOMATIC' | 'CHAOTIC') => {
+    if (preset === 'DEFAULT') {
+      setLeaderOverrides({});
+      return;
+    }
+
+    const overrides: Record<string, LeaderPersonality> = {};
+    const nations = ['US', 'CN', 'IN', 'PK', 'IL', 'PS', 'IR', 'RU', 'GB', 'FR', 'DE', 'JP', 'KR', 'SA', 'BR', 'ZA', 'AU', 'TR', 'EG', 'TW'];
+    
+    nations.forEach(cId => {
+      if (preset === 'COLD_WAR_HOT') {
+        const hawks = ['US', 'CN', 'RU', 'GB', 'FR', 'IL', 'IR', 'KP'];
+        overrides[cId] = hawks.includes(cId) ? LeaderPersonality.HAWK : LeaderPersonality.IDEOLOGUE;
+      } else if (preset === 'DIPLOMATIC') {
+        const doves = ['US', 'RU', 'CN', 'GB', 'FR', 'DE', 'JP', 'TW'];
+        overrides[cId] = doves.includes(cId) ? LeaderPersonality.DOVE : LeaderPersonality.PRAGMATIST;
+      } else if (preset === 'CHAOTIC') {
+        overrides[cId] = Math.random() < 0.5 ? LeaderPersonality.UNPREDICTABLE : LeaderPersonality.IDEOLOGUE;
+      }
+    });
+
+    setLeaderOverrides(overrides);
+  };
+
+  const getEscalationLabel = (pers: LeaderPersonality) => {
+    switch (pers) {
+      case LeaderPersonality.HAWK: return '1.4x (HIGH)';
+      case LeaderPersonality.DOVE: return '0.7x (LOW)';
+      case LeaderPersonality.IDEOLOGUE: return '1.1x (MOD)';
+      case LeaderPersonality.UNPREDICTABLE: return 'ERRATIC';
+      default: return '1.0x (NOM)';
+    }
+  };
+
+  const getRiskLabel = (pers: LeaderPersonality) => {
+    switch (pers) {
+      case LeaderPersonality.HAWK: return '+25% BIAS';
+      case LeaderPersonality.DOVE: return '-25% BIAS';
+      case LeaderPersonality.IDEOLOGUE: return 'BALANCED';
+      case LeaderPersonality.UNPREDICTABLE: return 'VOLATILE';
+      default: return 'NOMINAL';
+    }
+  };
 
   // Dynamic system clock purely for visual tactical ambiance
   const [systemTime, setSystemTime] = useState('');
@@ -300,7 +386,8 @@ export default function GameLobby({ onStartScenario, onOpenWorldBuilder }: GameL
       aiAggression,
       nuclearDoctrine,
       economicVolatility,
-      substateActivity
+      substateActivity,
+      leaderOverrides
     });
   };
 
@@ -663,132 +750,314 @@ export default function GameLobby({ onStartScenario, onOpenWorldBuilder }: GameL
               </div>
             </div>
 
-            {/* THEATER HOTSPOT INSET MAP (Interactive SVG Visualizer) */}
-            <div className="border border-[#1a5c1a]/40 bg-[#030604]/95 p-2 rounded-md flex-1 flex flex-col min-h-0 relative">
+            {/* THEATER CONFIGURATION TABS (Interactive SVG Map / Leader Override Suite) */}
+            <div className="border border-[#1a5c1a]/40 bg-[#030604]/95 p-3 rounded-md flex-1 flex flex-col min-h-0 relative">
               <div className="absolute top-0 right-0 w-2 h-2 border-[#1a5c1a] border-t border-r" />
               <div className="absolute bottom-0 left-0 w-2 h-2 border-[#1a5c1a] border-b border-l" />
 
-              <div className="flex justify-between items-center mb-1.5 px-1 flex-shrink-0">
-                <span className="text-[9px] font-bold text-[#00ff44] uppercase tracking-widest flex items-center gap-1.5">
-                  <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
-                  </span>
-                  ACTIVE STRATEGIC HOTSPOT FOCUS INCURSIONS
-                </span>
-                <span className="text-[7.5px] text-gray-500 font-bold font-mono">VECTOR INSET V-993</span>
+              {/* TABS HEADER */}
+              <div className="flex justify-between items-center mb-2 px-1 flex-shrink-0 border-b border-[#1a5c1a]/30 pb-2">
+                <div id="leadership-tab-header" className="flex gap-2">
+                  <button
+                    onClick={() => { audio.sfxKeyClick(); setActiveTab('LEADERS'); }}
+                    className={`px-3 py-1 text-[9px] font-mono font-bold tracking-widest rounded transition-all flex items-center gap-1.5 cursor-pointer ${
+                      activeTab === 'LEADERS'
+                        ? 'bg-[#00ff4d]/15 text-[#00ff4d] border border-[#00ff4d]/40 shadow-[0_0_10px_rgba(0,255,77,0.2)]'
+                        : 'text-gray-500 hover:text-gray-300 border border-transparent'
+                    }`}
+                  >
+                    <User className="w-3.5 h-3.5" /> STRATEGIC LEADERSHIP CONFIG
+                  </button>
+                  <button
+                    onClick={() => { audio.sfxKeyClick(); setActiveTab('HOTSPOTS'); }}
+                    className={`px-3 py-1 text-[9px] font-mono font-bold tracking-widest rounded transition-all flex items-center gap-1.5 cursor-pointer ${
+                      activeTab === 'HOTSPOTS'
+                        ? 'bg-[#00ff4d]/15 text-[#00ff4d] border border-[#00ff4d]/40 shadow-[0_0_10px_rgba(0,255,77,0.2)]'
+                        : 'text-gray-500 hover:text-gray-300 border border-transparent'
+                    }`}
+                  >
+                    <Globe className="w-3.5 h-3.5" /> THEATER HOTSPOT MAP
+                  </button>
+                </div>
+                <span className="text-[7.5px] text-gray-500 font-bold font-mono">VECTOR SEC-COORD-993</span>
               </div>
 
-              {/* Simplified geographic SVG Map containing coordinates of countries and pulsars */}
-              <div className="flex-1 bg-black/60 rounded border border-[#122e17] overflow-hidden relative flex items-center justify-center">
-                <svg viewBox="0 0 500 240" className="w-full h-full max-h-[220px] text-gray-405 select-none" xmlns="http://www.w3.org/2000/svg">
-                  {/* Stylized geometric grid background lines inside SVG */}
-                  <defs>
-                    <pattern id="mapGrid" width="10" height="10" patternUnits="userSpaceOnUse">
-                      <path d="M 10 0 L 0 0 0 10" fill="none" stroke="rgba(0, 255, 68, 0.025)" strokeWidth="0.5"/>
-                    </pattern>
-                  </defs>
-                  <rect width="100%" height="100%" fill="url(#mapGrid)"/>
+              {activeTab === 'HOTSPOTS' ? (
+                /* Simplified geographic SVG Map containing coordinates of countries and pulsars */
+                <div className="flex-1 bg-black/60 rounded border border-[#122e17] overflow-hidden relative flex items-center justify-center">
+                  <svg viewBox="0 0 500 240" className="w-full h-full max-h-[220px] text-gray-405 select-none" xmlns="http://www.w3.org/2000/svg">
+                    {/* Stylized geometric grid background lines inside SVG */}
+                    <defs>
+                      <pattern id="mapGrid" width="10" height="10" patternUnits="userSpaceOnUse">
+                        <path d="M 10 0 L 0 0 0 10" fill="none" stroke="rgba(0, 255, 68, 0.025)" strokeWidth="0.5"/>
+                      </pattern>
+                    </defs>
+                    <rect width="100%" height="100%" fill="url(#mapGrid)"/>
 
-                  {/* Draw global meridian lines */}
-                  <line x1="250" y1="0" x2="250" y2="240" stroke="rgba(0, 255, 68, 0.05)" strokeDasharray="2,3" />
-                  <line x1="0" y1="120" x2="500" y2="120" stroke="rgba(0, 255, 68, 0.05)" strokeDasharray="2,3" />
+                    {/* Draw global meridian lines */}
+                    <line x1="250" y1="0" x2="250" y2="240" stroke="rgba(0, 255, 68, 0.05)" strokeDasharray="2,3" />
+                    <line x1="0" y1="120" x2="500" y2="120" stroke="rgba(0, 255, 68, 0.05)" strokeDasharray="2,3" />
 
-                  {/* Abstract continent guides for tactical feel */}
-                  {/* America */}
-                  <path d="M 50 40 Q 120 40 140 100 T 170 150 T 210 220 Q 180 230 160 180 T 100 130 T 40 60 Z" fill="rgba(0,255,100,0.015)" stroke="rgba(20,50,30,0.2)" strokeWidth="1" />
-                  {/* Africa & Eurasia */}
-                  <path d="M 260 65 Q 350 40 450 50 T 480 120 T 360 210 T 290 190 T 255 130 Z" fill="rgba(0,255,100,0.015)" stroke="rgba(20,50,30,0.2)" strokeWidth="1" />
-                  {/* Australia */}
-                  <path d="M 430 180 Q 470 170 480 200 T 440 220 Z" fill="rgba(0,255,100,0.015)" stroke="rgba(20,50,30,0.2)" strokeWidth="1" />
+                    {/* Abstract continent guides for tactical feel */}
+                    {/* America */}
+                    <path d="M 50 40 Q 120 40 140 100 T 170 150 T 210 220 Q 180 230 160 180 T 100 130 T 40 60 Z" fill="rgba(0,255,100,0.015)" stroke="rgba(20,50,30,0.2)" strokeWidth="1" />
+                    {/* Africa & Eurasia */}
+                    <path d="M 260 65 Q 350 40 450 50 T 480 120 T 360 210 T 290 190 T 255 130 Z" fill="rgba(0,255,100,0.015)" stroke="rgba(20,50,30,0.2)" strokeWidth="1" />
+                    {/* Australia */}
+                    <path d="M 430 180 Q 470 170 480 200 T 440 220 Z" fill="rgba(0,255,100,0.015)" stroke="rgba(20,50,30,0.2)" strokeWidth="1" />
 
-                  {/* Lines mapping lines of communication / hotspots between locations */}
-                  {scenarioHotspots.length > 1 && scenarioHotspots.map((pt, index) => {
-                    if (index === 0) return null;
-                    const prev = scenarioHotspots[index - 1];
-                    return (
-                      <g key={`corr-${index}`}>
-                        <path 
-                          d={`M ${prev.cx} ${prev.cy} Q ${(prev.cx + pt.cx)/2} ${(prev.cy + pt.cy)/2 - 30} ${pt.cx} ${pt.cy}`} 
-                          fill="none" 
-                          stroke="rgba(245, 158, 11, 0.4)" 
-                          strokeWidth="1" 
-                          strokeDasharray="3,3" 
-                        />
-                        <circle cx={(prev.cx + pt.cx)/2} cy={(prev.cy + pt.cy)/2 - 15} r="2" fill="#ffb300" className="animate-ping" />
-                      </g>
-                    );
-                  })}
+                    {/* Lines mapping lines of communication / hotspots between locations */}
+                    {scenarioHotspots.length > 1 && scenarioHotspots.map((pt, index) => {
+                      if (index === 0) return null;
+                      const prev = scenarioHotspots[index - 1];
+                      return (
+                        <g key={`corr-${index}`}>
+                          <path 
+                            d={`M ${prev.cx} ${prev.cy} Q ${(prev.cx + pt.cx)/2} ${(prev.cy + pt.cy)/2 - 30} ${pt.cx} ${pt.cy}`} 
+                            fill="none" 
+                            stroke="rgba(245, 158, 11, 0.4)" 
+                            strokeWidth="1" 
+                            strokeDasharray="3,3" 
+                          />
+                          <circle cx={(prev.cx + pt.cx)/2} cy={(prev.cy + pt.cy)/2 - 15} r="2" fill="#ffb300" className="animate-ping" />
+                        </g>
+                      );
+                    })}
 
-                  {/* Map coordinates indicators */}
-                  {LOBBY_NATIONS.map((n) => {
-                    const isHotspot = scenarioHotspots.some(h => h.id === n.id);
-                    const isSelected = n.id === selectedCountry;
-                    
-                    return (
-                      <g key={`dot-${n.id}`}>
-                        <circle 
-                          cx={n.cx} 
-                          cy={n.cy} 
-                          r={isSelected ? "4" : isHotspot ? "3" : "1.5"} 
-                          fill={isHotspot ? "#ff7700" : isSelected ? "#00ff77" : "rgba(0,255,100,0.15)"} 
-                          className={isHotspot || isSelected ? 'animate-pulse' : ''}
-                        />
-                        {(isHotspot || isSelected) && (
+                    {/* Map coordinates indicators */}
+                    {LOBBY_NATIONS.map((n) => {
+                      const isHotspot = scenarioHotspots.some(h => h.id === n.id);
+                      const isSelected = n.id === selectedCountry;
+                      
+                      return (
+                        <g key={`dot-${n.id}`}>
                           <circle 
                             cx={n.cx} 
                             cy={n.cy} 
-                            r={isSelected ? "12" : "8"} 
-                            fill="none" 
-                            stroke={isHotspot ? "#ffb300" : "#00ff77"} 
-                            strokeWidth="0.5" 
-                            className="animate-ping" 
-                            style={{ animationDuration: isSelected ? '2.5s' : '4s' }}
+                            r={isSelected ? "4" : isHotspot ? "3" : "1.5"} 
+                            fill={isHotspot ? "#ff7700" : isSelected ? "#00ff77" : "rgba(0,255,100,0.15)"} 
+                            className={isHotspot || isSelected ? 'animate-pulse' : ''}
                           />
-                        )}
-                        {/* Compact coordinate pointer label */}
-                        {(isHotspot || isSelected) && (
-                          <text 
-                            x={n.cx + 6} 
-                            y={n.cy + 3} 
-                            fill={isHotspot ? "#ffb300" : "#00ff77"} 
-                            fontSize="6" 
-                            fontWeight="bold" 
-                            fontFamily="monospace"
-                          >
-                            {n.id}
-                          </text>
-                        )}
-                      </g>
-                    );
-                  })}
-                </svg>
+                          {(isHotspot || isSelected) && (
+                            <circle 
+                              cx={n.cx} 
+                              cy={n.cy} 
+                              r={isSelected ? "12" : "8"} 
+                              fill="none" 
+                              stroke={isHotspot ? "#ffb300" : "#00ff77"} 
+                              strokeWidth="0.5" 
+                              className="animate-ping" 
+                              style={{ animationDuration: isSelected ? '2.5s' : '4s' }}
+                            />
+                          )}
+                          {/* Compact coordinate pointer label */}
+                          {(isHotspot || isSelected) && (
+                            <text 
+                              x={n.cx + 6} 
+                              y={n.cy + 3} 
+                              fill={isHotspot ? "#ffb300" : "#00ff77"} 
+                              fontSize="6" 
+                              fontWeight="bold" 
+                              fontFamily="monospace"
+                            >
+                              {n.id}
+                            </text>
+                          )}
+                        </g>
+                      );
+                    })}
+                  </svg>
 
-                {/* Legend list Overlay */}
-                <div className="absolute bottom-2 left-2 right-2 flex flex-wrap gap-2 justify-center bg-black/80 backdrop-blur-sm border border-[#1b3d1f] p-1.5 rounded">
-                  <div className="text-[7.5px] font-bold text-gray-400 uppercase flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 bg-[#00ff77] rounded-full inline-block" /> SELECTED IDENTITY
+                  {/* Legend list Overlay */}
+                  <div className="absolute bottom-2 left-2 right-2 flex flex-wrap gap-2 justify-center bg-black/80 backdrop-blur-sm border border-[#1b3d1f] p-1.5 rounded">
+                    <div className="text-[7.5px] font-bold text-gray-400 uppercase flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 bg-[#00ff77] rounded-full inline-block" /> SELECTED IDENTITY
+                    </div>
+                    <div className="text-[7.5px] font-bold text-gray-400 uppercase flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 bg-[#ff7700] rounded-full inline-block" /> THEATER FOCUS ACTOR
+                    </div>
+                    <div className="text-[7.5px] font-bold text-gray-400 uppercase flex items-center gap-1">
+                      <span className="w-3.5 h-px bg-yellow-500 border-t border-dashed inline-block" /> COGNATE LINK VECTOR
+                    </div>
                   </div>
-                  <div className="text-[7.5px] font-bold text-gray-400 uppercase flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 bg-[#ff7700] rounded-full inline-block" /> THEATER FOCUS ACTOR
+
+                  {/* Scenario details focus metadata */}
+                  {scenarioHotspots.length > 0 && (
+                    <div className="absolute top-2 right-2 bg-black/90 p-2 rounded border border-amber-500/20 text-left max-w-[160px]">
+                      <span className="text-[7px] text-amber-500 font-bold block uppercase border-b border-[#112d16] pb-0.5 mb-1">THEATER FOCUS SEC:</span>
+                      <ul className="text-[7.5px] space-y-1 text-gray-300 uppercase">
+                        {scenarioHotspots.map((h, idx) => (
+                          <li key={idx} className="truncate">🎯 {h.label}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                /* LEADER PERSONALITY CONTROLS */
+                <div className="flex-1 flex flex-col min-h-0 space-y-2 text-xs">
+                  {/* Presets Row */}
+                  <div className="flex flex-col md:flex-row md:items-center justify-between bg-black/40 border border-[#1a5c1a]/25 p-1.5 rounded gap-2 flex-shrink-0 text-[10px]">
+                    <div className="flex items-center gap-1.5 text-amber-400 font-bold">
+                      <Workflow className="w-3.5 h-3.5 text-amber-500" />
+                      PRE-GAME LEADERSHIP PRESETS:
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {[
+                        { key: 'DEFAULT', label: 'ALL DEFAULT', style: 'border-gray-800 text-gray-400 hover:bg-gray-850 hover:text-white' },
+                        { key: 'COLD_WAR_HOT', label: 'COLD WAR HOT', style: 'border-red-900/40 text-red-400 hover:bg-red-950/20 hover:border-red-500' },
+                        { key: 'DIPLOMATIC', label: 'DIPLOMATIC', style: 'border-blue-900/40 text-[#4da6ff] hover:bg-blue-950/20 hover:border-blue-500' },
+                        { key: 'CHAOTIC', label: 'CHAOTIC', style: 'border-purple-900/40 text-purple-400 hover:bg-purple-950/20 hover:border-purple-500' },
+                      ].map((p) => (
+                        <button
+                          key={p.key}
+                          onClick={() => { audio.playPhaseReveal(); applyLeaderPreset(p.key as any); }}
+                          className={`text-[8px] font-bold uppercase px-1.5 py-0.5 border rounded cursor-pointer transition-all ${p.style}`}
+                        >
+                          {p.label}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                  <div className="text-[7.5px] font-bold text-gray-400 uppercase flex items-center gap-1">
-                    <span className="w-3.5 h-px bg-yellow-500 border-t border-dashed inline-block" /> COGNATE LINK VECTOR
+
+                  {/* Split Layout Section */}
+                  <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-3 min-h-0 overflow-hidden">
+                    
+                    {/* PRIMARY MAJOR POWERS */}
+                    <div className="flex flex-col min-h-0 space-y-1.5 pr-1 border-r border-[#1a5c1a]/20">
+                      <span className="text-[8.5px] font-bold text-amber-400 tracking-wider uppercase border-b border-[#1a5c1a]/15 pb-1 flex justify-between items-center">
+                        <span>★ PRIMARY THEATER POWERS (EXECUTIVE COGNATES)</span>
+                        <span className="text-[7px] text-gray-500 font-normal">PERSISTENT FROM TICK 0</span>
+                      </span>
+
+                      <div className="flex-1 overflow-y-auto space-y-2 pr-1 custom-scrollbar">
+                        {(() => {
+                          const mainPowers = Array.from(new Set(['US', 'RU', 'CN', selectedCountry]));
+                          return mainPowers.map((cId) => {
+                            const cObj = LOBBY_NATIONS.find(n => n.id === cId);
+                            if (!cObj) return null;
+                            const currentPers = leaderOverrides[cId] || getDefaultLeaderPersonality(cId);
+                            const leaderDataRef = getDeterministicLeaderPreview(cId, currentPers);
+                            
+                            return (
+                              <div key={cId} className="bg-black/70 border border-[#16381b] p-1.5 rounded flex gap-2 relative">
+                                <div className="absolute top-1 right-2 text-[7px] font-bold">
+                                  {cId === selectedCountry ? (
+                                    <span className="text-green-400">(PLAYER BASE)</span>
+                                  ) : (
+                                    <span className="text-gray-500">NPC COGNATE</span>
+                                  )}
+                                </div>
+
+                                {/* Portrait Preview */}
+                                <div className="w-10 h-10 border border-[#1a5c1a]/30 bg-black overflow-hidden rounded relative flex-shrink-0">
+                                  <img 
+                                    src={leaderDataRef.portraitDataUrl} 
+                                    alt={leaderDataRef.name} 
+                                    className="w-full h-full object-cover scale-105" 
+                                    referrerPolicy="no-referrer"
+                                  />
+                                </div>
+
+                                <div className="flex-1 flex flex-col min-h-0">
+                                  <div className="flex items-center gap-1">
+                                    <span className="text-[10px]">{cObj.flag}</span>
+                                    <span className="text-[9px] font-bold text-white uppercase truncate">{cObj.name}</span>
+                                  </div>
+                                  <div className="text-[8px] text-[#00ff51] font-mono truncate">
+                                    {leaderDataRef.name}
+                                  </div>
+
+                                  {/* Selection Row */}
+                                  <div className="mt-1 flex flex-wrap gap-1">
+                                    {Object.values(LeaderPersonality).map((pers) => {
+                                      const isSel = currentPers === pers;
+                                      return (
+                                        <button
+                                          key={pers}
+                                          onClick={() => { audio.sfxKeyClick(); handleOverrideLeader(cId, pers); }}
+                                          className={`text-[6.5px] font-mono font-extrabold px-1 py-0.5 border rounded cursor-pointer transition-all ${
+                                            isSel
+                                              ? 'bg-amber-500/20 border-amber-400 text-amber-400 shadow-[0_0_6px_rgba(240,150,0,0.15)]'
+                                              : 'border-gray-850 text-gray-500 hover:border-gray-600 hover:text-gray-300'
+                                          }`}
+                                        >
+                                          {pers}
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+
+                                  {/* Multipliers Indicator */}
+                                  <div className="mt-1 flex items-center justify-between text-[7px] border-t border-gray-900 pt-0.5 text-gray-500">
+                                    <span>ESCALATION: <span className="text-gray-300 font-bold">{getEscalationLabel(currentPers)}</span></span>
+                                    <span>RISK PROPENS: <span className="text-gray-300 font-bold">{getRiskLabel(currentPers)}</span></span>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          });
+                        })()}
+                      </div>
+                    </div>
+
+                    {/* REGIONAL MIDDLE POWERS */}
+                    <div className="flex flex-col min-h-0 space-y-1.5 pl-1">
+                      <span className="text-[8.5px] font-bold text-gray-400 tracking-wider uppercase border-b border-[#1a5c1a]/15 pb-1 flex justify-between items-center">
+                        <span>☒ REGIONAL NATIONS</span>
+                        <span className="text-[7px] text-gray-505 font-mono">MIDDLE POWERS</span>
+                      </span>
+
+                      <div className="flex-1 overflow-y-auto space-y-1 pr-1 custom-scrollbar">
+                        {(() => {
+                          const mainPowers = Array.from(new Set(['US', 'RU', 'CN', selectedCountry]));
+                          const secondaryCountries = LOBBY_NATIONS.filter(n => !mainPowers.includes(n.id));
+                          
+                          return secondaryCountries.map((cObj) => {
+                            const cId = cObj.id;
+                            const currentPers = leaderOverrides[cId] || getDefaultLeaderPersonality(cId);
+                            const leaderDataRef = getDeterministicLeaderPreview(cId, currentPers);
+                            
+                            return (
+                              <div key={cId} className="bg-black/40 border border-gray-905 p-1 rounded flex items-center justify-between gap-1">
+                                <div className="flex items-center gap-1.5 min-w-[100px] truncate">
+                                  <span className="text-[10px] shrink-0">{cObj.flag}</span>
+                                  <div className="flex flex-col truncate">
+                                    <span className="text-[8.5px] font-bold text-gray-300 uppercase truncate">{cObj.name}</span>
+                                    <span className="text-[7px] text-gray-505 truncate font-mono">{leaderDataRef.name}</span>
+                                  </div>
+                                </div>
+
+                                <div className="flex items-center gap-1 shrink-0">
+                                  <select
+                                    value={currentPers}
+                                    onChange={(e) => { audio.sfxKeyClick(); handleOverrideLeader(cId, e.target.value as LeaderPersonality); }}
+                                    className="bg-gray-950 border border-[#1b3c1d]/50 text-amber-500 font-extrabold text-[7.5px] font-mono py-0.5 px-1 rounded cursor-pointer focus:outline-none focus:border-amber-400 text-right uppercase"
+                                  >
+                                    {Object.values(LeaderPersonality).map((pers) => (
+                                      <option key={pers} value={pers}>{pers}</option>
+                                    ))}
+                                  </select>
+                                  {leaderOverrides[cId] && (
+                                    <button
+                                      onClick={() => { audio.sfxKeyClick(); handleResetLeader(cId); }}
+                                      className="text-red-500 hover:text-red-400 text-[8px] px-1 font-mono hover:bg-red-950/20 rounded cursor-pointer"
+                                      title="Reset user override"
+                                    >
+                                      ⟲
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          });
+                        })()}
+                      </div>
+                    </div>
+
                   </div>
                 </div>
-
-                {/* Scenario details focus metadata */}
-                {scenarioHotspots.length > 0 && (
-                  <div className="absolute top-2 right-2 bg-black/90 p-2 rounded border border-amber-500/20 text-left max-w-[160px]">
-                    <span className="text-[7px] text-amber-500 font-bold block uppercase border-b border-[#112d16] pb-0.5 mb-1">THEATER FOCUS SEC:</span>
-                    <ul className="text-[7.5px] space-y-1 text-gray-300 uppercase">
-                      {scenarioHotspots.map((h, idx) => (
-                        <li key={idx} className="truncate">🎯 {h.label}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
+              )}
             </div>
 
           </div>

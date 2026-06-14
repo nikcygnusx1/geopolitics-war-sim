@@ -7,6 +7,7 @@ import { useMilitaryStore } from '../../store/militaryStore';
 import { restartTickTimer, executeSimulationStep } from '../../sim/tickEngine';
 import { getTickIncrement } from '../../sim/militaryEngine';
 import { ResearchNode, WeaponType, CovertOpType, HUDMode } from '../../types';
+import { GEO_COORDS } from '../../data/geoCoords';
 
 export default function TerminalShell() {
   const terminalLines = useUIStore((s) => s.terminalLines);
@@ -205,8 +206,8 @@ export default function TerminalShell() {
           const calculatedYield = yieldMTArg ?? (isNuclear ? 0.5 : undefined);
 
           useWorldStore.getState().applyTickDelta((draft) => {
-            const scGeo = require('../../data/geoCoords').GEO_COORDS[countryId];
-            const tgGeo = require('../../data/geoCoords').GEO_COORDS[targetIdArg];
+            const scGeo = GEO_COORDS[countryId];
+            const tgGeo = GEO_COORDS[targetIdArg];
             const sx = scGeo ? scGeo.cx : 500;
             const sy = scGeo ? scGeo.cy : 250;
             const tx = tgGeo ? tgGeo.cx : 400;

@@ -14,6 +14,7 @@ import { processAllAI } from './aiDecisionEngine';
 import { processComplexPhase2Geopolitics } from './geopoliticalEngine';
 import { CovertOp, WorldState } from '../types';
 import { dampenOpinionDelta } from '../utils/pacing';
+import { ConsequenceEngine } from './consequenceEngine';
 
 export const TICK_INTERVALS: Record<"day" | "week" | "month", number> = {
   day: 2000,
@@ -101,6 +102,9 @@ export function executeSimulationStep() {
 
     // T3.3 Black Market ticker integration
     useBlackMarketStore.getState().tickMarket(draft.currentTick);
+
+    // T3.5 Consequence core engine tick integration
+    ConsequenceEngine.tick(draft.currentTick, draft);
   });
 
   // 10. Sync player's cash levels with their nation's real treasury reserves

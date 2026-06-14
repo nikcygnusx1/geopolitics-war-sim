@@ -417,6 +417,8 @@ export interface WorldState {
   currentTick: number;
   lastWarDeclarationTick?: number;
   pacingPreset?: PacingPreset;
+  scheduledConsequences?: ScheduledConsequence[];
+  recentResolvedConsequences?: ScheduledConsequence[];
 }
 
 export type TickDuration = "day" | "week" | "month";
@@ -538,6 +540,80 @@ export interface AuctionLot {
     interestedAIs: string[]; // countryIds that are competing
   };
 }
+
+// ==========================================
+// T3.4 - LEADER PERSONALITY TYPES
+// ==========================================
+export enum LeaderPersonality {
+  HAWK = 'HAWK',
+  DOVE = 'DOVE',
+  PRAGMATIST = 'PRAGMATIST',
+  IDEOLOGUE = 'IDEOLOGUE',
+  UNPREDICTABLE = 'UNPREDICTABLE'
+}
+
+export interface Leader {
+  id: string;
+  countryId: string;
+  name: string;
+  type: LeaderPersonality;
+  hawkDoveScore: number;
+  riskTolerance: number;
+  portraitSeed: string;
+  portraitDataUrl?: string;
+  installedAtTick: number;
+  source: 'INITIAL' | 'ELECTION' | 'COUP';
+}
+
+// ==========================================
+// T3.5 - CONSEQUENCE CHAIN TYPES
+// ==========================================
+export enum ConsequenceEffectType {
+  SANCTIONS = 'SANCTIONS',
+  UN_RESOLUTION = 'UN_RESOLUTION',
+  REFUGEE_FLOW = 'REFUGEE_FLOW',
+  MARKET_REACTION = 'MARKET_REACTION',
+  ALLIANCE_INVITATION = 'ALLIANCE_INVITATION',
+  COUP_RISK_INCREASE = 'COUP_RISK_INCREASE'
+}
+
+export type MajorActionType =
+  | 'DECLARE_WAR'
+  | 'IMPOSE_SANCTIONS'
+  | 'SIGN_ALLIANCE'
+  | 'LAUNCH_STRIKE'
+  | 'NUCLEAR_ESCALATION'
+  | 'DISPATCH_FOREIGN_AID'
+  | 'STAGE_COUP'
+  | 'REGIME_CHANGE';
+
+export interface ConsequenceEffect {
+  delay: number;
+  effectType: ConsequenceEffectType;
+  probability: number;
+  params: Record<string, any>;
+}
+
+export interface ConsequenceTemplate {
+  actionType: MajorActionType;
+  effects: ConsequenceEffect[];
+}
+
+export interface ScheduledConsequence {
+  id: string;
+  sourceActionId: string;
+  sourceCountryId: string;
+  targetCountryId?: string;
+  actionType: MajorActionType;
+  scheduledTick: number;
+  createdAtTick: number;
+  effectType: ConsequenceEffectType;
+  probability: number;
+  params: Record<string, any>;
+  resolved: boolean;
+  cancelled?: boolean;
+}
+
 
 
 

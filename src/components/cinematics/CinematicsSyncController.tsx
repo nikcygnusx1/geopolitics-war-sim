@@ -107,8 +107,9 @@ export default function CinematicsSyncController() {
       }
 
       // 4. DETECT NUCLEAR MISSILE LAUNCHES
-      state.activeStrikes.forEach((strike) => {
-        const isNew = !prevStrikes.some((ps) => ps.id === strike.id);
+      (state.activeStrikes || []).forEach((strike) => {
+        if (!strike || !strike.id) return;
+        const isNew = !(prevStrikes || []).some((ps) => ps && ps.id === strike.id);
         if (isNew) {
           const isNuclear =
             (strike.warheadYieldMT && strike.warheadYieldMT > 0) ||
