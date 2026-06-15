@@ -92,11 +92,16 @@ export function GeoMap({ mode: initialMode, layers: initialLayers, theme = 'dark
 
   // Synchronized stores variables
   const countries = useWorldStore((s) => s.countries);
+  const worldBuilderConfig = useWorldStore((s) => s.worldBuilderConfig) || {};
   const activeStrikes = useWorldStore((s) => s.activeStrikes);
   const units = useUnitStore((s) => s.units);
   const selectedUnitId = useUnitStore((s) => s.selectedUnitId);
   const selectedHotspotId = useUIStore((s) => s.selectedHotspotId);
   const inspectedCountryId = useUIStore((s) => s.countryInspectorId);
+
+  const builderSelectedIds = useUIStore((s) => s.builderSelectedIds) || [];
+  const builderMapMode = useUIStore((s) => s.builderMapMode) || 'ALLIANCE';
+  const multiSelectMode = useUIStore((s) => s.multiSelectMode) || false;
   
   // Use map canonical selectors
   const mapState = useCanonicalMapState(localLayers, theme);
@@ -200,15 +205,29 @@ export function GeoMap({ mode: initialMode, layers: initialLayers, theme = 'dark
     const activeDeckLayers: any[] = [];
 
     // --- Interactive overlay handler helper ---
-    const handleItemClick = (info: any) => {
+    const handleItemClick = (info: any, event: any) => {
       if (info.object) {
         if (info.object.isHotspot && info.object.id) {
           useLinkedAnalysisStore.getState().selectCountry(info.object.countryId);
           useUIStore.getState().setSelectedHotspot(info.object.id, info.object.countryId);
           audio.sfxKeyClick();
         } else if (info.object.id) {
-          useLinkedAnalysisStore.getState().selectCountry(info.object.id);
-          useUIStore.getState().setSelectedHotspot(null);
+          const isShift = event?.srcEvent?.shiftKey || false;
+          const isMultiSelect = useUIStore.getState().multiSelectMode;
+          const setInspector = useUIStore.getState().setCountryInspector;
+          
+          if (setInspector) {
+            if (isMultiSelect || isShift) {
+              useUIStore.getState().toggleBuilderSelectedId(info.object.id);
+            } else {
+              useLinkedAnalysisStore.getState().selectCountry(info.object.id);
+              setInspector(info.object.id);
+              useUIStore.getState().setSelectedHotspot(null);
+            }
+          } else {
+            useLinkedAnalysisStore.getState().selectCountry(info.object.id);
+            useUIStore.getState().setSelectedHotspot(null);
+          }
           audio.sfxKeyClick();
         }
       }
@@ -236,46 +255,103 @@ export function GeoMap({ mode: initialMode, layers: initialLayers, theme = 'dark
           data: politicalPoints,
           getPosition: (d: any) => d.coordinates,
           getRadius: (d: any) => {
-            if (d.id === inspectedCountryId) return 240000;
+            const countryId = d.id;
+            const isMultiSelected = builderSelectedIds.includes(countryId);
+            if (countryId === inspectedCountryId) return 300000;
+            if (isMultiSelected) return 240000;
             if (d.isPlayer) return 180000;
             if (d.isTarget) return 150000;
             return 90000;
           },
           getFillColor: (d: any) => {
-            if (d.id === inspectedCountryId) {
+            const countryId = d.id;
+            const custom = worldBuilderConfig[countryId];
+            const isMultiSelected = builderSelectedIds.includes(countryId);
+            const isInspected = countryId === inspectedCountryId;
+            
+            if (isInspected) {
               return [0, 255, 68, 250]; // Bright highlight green for edited/inspected country in builder
             }
-            if (d.isPlayer) {
-              return [0, 229, 200, 230]; // Cyan for playable nation
-            }
-            if (d.isTarget) {
-              return [255, 59, 78, 230]; // Cyber red for active warfare target
-            }
-            
-            // Color code dynamically by strategic superpower alliance bloc
-            const alpha = 180;
-            switch (d.allianceBlock) {
-              case 'NATO': return [59, 130, 246, alpha];        // Royal Blue
-              case 'BRICS': return [249, 115, 22, alpha];       // Terracotta Orange
-              case 'GCC': return [234, 179, 8, alpha];          // Desert Gold/Yellow
-              case 'QUAD': return [20, 184, 166, alpha];         // Marine Teal
-              case 'SCO': return [168, 85, 247, alpha];         // Sovereign Purple
-              case 'NEUTRAL':
-              default:
-                return [100, 116, 139, 100]; // Neutral grey
+
+            const ideology = custom ? custom.ideology : (countries[countryId]?.political?.ideology || 'DEMOCRACY');
+            const alliance = custom ? custom.alliance : (countries[countryId]?.allianceBlock || 'NEUTRAL');
+            const nuclear = custom ? custom.nuclear : (countries[countryId]?.arsenal?.nuclearCapable || false);
+            const military = custom ? custom.military : (countries[countryId]?.arsenal?.totalPowerRating ?? 50);
+            const gdp = custom ? custom.gdp : (countries[countryId]?.economic?.gdpB ?? 100);
+            const opinion = custom ? custom.opinion : (countries[countryId]?.opinions?.[playerCountryId] ?? 0);
+
+            const alpha = isMultiSelected ? 255 : 190;
+
+            switch (builderMapMode) {
+              case 'IDEOLOGY': {
+                switch (ideology) {
+                  case 'DEMOCRACY': return [59, 130, 246, alpha]; // Royal Blue
+                  case 'COMMUNISM': return [244, 63, 94, alpha]; // Rose
+                  case 'AUTOCRACY': return [239, 68, 68, alpha]; // Red
+                  case 'MILITARY_JUNTA': return [245, 158, 11, alpha]; // Amber
+                  case 'THEOCRACY': return [168, 85, 247, alpha]; // Purple
+                  case 'TECHNOCRACY': return [6, 182, 212, alpha]; // Cyan
+                  case 'OLIGARCHY': return [234, 179, 8, alpha]; // Yellow
+                  case 'MONARCHY': return [217, 119, 6, alpha]; // Orange-brown
+                  default: return [148, 163, 184, alpha];
+                }
+              }
+              case 'NUCLEAR': {
+                if (nuclear) {
+                  return [234, 179, 8, isMultiSelected ? 255 : 230]; // Radioactive glowing gold
+                }
+                return [51, 65, 85, 95]; // Faded cool slate
+              }
+              case 'MILITARY': {
+                if (military < 35) return [148, 163, 184, isMultiSelected ? 180 : 100];
+                if (military < 60) return [245, 158, 11, alpha];
+                if (military < 85) return [249, 115, 22, alpha];
+                return [239, 68, 68, alpha];
+              }
+              case 'GDP': {
+                if (gdp < 250) return [148, 163, 184, isMultiSelected ? 180 : 100];
+                if (gdp < 1500) return [110, 231, 183, alpha];
+                if (gdp < 6000) return [16, 185, 129, alpha];
+                return [4, 120, 87, alpha];
+              }
+              case 'OPINION': {
+                if (countryId === playerCountryId) return [0, 229, 255, alpha]; // Cyan
+                if (opinion < -50) return [239, 68, 68, alpha];
+                if (opinion < -10) return [251, 146, 60, alpha];
+                if (opinion < 10) return [148, 163, 184, 120];
+                if (opinion < 50) return [45, 212, 191, alpha];
+                return [34, 197, 94, alpha];
+              }
+              case 'ALLIANCE':
+              default: {
+                switch (alliance) {
+                  case 'NATO': return [59, 130, 246, alpha];
+                  case 'BRICS': return [249, 115, 22, alpha];
+                  case 'GCC': return [234, 179, 8, alpha];
+                  case 'QUAD': return [20, 184, 166, alpha];
+                  case 'SCO': return [168, 85, 247, alpha];
+                  case 'NEUTRAL':
+                  default:
+                    return [148, 163, 184, isMultiSelected ? 180 : 100];
+                }
+              }
             }
           },
           getLineColor: (d: any) => {
-            if (d.id === inspectedCountryId) return [255, 255, 255, 255];
+            const countryId = d.id;
+            const isMultiSelected = builderSelectedIds.includes(countryId);
+            if (countryId === inspectedCountryId) return [255, 255, 255, 255];
+            if (isMultiSelected) return [255, 0, 150, 255]; // Vivid hot-pink ring for multi-select
             return d.isPlayer ? [0, 255, 170, 255] : [0, 229, 200, 180];
           },
-          lineWidthMinPixels: 1,
+          lineWidthMinPixels: 1.5,
           stroked: true,
           pickable: true,
           onClick: handleItemClick,
           updateTriggers: {
-            getFillColor: [playerCountryId, targetCountryId, inspectedCountryId, countries],
-            getRadius: [playerCountryId, targetCountryId, inspectedCountryId, countries]
+            getFillColor: [playerCountryId, targetCountryId, inspectedCountryId, countries, worldBuilderConfig, builderMapMode, builderSelectedIds],
+            getRadius: [playerCountryId, targetCountryId, inspectedCountryId, countries, builderSelectedIds],
+            getLineColor: [inspectedCountryId, builderSelectedIds, playerCountryId]
           }
         })
       );

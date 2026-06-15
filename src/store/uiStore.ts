@@ -24,6 +24,9 @@ interface UIState {
   terminalLines: TerminalLine[];
   alerts: UIAlert[];
   expandedWorkstation: 'SATELLITE' | 'DRONE' | 'CYBER' | 'HAARP' | null;
+  builderSelectedIds: string[];
+  builderMapMode: 'ALLIANCE' | 'IDEOLOGY' | 'NUCLEAR' | 'MILITARY' | 'GDP' | 'OPINION';
+  multiSelectMode: boolean;
 }
 
 interface UIStoreActions {
@@ -39,6 +42,11 @@ interface UIStoreActions {
   dismissAlert: (id: string) => void;
   resetUI: () => void;
   setExpandedWorkstation: (workstation: 'SATELLITE' | 'DRONE' | 'CYBER' | 'HAARP' | null) => void;
+  setBuilderSelectedIds: (ids: string[]) => void;
+  toggleBuilderSelectedId: (id: string) => void;
+  clearBuilderSelectedIds: () => void;
+  setBuilderMapMode: (mode: 'ALLIANCE' | 'IDEOLOGY' | 'NUCLEAR' | 'MILITARY' | 'GDP' | 'OPINION') => void;
+  setMultiSelectMode: (enabled: boolean) => void;
 }
 
 export const useUIStore = create<UIState & UIStoreActions>((set, get) => ({
@@ -47,6 +55,9 @@ export const useUIStore = create<UIState & UIStoreActions>((set, get) => ({
   selectedHotspotId: null,
   strikeConfirmModalOpen: false,
   expandedWorkstation: null,
+  builderSelectedIds: [],
+  builderMapMode: 'ALLIANCE',
+  multiSelectMode: false,
   terminalLines: [
     { id: 'start_1', type: 'SYSTEM', text: 'Sovereign Command Simulator CLI v2.0-Alpha loaded.' },
     { id: 'start_2', type: 'INFO', text: 'Enter "/help" to list all available system operations.' }
@@ -85,6 +96,19 @@ export const useUIStore = create<UIState & UIStoreActions>((set, get) => ({
 
   setStrikeConfirmModalOpen: (open) => set({ strikeConfirmModalOpen: open }),
   setExpandedWorkstation: (workstation) => set({ expandedWorkstation: workstation }),
+
+  setBuilderSelectedIds: (ids) => set({ builderSelectedIds: ids }),
+  toggleBuilderSelectedId: (id) => set(produce((draft) => {
+    const idx = draft.builderSelectedIds.indexOf(id);
+    if (idx > -1) {
+      draft.builderSelectedIds.splice(idx, 1);
+    } else {
+      draft.builderSelectedIds.push(id);
+    }
+  })),
+  clearBuilderSelectedIds: () => set({ builderSelectedIds: [] }),
+  setBuilderMapMode: (mode) => set({ builderMapMode: mode }),
+  setMultiSelectMode: (enabled) => set({ multiSelectMode: enabled }),
 
   pushTerminalLine: (text, type = 'INFO') => set(produce((draft) => {
     draft.terminalLines.push({

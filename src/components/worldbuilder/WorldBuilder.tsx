@@ -39,12 +39,70 @@ export default function WorldBuilder({ onLaunchSandbox, onBack }: WorldBuilderPr
   const inspectedCountryId = useUIStore((s) => s.countryInspectorId);
   const playerCountryId = usePlayerStore((s) => s.countryId) || 'US';
 
+  const builderSelectedIds = useUIStore((s) => s.builderSelectedIds) || [];
+  const builderMapMode = useUIStore((s) => s.builderMapMode) || 'ALLIANCE';
+  const multiSelectMode = useUIStore((s) => s.multiSelectMode) || false;
+
   const handleSetPlayerCountry = (id: string) => {
     audio.sfxKeyClick();
     usePlayerStore.setState({ countryId: id });
   };
 
   const [activeTab, setActiveTab] = useState<'NATIONS' | 'GLOBALS'>('NATIONS');
+  const [randomizationVariant, setRandomizationVariant] = useState<'PLAUSIBLE' | 'CHAOS' | 'NUCLEAR_HEAVY' | 'BIPOLAR'>('PLAUSIBLE');
+
+  const stats = React.useMemo(() => {
+    let demCount = 0;
+    let authCount = 0;
+    let nukeCount = 0;
+    let totalOpinion = 0;
+    let totalMilitary = 0;
+    const allianceCounts: Record<AllianceBlock, number> = {
+      NATO: 0, BRICS: 0, GCC: 0, QUAD: 0, SCO: 0, NEUTRAL: 0
+    };
+
+    const keys = Object.keys(worldBuilderConfig);
+    keys.forEach((id) => {
+      const config = worldBuilderConfig[id];
+      if (config) {
+        if (config.ideology === 'DEMOCRACY' || config.ideology === 'TECHNOCRACY') {
+          demCount++;
+        } else {
+          authCount++;
+        }
+        if (config.nuclear) {
+          nukeCount++;
+        }
+        if (allianceCounts[config.alliance] !== undefined) {
+          allianceCounts[config.alliance]++;
+        }
+        totalOpinion += config.opinion;
+        totalMilitary += config.military;
+      }
+    });
+
+    const averageOpinion = keys.length ? Math.round(totalOpinion / keys.length) : 0;
+    const averageMilitary = keys.length ? Math.round(totalMilitary / keys.length) : 0;
+    
+    const allianceFactor = (keys.length - allianceCounts.NEUTRAL) / (keys.length || 1);
+    const polarityDiff = Math.abs(demCount - authCount);
+    const baseInstability = Math.round(
+      (averageMilitary * 0.4) + 
+      (nukeCount * 5) + 
+      (allianceFactor * 30) - 
+      (polarityDiff * 0.4)
+    );
+    const instabilityIndex = Math.min(100, Math.max(10, baseInstability));
+
+    return {
+      demCount,
+      authCount,
+      nukeCount,
+      allianceCounts,
+      averageOpinion,
+      instabilityIndex
+    };
+  }, [worldBuilderConfig]);
 
   // Premium scramble visual states
   const [isScrambling, setIsScrambling] = useState(false);
@@ -112,12 +170,115 @@ export default function WorldBuilder({ onLaunchSandbox, onBack }: WorldBuilderPr
     useWorldStore.getState().setWorldBuilderConfig(config);
   };
 
-  const handleApplyRandomization = () => {
+  const handleBulkUpdate = (updates: Partial<any>) => {
+    if (!builderSelectedIds.length) return;
+    builderSelectedIds.forEach((id) => {
+      updateCountryConfig(id, updates);
+    });
     audio.sfxKlaxon();
-    triggerScramble('COMPUTING STOCHASTIC PLAUSIBILITY SCALING...');
-    const randomConfig = generatePlausibleRandomWorld();
+  };
+
+  const handleApplyRandomizationCombined = (variant: 'PLAUSIBLE' | 'CHAOS' | 'NUCLEAR_HEAVY' | 'BIPOLAR' = randomizationVariant) => {
+    audio.sfxKlaxon();
+    let randomConfig = generatePlausibleRandomWorld();
+    
+    let scrambleMsg = 'COMPUTING STOCHASTIC PLAUSIBILITY SCALING...';
+    if (variant === 'CHAOS') {
+      scrambleMsg = 'UNLEASHING ANARCHIC MULTIPOLAR CHAOS...';
+      const IDEOLOGIES: Ideology[] = ['COMMUNISM', 'MILITARY_JUNTA', 'THEOCRACY', 'TECHNOCRACY', 'OLIGARCHY', 'MONARCHY', 'AUTOCRACY', 'DEMOCRACY'];
+      const BLOCS: AllianceBlock[] = ['NATO', 'BRICS', 'GCC', 'QUAD', 'SCO', 'NEUTRAL'];
+      
+      const keys = Object.keys(randomConfig);
+      keys.forEach((id) => {
+        const item = randomConfig[id];
+        if (item) {
+          item.ideology = IDEOLOGIES[Math.floor(Math.random() * IDEOLOGIES.length)];
+          item.alliance = BLOCS[Math.floor(Math.random() * BLOCS.length)];
+          item.military = Math.floor(Math.random() * 80) + 15;
+          item.opinion = Math.floor(Math.random() * 180) - 90;
+          item.nuclear = Math.random() > 0.65;
+        }
+      });
+    } else if (variant === 'NUCLEAR_HEAVY') {
+      scrambleMsg = 'MUTUALLY ASSURED BRINKMANSHIP SEQUENCING...';
+      const keys = Object.keys(randomConfig);
+      keys.forEach((id) => {
+        const item = randomConfig[id];
+        if (item) {
+          item.nuclear = true;
+          item.military = Math.max(item.military, Math.floor(Math.random() * 30) + 70);
+          item.opinion = Math.floor(Math.random() * 80) - 95;
+        }
+      });
+    } else if (variant === 'BIPOLAR') {
+      scrambleMsg = 'INTEGRATING POLARIZED SUPERPOWER STANDOFF...';
+      const keys = Object.keys(randomConfig);
+      keys.forEach((id) => {
+        const item = randomConfig[id];
+        if (item) {
+          const isWest = ['US', 'GB', 'FR', 'DE', 'JP', 'KR', 'AU', 'IN', 'TW'].includes(id);
+          item.alliance = isWest ? 'NATO' : 'SCO';
+          item.ideology = isWest ? 'DEMOCRACY' : 'COMMUNISM';
+          item.opinion = isWest ? 90 : -95;
+          item.nuclear = ['US', 'GB', 'FR', 'RU', 'CN'].includes(id) || Math.random() > 0.7;
+        }
+      });
+    }
+    
+    triggerScramble(scrambleMsg);
     useWorldStore.getState().setWorldBuilderConfig(randomConfig);
   };
+
+  // Keyboard Shortcuts system for fluid rapid authoring
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (
+        document.activeElement?.tagName === 'INPUT' ||
+        document.activeElement?.tagName === 'TEXTAREA'
+      ) {
+        return;
+      }
+
+      switch (e.key.toLowerCase()) {
+        case 'escape':
+          audio.sfxKeyClick();
+          useUIStore.getState().setCountryInspector(null);
+          useUIStore.getState().clearBuilderSelectedIds();
+          break;
+        case 's':
+          audio.sfxKeyClick();
+          useUIStore.setState((s) => ({ multiSelectMode: !s.multiSelectMode }));
+          break;
+        case 'a':
+          audio.sfxKeyClick();
+          useUIStore.getState().setBuilderMapMode('ALLIANCE');
+          break;
+        case 'i':
+          audio.sfxKeyClick();
+          useUIStore.getState().setBuilderMapMode('IDEOLOGY');
+          break;
+        case 'n':
+          audio.sfxKeyClick();
+          useUIStore.getState().setBuilderMapMode('NUCLEAR');
+          break;
+        case 'm':
+          audio.sfxKeyClick();
+          useUIStore.getState().setBuilderMapMode('MILITARY');
+          break;
+        case 'g':
+          audio.sfxKeyClick();
+          useUIStore.getState().setBuilderMapMode('GDP');
+          break;
+        case 'o':
+          audio.sfxKeyClick();
+          useUIStore.getState().setBuilderMapMode('OPINION');
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const handleGenerateShareUrl = () => {
     audio.sfxKeyClick();
@@ -302,6 +463,190 @@ export default function WorldBuilder({ onLaunchSandbox, onBack }: WorldBuilderPr
           {/* We render the core canonical geographic map, configured in political centroid layer layout */}
           <WorldMap activeLayer="POLITICAL" />
 
+          {/* TACTICAL OVERLAY SELECTOR BAR (FLOAT TOP CENTER) */}
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 bg-black/90 border border-[#1a5c1a]/80 px-2 py-1.5 rounded-lg flex items-center gap-1.5 shadow-2xl backdrop-blur max-w-[95%] overflow-x-auto custom-scrollbar">
+            <span className="text-[9px] font-bold text-gray-500 uppercase px-2 tracking-wider border-r border-[#1a5c1a]/40 shrink-0">
+              MAP OVERLAYS:
+            </span>
+            {[
+              { key: 'ALLIANCE', title: 'ALLIANCES', desc: 'Sovereign Blocs', activeColor: 'text-blue-400 border-blue-500 bg-blue-950/20' },
+              { key: 'IDEOLOGY', title: 'IDEOLOGY', desc: 'Regime Styles', activeColor: 'text-rose-400 border-rose-500 bg-rose-950/20' },
+              { key: 'NUCLEAR', title: 'NUCLEAR', desc: 'Atomic Shields', activeColor: 'text-yellow-400 border-yellow-500 bg-yellow-950/20' },
+              { key: 'MILITARY', title: 'MILITARY WEIGHT', desc: 'Force Indexes', activeColor: 'text-orange-400 border-orange-500 bg-orange-950/20' },
+              { key: 'GDP', title: 'GDP PRODUCT', desc: 'Treasury Sizes', activeColor: 'text-emerald-400 border-emerald-500 bg-emerald-950/20' },
+              { key: 'OPINION', title: 'SENTIMENT', desc: 'Protagonist Stances', activeColor: 'text-cyan-400 border-cyan-500 bg-cyan-950/20' }
+            ].map((overlay) => {
+              const isActive = builderMapMode === overlay.key;
+              return (
+                <button
+                  key={overlay.key}
+                  onClick={() => {
+                    audio.sfxKeyClick();
+                    useUIStore.getState().setBuilderMapMode(overlay.key as any);
+                  }}
+                  className={`px-3 py-1 text-center border rounded transition-all cursor-pointer shrink-0 ${isActive ? `${overlay.activeColor} border-2 font-bold` : 'bg-black/40 border-[#0d2e0d] hover:border-green-800 text-gray-400 hover:text-white'}`}
+                  title={`${overlay.title}: ${overlay.desc}`}
+                >
+                  <div className="text-[9px] uppercase tracking-wide">{overlay.title}</div>
+                  <div className="text-[6px] text-gray-500 uppercase mt-0.5">{overlay.desc}</div>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* INTELLIGENCE MAP LEGEND (BOTTOM-LEFT IN MAP) */}
+          <div className="absolute left-4 bottom-4 z-20 bg-black/90 border border-[#1a5c1a] px-3.5 py-2.5 rounded-lg max-w-xs shadow-2xl backdrop-blur font-mono flex flex-col gap-1.5 hidden md:flex">
+            <div className="text-[10px] font-bold text-[#00ff44] uppercase flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#00ff44]" />
+              MAP INTEL: {builderMapMode} MODE
+            </div>
+            <div className="h-[1px] bg-[#1a5c1a]/45 my-0.5" />
+            
+            <div className="grid grid-cols-2 gap-x-3 gap-y-1 text-[8.5px]">
+              {builderMapMode === 'ALLIANCE' && [
+                { color: 'bg-blue-600', label: 'NATO (WEST)' },
+                { color: 'bg-orange-600', label: 'BRICS (EAST)' },
+                { color: 'bg-yellow-600', label: 'GCC (GULF)' },
+                { color: 'bg-teal-600', label: 'QUAD (PACIFIC)' },
+                { color: 'bg-purple-600', label: 'SCO (SOVEREIGN)' },
+                { color: 'bg-slate-500', label: 'NEUTRAL' }
+              ].map((item, idx) => (
+                <div key={idx} className="flex items-center gap-1.5">
+                  <div className={`w-2 h-2 rounded-full ${item.color}`} />
+                  <span className="text-gray-400 text-[8px] uppercase truncate">{item.label}</span>
+                </div>
+              ))}
+
+              {builderMapMode === 'IDEOLOGY' && [
+                { color: 'bg-blue-600', label: 'DEMOCRACY' },
+                { color: 'bg-rose-500', label: 'COMMUNISM' },
+                { color: 'bg-red-600', label: 'AUTOCRACY' },
+                { color: 'bg-amber-600', label: 'MIL. JUNTA' },
+                { color: 'bg-purple-600', label: 'THEOCRACY' },
+                { color: 'bg-cyan-500', label: 'TECHNOCRACY' },
+                { color: 'bg-yellow-600', label: 'OLIGARCHY' },
+                { color: 'bg-amber-800', label: 'MONARCHY' }
+              ].map((item, idx) => (
+                <div key={idx} className="flex items-center gap-1.5">
+                  <div className={`w-2 h-2 rounded-full ${item.color}`} />
+                  <span className="text-gray-400 text-[8px] uppercase truncate">{item.label}</span>
+                </div>
+              ))}
+
+              {builderMapMode === 'NUCLEAR' && [
+                { color: 'bg-yellow-500', label: 'ATOMIC ARSENAL ACTIVE' },
+                { color: 'bg-slate-600', label: 'NON-NUCLEAR COALITION' }
+              ].map((item, idx) => (
+                <div key={idx} className="flex items-center gap-1.5 col-span-2">
+                  <div className={`w-2 h-2 rounded-full ${item.color}`} />
+                  <span className="text-gray-400 text-[8px] uppercase truncate">{item.label}</span>
+                </div>
+              ))}
+
+              {builderMapMode === 'MILITARY' && [
+                { color: 'bg-slate-400', label: 'INITIATE (<35)' },
+                { color: 'bg-amber-500', label: 'GARRISON (35-60)' },
+                { color: 'bg-orange-500', label: 'SUPERPOWER (60-85)' },
+                { color: 'bg-red-500', label: 'HEGEMONY (>85)' }
+              ].map((item, idx) => (
+                <div key={idx} className="flex items-center gap-1.5 text-[8.5px]">
+                  <div className={`w-2 h-2 rounded-full ${item.color}`} />
+                  <span className="text-gray-400 text-[8px] uppercase truncate">{item.label}</span>
+                </div>
+              ))}
+
+              {builderMapMode === 'GDP' && [
+                { color: 'bg-slate-400', label: 'DEV (<250B)' },
+                { color: 'bg-emerald-300', label: 'MID (<1.5T)' },
+                { color: 'bg-emerald-500', label: 'STRONG (<6.0T)' },
+                { color: 'bg-emerald-800', label: 'EMPIRE (>$6.0T)' }
+              ].map((item, idx) => (
+                <div key={idx} className="flex items-center gap-1.5">
+                  <div className={`w-2 h-2 rounded-full ${item.color}`} />
+                  <span className="text-gray-400 text-[8px] uppercase truncate">{item.label}</span>
+                </div>
+              ))}
+
+              {builderMapMode === 'OPINION' && [
+                { color: 'bg-red-500', label: 'HOSTILE (< -50)' },
+                { color: 'bg-orange-400', label: 'COOL (-50 TO -10)' },
+                { color: 'bg-slate-400', label: 'NEUTRAL (-10 TO 10)' },
+                { color: 'bg-teal-400', label: 'FAVORABLE (10 TO 50)' },
+                { color: 'bg-emerald-500', label: 'ALLY (>50)' }
+              ].map((item, idx) => (
+                <div key={idx} className="flex items-center gap-1.5 mb-1 col-span-1">
+                  <div className={`w-2 h-2 rounded-full ${item.color}`} />
+                  <span className="text-gray-400 text-[8px] uppercase truncate">{item.label}</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="h-[1px] bg-[#1a5c1a]/25 my-0.5" />
+            <div className="text-[7.5px] text-gray-500 uppercase flex items-center justify-between gap-2.5">
+              <span>SHIFT + CLICK TO BULK</span>
+              <span className="text-pink-500 animate-pulse font-bold">● MATRIX MODE</span>
+            </div>
+          </div>
+
+          {/* GLOBAL OUTPOST BALANCE & STRATEGIC CONSEQUENCE DASHBOARD (FLOAT BOTTOM-LEFT CENTER / RIGHT) */}
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 bg-black/95 border border-[#1a5c1a] px-4 py-2 rounded-lg flex items-center gap-6 shadow-2xl backdrop-blur font-mono max-w-[90%] overflow-x-auto custom-scrollbar">
+            
+            {/* 1. IDEOLOGY BALANCE */}
+            <div className="flex flex-col border-r border-[#1a5c1a]/40 pr-5 shrink-0">
+              <span className="text-[7px] text-gray-500 uppercase font-bold tracking-wider">Ideological balance</span>
+              <div className="flex items-center gap-1.5 mt-0.5 font-bold">
+                <span className="text-blue-400 text-[10.5px] font-bold">{stats.demCount} DEMs</span>
+                <span className="text-gray-500 text-[8px] font-bold">VS</span>
+                <span className="text-red-400 text-[10.5px] font-bold">{stats.authCount} AUTs</span>
+              </div>
+            </div>
+
+            {/* 2. NUCLEAR ARMED STANDOFF */}
+            <div className="flex flex-col border-r border-[#1a5c1a]/40 pr-5 shrink-0">
+              <span className="text-[7px] text-gray-500 uppercase font-bold tracking-wider">Atomic shields</span>
+              <div className="flex items-center gap-1.5 mt-0.5">
+                <Atom className="w-3.5 h-3.5 text-yellow-500 animate-spin-slow shrink-0" />
+                <span className="text-yellow-400 text-[10.5px] font-bold uppercase">{stats.nukeCount} armed</span>
+              </div>
+            </div>
+
+            {/* 3. ALLIANCE BLOCK COUNTS */}
+            <div className="flex flex-col border-r border-[#1a5c1a]/40 pr-5 shrink-0">
+              <span className="text-[7px] text-gray-500 uppercase font-bold tracking-wider">Sovereign pact memberships</span>
+              <div className="flex items-center gap-1.5 mt-0.5 text-[8.5px] font-bold uppercase tracking-tight text-gray-400 font-mono">
+                <span className="text-blue-400">{stats.allianceCounts.NATO} NATO</span>
+                <span>•</span>
+                <span className="text-orange-400">{stats.allianceCounts.BRICS} BRICS</span>
+                <span>•</span>
+                <span className="text-yellow-400">{stats.allianceCounts.GCC} GCC</span>
+                <span>•</span>
+                <span className="text-teal-400">{stats.allianceCounts.QUAD} QUAD</span>
+                <span>•</span>
+                <span className="text-purple-400">{stats.allianceCounts.SCO} SCO</span>
+              </div>
+            </div>
+
+            {/* 4. DESIGN CONSEQUENCE / INSTABILITY INDEX */}
+            <div className="flex flex-col shrink-0">
+              <span className="text-[7px] text-gray-500 uppercase font-bold tracking-wider">INSTABILITY INDEX</span>
+              <div className="flex items-center gap-2 mt-0.5 font-bold">
+                <div className="w-16 bg-[#071307] h-1.5 rounded overflow-hidden border border-[#1a5c1a]/45">
+                  <div
+                    className="h-full rounded transition-all duration-500" 
+                    style={{
+                      width: `${stats.instabilityIndex}%`,
+                      backgroundColor: stats.instabilityIndex > 75 ? '#ef4444' : stats.instabilityIndex > 45 ? '#f97316' : '#22c55e'
+                    }}
+                  />
+                </div>
+                <span className={`text-[10px] font-bold ${stats.instabilityIndex > 75 ? 'text-red-500 animate-pulse' : stats.instabilityIndex > 45 ? 'text-orange-400' : 'text-green-400'}`}>
+                  {stats.instabilityIndex}%
+                </span>
+              </div>
+            </div>
+
+          </div>
+
           {/* Premium Scrambler Visualizer Overlay */}
           {isScrambling && (
             <div className="absolute inset-0 bg-[#020d02]/85 md:bg-[#020c02]/80 backdrop-blur-[2px] z-30 flex flex-col items-center justify-center border border-[#00ff44]/30 animate-pulse">
@@ -316,7 +661,7 @@ export default function WorldBuilder({ onLaunchSandbox, onBack }: WorldBuilderPr
           )}
 
           {/* Floating Instructions Legend Banner */}
-          <div className="absolute left-4 top-4 bg-black/85 border border-[#1a5c1a] px-3 py-2 rounded text-[10px] space-y-1 z-20 pointer-events-none max-w-xs shadow-lg">
+          <div className="absolute left-4 top-4 bg-black/85 border border-[#1a5c1a] px-3 py-2 rounded text-[10px] space-y-1 z-20 pointer-events-none max-w-xs shadow-lg hidden lg:block">
             <div className="font-bold text-[#00e5ff] uppercase flex items-center gap-1 mb-1">
               <Info className="w-3.5 h-3.5" />
               INTELLIGENCE OVERLAY MANUAL
@@ -364,8 +709,231 @@ export default function WorldBuilder({ onLaunchSandbox, onBack }: WorldBuilderPr
           <div className="flex-1 overflow-y-auto p-4 custom-scrollbar space-y-4">
             
             {activeTab === 'NATIONS' ? (
-              // Country Editor Panel
-              currentCountryConfig && inspectedCountryData && inspectedCountryId ? (
+              // Bulk selection state overrides individual editing
+              builderSelectedIds.length > 0 ? (
+                <div id="bulk-editing-workspace" className="space-y-4 animate-in fade-in duration-150">
+                  
+                  {/* Selection Status Box */}
+                  <div className="border border-pink-900 bg-pink-950/15 p-4 rounded relative overflow-hidden shadow-[0_0_12px_rgba(255,0,150,0.15)] bg-slate-900/10">
+                    <button
+                      onClick={() => {
+                        audio.sfxKeyClick();
+                        useUIStore.getState().clearBuilderSelectedIds();
+                      }}
+                      className="absolute right-2 top-2 p-1 text-pink-400 hover:text-white border border-transparent hover:border-pink-800 rounded transition-all cursor-pointer"
+                      title="Clear Selection"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                    
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded bg-pink-900/35 border border-pink-500 flex items-center justify-center text-pink-400 uppercase font-bold text-lg font-mono">
+                        {builderSelectedIds.length}
+                      </div>
+                      <div>
+                        <h2 className="text-xs font-bold text-white uppercase font-display tracking-wider flex items-center gap-1">
+                          <span className="text-pink-500 animate-pulse">●</span>
+                          BULK ASSIGNMENT DECK
+                        </h2>
+                        <span className="text-[8px] text-gray-400 block uppercase tracking-tight mt-0.5">
+                          Overwriting starting attributes for {builderSelectedIds.length} selected countries.
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-1.5 mt-4 pt-4 border-t border-pink-900/30 text-[9px] font-bold text-pink-400 font-mono">
+                      <button
+                        onClick={() => {
+                          audio.sfxKeyClick();
+                          // Invert selection
+                          const allIds = Object.keys(INITIAL_COUNTRIES);
+                          const currentSelected = useUIStore.getState().builderSelectedIds;
+                          const inverted = allIds.filter(id => !currentSelected.includes(id));
+                          useUIStore.getState().setBuilderSelectedIds(inverted);
+                        }}
+                        className="py-1 border border-pink-900/60 hover:bg-pink-950/20 rounded uppercase text-center cursor-pointer"
+                      >
+                        Invert Selection
+                      </button>
+                      <button
+                        onClick={() => {
+                          audio.sfxKeyClick();
+                          useUIStore.getState().clearBuilderSelectedIds();
+                        }}
+                        className="py-1 border border-pink-900/60 hover:bg-pink-900 hover:text-white rounded uppercase text-center cursor-pointer"
+                      >
+                        Clear Selection
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Bulk Select Generators Helper Pills */}
+                  <div className="space-y-1.5 p-3 bg-[#030603] border border-[#1a5c1a]/40 rounded-lg">
+                    <label className="text-[9.5px] text-[#00ffaa] uppercase font-bold tracking-wider block border-b border-[#1a5c1a]/30 pb-1 font-mono">
+                      Quick Group Selectors:
+                    </label>
+                    <div className="grid grid-cols-2 gap-1.5 pt-1.5 font-mono">
+                      {[
+                        { label: 'ALL NATO', filter: () => Object.keys(worldBuilderConfig).filter(id => worldBuilderConfig[id]?.alliance === 'NATO') },
+                        { label: 'ALL SCO', filter: () => Object.keys(worldBuilderConfig).filter(id => worldBuilderConfig[id]?.alliance === 'SCO') },
+                        { label: 'ALL BRICS', filter: () => Object.keys(worldBuilderConfig).filter(id => worldBuilderConfig[id]?.alliance === 'BRICS') },
+                        { label: 'ALL DEMOCRACIES', filter: () => Object.keys(worldBuilderConfig).filter(id => worldBuilderConfig[id]?.ideology === 'DEMOCRACY') },
+                        { label: 'ALL AUTOCRACIES', filter: () => Object.keys(worldBuilderConfig).filter(id => worldBuilderConfig[id]?.ideology === 'AUTOCRACY') },
+                        { label: 'ALL NUCLEAR ON', filter: () => Object.keys(worldBuilderConfig).filter(id => worldBuilderConfig[id]?.nuclear) },
+                      ].map((item, idx) => (
+                        <button
+                          key={idx}
+                          onClick={() => {
+                            audio.sfxKeyClick();
+                            const ids = item.filter();
+                            useUIStore.getState().setBuilderSelectedIds(ids);
+                          }}
+                          className="py-1 px-2 border border-[#0d2e0d] text-[#00ff44]/75 hover:bg-[#071307] hover:text-[#00ffaa] hover:border-[#1a5c1a] text-[8.5px] font-bold uppercase transition-all rounded text-left truncate cursor-pointer"
+                        >
+                          + {item.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Operational Settings Form with Bulk Actions */}
+                  <div className="space-y-4">
+                    <h3 className="text-[10px] text-pink-400 uppercase font-bold border-b border-pink-900 pb-1 tracking-wider font-mono">
+                      BULK STATISTICAL INJECTION
+                    </h3>
+
+                    {/* 1. BULK IDEOLOGY SELECTION */}
+                    <div className="space-y-1.5">
+                      <label className="text-[9px] text-gray-400 uppercase tracking-tight block">
+                        Bulk Ideological Constitution Overwrite:
+                      </label>
+                      <div className="grid grid-cols-2 gap-1.5">
+                        {IDEOLOGIES.map((idg) => {
+                          const meta = getIdeologyMeta(idg);
+                          return (
+                            <button
+                              key={idg}
+                              onClick={() => {
+                                handleBulkUpdate({ ideology: idg });
+                              }}
+                              className="border border-[#0d2e0d]/80 bg-black/40 text-gray-300 hover:border-pink-500 hover:text-white px-2 py-1.5 rounded text-[9px] transition-all font-bold text-left truncate cursor-pointer"
+                            >
+                              SET {meta.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* 2. BULK MILITARY CAPS */}
+                    <div className="space-y-1.5">
+                      <label className="text-[9px] text-gray-400 uppercase block">
+                        Bulk Military Power Factor:
+                      </label>
+                      <div className="grid grid-cols-4 gap-1 font-mono">
+                        {[
+                          { val: 15, label: 'OUTPOST (15)' },
+                          { val: 45, label: 'GARRISON (45)' },
+                          { val: 75, label: 'SUPER (75)' },
+                          { val: 95, label: 'HEGEMON (95)' }
+                        ].map((m) => (
+                          <button
+                            key={m.val}
+                            onClick={() => handleBulkUpdate({ military: m.val })}
+                            className="text-[8px] py-1.5 border border-[#0d2e0d] bg-black/40 text-gray-400 hover:text-white hover:border-pink-500 font-bold rounded transition-all text-center leading-tight shadow-sm cursor-pointer"
+                          >
+                            {m.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* 3. BULK GDP */}
+                    <div className="space-y-1.5">
+                      <label className="text-[9px] text-gray-400 uppercase block">
+                        Bulk Economic GDP Level:
+                      </label>
+                      <div className="grid grid-cols-4 gap-1 font-mono">
+                        {[
+                          { val: 100, label: '$100B' },
+                          { val: 800, label: '$800B' },
+                          { val: 2500, label: '$2.5T' },
+                          { val: 15000, label: '$15.0T' }
+                        ].map((g) => (
+                          <button
+                            key={g.val}
+                            onClick={() => handleBulkUpdate({ gdp: g.val })}
+                            className="text-[8px] py-1.5 border border-[#0d2e0d] bg-black/40 text-gray-400 hover:text-white hover:border-pink-500 font-bold rounded transition-all text-center shadow-sm cursor-pointer"
+                          >
+                            {g.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* 4. BULK SENTIMENT */}
+                    <div className="space-y-1.5">
+                      <label className="text-[9px] text-gray-400 uppercase block">
+                        Bulk Protagonist Sentiment Overwrite:
+                      </label>
+                      <div className="grid grid-cols-5 gap-1 font-mono">
+                        {[
+                          { val: -85, label: 'HOSTILE' },
+                          { val: -30, label: 'COOL' },
+                          { val: 0, label: 'NEUTRAL' },
+                          { val: 40, label: 'FRIENDLY' },
+                          { val: 95, label: 'ALLY' }
+                        ].map((o, oidx) => (
+                          <button
+                            key={oidx}
+                            onClick={() => handleBulkUpdate({ opinion: o.val })}
+                            className="text-[7.5px] py-1.5 border border-[#0d2e0d] bg-black/40 text-gray-400 hover:text-white hover:border-pink-500 font-bold rounded transition-all text-center leading-none cursor-pointer"
+                          >
+                            {o.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* 5. BULK ALLIANCE */}
+                    <div className="space-y-1.5">
+                      <label className="text-[9px] text-gray-400 uppercase tracking-tight block font-mono">
+                        Bulk Superpower Pact Alignments:
+                      </label>
+                      <div className="grid grid-cols-3 gap-1">
+                        {(['NATO', 'BRICS', 'GCC', 'QUAD', 'SCO', 'NEUTRAL'] as AllianceBlock[]).map((bloc) => (
+                          <button
+                            key={bloc}
+                            onClick={() => handleBulkUpdate({ alliance: bloc })}
+                            className="py-1 text-[9px] font-bold border border-[#0d2e0d] bg-black/40 text-gray-500 hover:text-pink-400 hover:border-pink-500 rounded transition-all text-center cursor-pointer"
+                          >
+                            SET {bloc}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* 6. BULK NUCLEAR WEAPONS ENABLE */}
+                    <div className="grid grid-cols-2 gap-1.5 pt-1.5 border-t border-pink-900/30">
+                      <button
+                        onClick={() => handleBulkUpdate({ nuclear: true })}
+                        className="py-2 px-3 border border-yellow-850 bg-yellow-950/10 hover:bg-yellow-900/20 text-yellow-500 font-bold text-[9px] uppercase rounded transition-all flex items-center justify-center gap-1 cursor-pointer"
+                      >
+                        <Atom className="w-3.5 h-3.5 animate-spin-slow shrink-0" />
+                        ARM COALITION
+                      </button>
+                      <button
+                        onClick={() => handleBulkUpdate({ nuclear: false })}
+                        className="py-2 px-3 border border-pink-900 bg-[#1a0c10] hover:bg-pink-950/20 text-pink-400 font-bold text-[9px] uppercase rounded transition-all flex items-center justify-center gap-1 cursor-pointer"
+                      >
+                        <Lock className="w-3.5 h-3.5 shrink-0" />
+                        DISARM COALITION
+                      </button>
+                    </div>
+
+                  </div>
+                </div>
+              ) : currentCountryConfig && inspectedCountryData && inspectedCountryId ? (
                 <div id="country-config-workspace" className="space-y-5">
                   
                   {/* Selected Country Badge details */}
@@ -622,11 +1190,11 @@ export default function WorldBuilder({ onLaunchSandbox, onBack }: WorldBuilderPr
                       Generate surprising yet plausible geopolitical starting conditions based on region-coherent logic blocks.
                     </p>
                     <button
-                      onClick={handleApplyRandomization}
-                      className="w-full mt-1.5 py-2.5 bg-[#031d0d] hover:bg-[#07361a] border border-[#00ffaa] hover:shadow-[0_0_8px_rgba(0,255,170,0.3)] text-[#00ffaa] text-[9.5px] font-bold uppercase tracking-wider transition-all cursor-pointer rounded flex items-center justify-center gap-1.5"
+                      onClick={() => handleApplyRandomizationCombined()}
+                      className="w-full mt-1.5 py-2.5 bg-[#031d0d] hover:bg-[#07361a] border border-[#00ffaa] text-[#00ffaa] text-[9.5px] font-bold uppercase tracking-wider transition-all cursor-pointer rounded flex items-center justify-center gap-1.5 font-mono"
                     >
                       <Dices className="w-3.5 h-3.5 animate-pulse" />
-                      RANDOMIZE ENTIRE MATRIX WORLD
+                      INJECT RANDOM {randomizationVariant} MATRIX
                     </button>
                   </div>
 
@@ -696,13 +1264,45 @@ export default function WorldBuilder({ onLaunchSandbox, onBack }: WorldBuilderPr
                   </div>
 
                   {/* Regional Sovereign List Checklist */}
-                  <div className="space-y-1.5">
-                    <h3 className="text-[10px] text-[#00e5ff] uppercase font-bold border-b border-[#1a5c1a] pb-1 tracking-wider">
-                      REGIONAL SOVEREIGN ROSTER
-                    </h3>
-                    <p className="text-[7.5px] text-gray-500 uppercase leading-snug">
-                      Click any country below or on the map centures for detailed fine-tuning:
-                    </p>
+                  <div className="space-y-1.5 border-t border-[#0d2e0d]/50 pt-3">
+                    <div className="flex justify-between items-center border-b border-[#1a5c1a]/40 pb-1.5">
+                      <h3 className="text-[10px] text-[#00e5ff] uppercase font-bold tracking-wider font-mono">
+                        REGIONAL SOVEREIGN ROSTER
+                      </h3>
+                      <button
+                        onClick={() => {
+                          audio.sfxKeyClick();
+                          useUIStore.getState().setMultiSelectMode(!multiSelectMode);
+                        }}
+                        className={`px-1.5 py-0.5 rounded text-[7px] font-bold border transition-all uppercase flex items-center gap-1 cursor-pointer ${
+                          multiSelectMode 
+                            ? 'bg-pink-600 border-pink-400 text-white animate-pulse' 
+                            : 'bg-black border-[#0d2e0d] text-gray-500 hover:text-white font-mono'
+                        }`}
+                      >
+                        <Sliders className="w-2.5 h-2.5" />
+                        Multi-Select HUD: {multiSelectMode ? 'ON' : 'OFF'}
+                      </button>
+                    </div>
+                    
+                    <div className="flex justify-between items-center text-[7.5px] font-bold text-gray-500 select-none font-mono">
+                      <span>Click to edit | Checkbox to bulk-edit</span>
+                      <div className="flex gap-2">
+                        <button 
+                          onClick={() => { audio.sfxKeyClick(); useUIStore.getState().setBuilderSelectedIds(Object.keys(INITIAL_COUNTRIES)); }}
+                          className="hover:text-white uppercase transition-all cursor-pointer"
+                        >
+                          Select All
+                        </button>
+                        <span>|</span>
+                        <button 
+                          onClick={() => { audio.sfxKeyClick(); useUIStore.getState().clearBuilderSelectedIds(); }}
+                          className="hover:text-white uppercase transition-all cursor-pointer"
+                        >
+                          Clear
+                        </button>
+                      </div>
+                    </div>
                     
                     <div className="space-y-1.5 max-h-[300px] overflow-y-auto pr-1 mt-1.5 custom-scrollbar">
                       {Object.keys(INITIAL_COUNTRIES).map((id) => {
@@ -710,24 +1310,56 @@ export default function WorldBuilder({ onLaunchSandbox, onBack }: WorldBuilderPr
                         const cConfig = worldBuilderConfig[id];
                         const isPlayer = id === playerCountryId;
                         if (!cData || !cConfig) return null;
+                        const isSelectedInBulk = builderSelectedIds.includes(id);
                         return (
                           <div
                             key={id}
-                            onClick={() => useUIStore.getState().setCountryInspector(id)}
-                            className={`p-2 border rounded cursor-pointer transition-all flex items-center justify-between ${isPlayer ? 'bg-[#051a0d] border-[#00ffaa]/60 hover:border-[#00ffaa]' : 'bg-black/40 border-[#0d2e0d] hover:border-green-800'}`}
+                            onClick={(e) => {
+                              const isShift = e.shiftKey;
+                              if (multiSelectMode || isShift) {
+                                audio.sfxKeyClick();
+                                useUIStore.getState().toggleBuilderSelectedId(id);
+                              } else {
+                                audio.sfxKeyClick();
+                                useUIStore.getState().setCountryInspector(id);
+                              }
+                            }}
+                            className={`p-2 border rounded cursor-pointer transition-all flex items-center justify-between ${
+                              isPlayer 
+                                ? 'bg-[#051a0d] border-[#00ffaa]/60 hover:border-[#00ffaa]' 
+                                : isSelectedInBulk
+                                ? 'bg-pink-950/20 border-pink-500 hover:border-pink-400 shadow-[0_0_6px_rgba(255,0,150,0.15)] bg-slate-900/10'
+                                : 'bg-black/40 border-[#0d2e0d] hover:border-green-800'
+                            }`}
                           >
                             <div className="flex items-center gap-2">
+                              {/* Bulk select check toggle pill */}
+                              <div
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  audio.sfxKeyClick();
+                                  useUIStore.getState().toggleBuilderSelectedId(id);
+                                }}
+                                className={`w-3.5 h-3.5 border rounded flex items-center justify-center transition-all cursor-pointer shrink-0 ${
+                                  isSelectedInBulk
+                                    ? 'bg-pink-600 border-pink-400 text-white'
+                                    : 'bg-black/60 border-[#1a5c1a]/40 text-transparent hover:border-[#00ff44]'
+                                }`}
+                              >
+                                <Check className="w-2.5 h-2.5 stroke-[3]" />
+                              </div>
+
                               <span className="text-base">{cData.flagEmoji}</span>
                               <div>
                                 <div className="flex items-center gap-1.5">
                                   <span className="text-[9px] text-white font-bold uppercase">{cData.name}</span>
                                   {isPlayer && (
-                                    <span className="text-[6.5px] px-1 bg-[#00ffaa] text-black font-bold uppercase rounded">
+                                    <span className="text-[6.5px] px-1 bg-[#00ffaa] text-black font-bold uppercase rounded font-mono">
                                       PROTAGONIST
                                     </span>
                                   )}
                                 </div>
-                                <div className="text-[7px]/none text-gray-500 uppercase mt-0.5">
+                                <div className="text-[7px]/none text-gray-500 uppercase mt-0.5 font-mono">
                                   GDP: ${cConfig.gdp >= 1000 ? `${(cConfig.gdp / 1000).toFixed(1)}T` : `$${cConfig.gdp}B`} | MIL: {cConfig.military} | {cConfig.alliance}
                                 </div>
                               </div>
@@ -735,9 +1367,9 @@ export default function WorldBuilder({ onLaunchSandbox, onBack }: WorldBuilderPr
                             
                             <div className="flex items-center gap-1">
                               {cConfig.nuclear && (
-                                <Atom className="w-3 h-3 text-yellow-500" title="Nuclear Deterrent" />
+                                <Atom className="w-3 h-3 text-yellow-500 animate-pulse" title="Nuclear Deterrent" />
                               )}
-                              <ChevronRight className="w-3 h-3 text-gray-600" />
+                              <ChevronRight className="w-3 h-3 text-gray-650" />
                             </div>
                           </div>
                         );
