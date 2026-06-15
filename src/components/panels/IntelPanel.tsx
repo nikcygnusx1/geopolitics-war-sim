@@ -5,6 +5,7 @@ import { CovertOpType } from '../../types';
 import { audio } from '../../utils/audio';
 import { useUIStore } from '../../store/uiStore';
 import AnimatedValue from '../shared/AnimatedValue';
+import ArachnePanel from './ArachnePanel';
 
 export default function IntelPanel() {
   const countryId = usePlayerStore((s) => s.countryId);
@@ -20,7 +21,7 @@ export default function IntelPanel() {
   const intel = playerCountry.intelligence;
   const spyAssets = intel.spyAssets || [];
 
-  const [intelTab, setIntelTab] = useState<'OPS' | 'ASSETS'>('OPS');
+  const [intelTab, setIntelTab] = useState<'ARACHNE' | 'OPS' | 'ASSETS'>('ARACHNE');
   const [opType, setOpType] = useState<CovertOpType>('PLANT_PROPAGANDA');
 
   const opSpecs: Record<CovertOpType, { name: string; costB: number; ticks: number; desc: string; success: number; blowback: number }> = {
@@ -184,6 +185,14 @@ export default function IntelPanel() {
       {/* Subtab selection info */}
       <div className="flex border-b border-[#1a3a1a] pb-2 mb-1 gap-2">
         <button
+          onClick={() => { audio.sfxKeyClick(); setIntelTab('ARACHNE'); }}
+          className={`px-3 py-1 text-[10px] uppercase font-bold border rounded transition-colors cursor-pointer ${
+            intelTab === 'ARACHNE' ? 'bg-[#1a4a1a] text-[#00ff44] border-[#00ff44] shadow-[0_0_8px_rgba(0,255,68,0.25)]' : 'text-gray-400 border-transparent hover:text-white hover:bg-white/5'
+          }`}
+        >
+          👁️ ARACHNE OSINT FEED
+        </button>
+        <button
           onClick={() => { audio.sfxKeyClick(); setIntelTab('OPS'); }}
           className={`px-3 py-1 text-[10px] uppercase font-bold border rounded transition-colors cursor-pointer ${
             intelTab === 'OPS' ? 'bg-[#1a4a1a] text-[#00ff44] border-[#00ff44] shadow-[0_0_8px_rgba(0,255,68,0.25)]' : 'text-gray-400 border-transparent hover:text-white hover:bg-white/5'
@@ -200,6 +209,8 @@ export default function IntelPanel() {
           📁 SIGINT & CLANDESTINE ASSETS
         </button>
       </div>
+
+      {intelTab === 'ARACHNE' && <ArachnePanel />}
 
       {intelTab === 'OPS' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

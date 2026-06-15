@@ -63,6 +63,10 @@ import CinematicIntro from './components/intro/CinematicIntro';
 import GameLobby from './components/intro/GameLobby';
 import WorldBuilder from './components/worldbuilder/WorldBuilder';
 import StockMarketTicker from './components/reactive/StockMarketTicker';
+
+// Arachne additions
+import { useArachneStore } from './store/arachneStore';
+import ArachneBriefingModal from './components/shared/ArachneBriefingModal';
 import NewspaperFeed from './components/reactive/NewspaperFeed';
 import UnSecurityCouncil from './components/reactive/UnSecurityCouncil';
 import BlackMarketBazaar from './components/blackmarket/BlackMarketBazaar';
@@ -282,7 +286,8 @@ export default function App() {
       }
       case 6: { // INTELLIGENCE
         const intel = playerCountryData.intelligence;
-        return intel ? `ops:${intel.activeCovertOps?.length ?? 0} slush:$${intel.blackBudgetB.toFixed(1)}B` : '';
+        const unread = useArachneStore.getState().unreadAlertCount;
+        return intel ? `brief:${unread} ops:${intel.activeCovertOps?.length ?? 0}` : '';
       }
       case 7: { // SPACE
         const sats = playerCountryData.intelligence?.satellites?.length ?? 0;
@@ -1128,6 +1133,9 @@ export default function App() {
           }}
         />
       )}
+
+      {/* Presidential Daily Briefing Card Stack Overlay */}
+      <ArachneBriefingModal />
     </div>
   );
 }

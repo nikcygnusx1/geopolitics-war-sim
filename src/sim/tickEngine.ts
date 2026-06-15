@@ -3,6 +3,7 @@ import { usePlayerStore } from '../store/playerStore';
 import { useClockStore } from '../store/clockStore';
 import { useUnitStore } from '../store/unitStore';
 import { useBlackMarketStore } from '../store/blackMarketStore';
+import { useArachneStore } from '../store/arachneStore';
 import { pollScenarioStatus } from './scenarioEngine';
 import { processFactions } from './factionEngine';
 import { processFiscal } from './fiscalEngine';
@@ -113,6 +114,9 @@ export function executeSimulationStep() {
   // 10. Sync player's cash levels with their nation's real treasury reserves
   usePlayerStore.getState().syncCashFromCountry();
   usePlayerStore.setState((state) => ({ totalTicks: state.totalTicks + 1 }));
+
+  // Dynamic live briefing update for Arachne
+  useArachneStore.getState().tickArachne(useWorldStore.getState().currentTick);
 
   // Regularly save a checkpoint if there is no ongoing nuclear exchange or active aftermath
   const currentWorld = useWorldStore.getState();

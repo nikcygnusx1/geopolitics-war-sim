@@ -4,6 +4,7 @@ import { usePlayerStore } from '../store/playerStore';
 import { useWorldStore } from '../store/worldStore';
 import { useClockStore } from '../store/clockStore';
 import { useUnitStore } from '../store/unitStore';
+import { useArachneStore } from '../store/arachneStore';
 
 export function pollScenarioStatus(world: WorldState, player: PlayerState) {
   const durationMode = useClockStore.getState().durationMode;
@@ -76,6 +77,9 @@ export function initScenario(scenarioId: ScenarioId, countryId: string, leaderOv
 
   // 4. Final sync of player state cash B
   usePlayerStore.getState().syncCashFromCountry();
+
+  // Initialize Arachne OSINT Aggregator with scenario-aware briefing seeds
+  useArachneStore.getState().initArachneForScenario(scenarioId);
 
   // Save beautiful starting checkpoint for rollback
   usePlayerStore.getState().saveCheckpoint();
