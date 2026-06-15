@@ -5,6 +5,7 @@ import { parseGlobalEvent } from '../../utils/eventConverter';
 import { audio } from '../../utils/audio';
 import { useCopilotStore, CopilotCategory, AssistanceLevel } from '../../store/copilotStore';
 import { usePlayerStore } from '../../store/playerStore';
+import { EmptyState, DossierCard, StatusBadge, FactChip, KeyValueGrid } from '../shared/CommandPrimitives';
 
 export default function AnalysisInspector() {
   const countries = useWorldStore((s) => s.countries);
@@ -447,15 +448,11 @@ export default function AnalysisInspector() {
 
         {/* CASE A: No selection */}
         {!countryData && !edgeData && !eventData && (
-          <div className="flex flex-col items-center justify-center text-center py-7 px-4 space-y-3 border border-dashed border-[#1a5c1a]/35 rounded bg-black/10 select-none">
-            <div className="text-2xl animate-pulse">📡</div>
-            <div className="space-y-1">
-              <h2 className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Awaiting Signal Synchronization</h2>
-              <p className="text-[9px] text-gray-500 uppercase leading-relaxed max-w-[180px] mx-auto">
-                Select a sovereign node, tie link, or timeline signal to initialize telemetry decoding.
-              </p>
-            </div>
-          </div>
+          <EmptyState 
+            title="Awaiting Signal Synchronization"
+            message="Select a sovereign node, tie link, or timeline signal to initialize telemetry decoding."
+            icon={<div className="text-2xl animate-pulse mb-1">📡</div>}
+          />
         )}
 
         {/* CASE B: Country selected */}

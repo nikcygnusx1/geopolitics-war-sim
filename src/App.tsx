@@ -23,6 +23,8 @@ import SpacePanel from './components/panels/SpacePanel';
 import PopulationPanel from './components/panels/PopulationPanel';
 import PropagandaPanel from './components/panels/PropagandaPanel';
 import CommandEventBusPanel from './components/panels/CommandEventBusPanel';
+import ScenarioPersistencePanel from './components/panels/ScenarioPersistencePanel';
+import { checkAndRestoreSharedScenario } from './utils/persistence';
 
 import AnalysisModeSwitcher from './components/map/AnalysisModeSwitcher';
 import TimelineStrip from './components/map/TimelineStrip';
@@ -85,6 +87,7 @@ const getTabClassification = (tabId: number): string => {
     case 7: return "SECRET"; // Space
     case 8: return "RESTRICTED"; // Population
     case 10: return "COSMIC STRATEGY"; // Event pipeline trace (F10)
+    case 11: return "CLASSIFIED ARCHIVE"; // Scenario persistence manager (F11)
     default: return "CONFIDENTIAL";
   }
 };
@@ -158,6 +161,7 @@ function ActivePanelWrapper({ activeTab, getTabClassification }: { activeTab: nu
       {activeTab === 8 && <PopulationPanel />}
       {activeTab === 9 && <PropagandaPanel />}
       {activeTab === 10 && <CommandEventBusPanel />}
+      {activeTab === 11 && <ScenarioPersistencePanel />}
     </div>
   );
 }
@@ -195,6 +199,19 @@ export default function App() {
   const [lobbyActive, setLobbyActive] = useState(true);
   const [worldBuilderActive, setWorldBuilderActive] = useState(false);
   const [scenarioSelected, setScenarioSelected] = useState<ScenarioId | null>(null);
+
+  // Hook up instant scenario restoration from URL share tokens
+  useEffect(() => {
+    checkAndRestoreSharedScenario(window.location.search).then((success) => {
+      if (success) {
+        setShowIntro(false);
+        setLobbyActive(false);
+        setWorldBuilderActive(false);
+        // Clear search tokens safely to avoid re-hydrations on refresh
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    });
+  }, []);
 
   // Map settings
   const [activeLayer, setActiveLayer] = useState<MapLayer>('POLITICAL');
@@ -348,8 +365,16 @@ export default function App() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // 1. Standard F1 - F9 tab switcher
+      // 1. Standard F1 - F11 tab switcher
       if (e.key >= 'F1' && e.key <= 'F9') {
+        e.preventDefault();
+        const tabNum = parseInt(e.key.substring(1), 10);
+        audio.sfxKeyClick();
+        usePlayerStore.getState().setActiveTab(tabNum);
+        return;
+      }
+
+      if (e.key === 'F10' || e.key === 'F11') {
         e.preventDefault();
         const tabNum = parseInt(e.key.substring(1), 10);
         audio.sfxKeyClick();
@@ -1007,6 +1032,7 @@ export default function App() {
                   { id: 8, label: 'POPULATION (F8)' },
                   { id: 9, label: 'PROPAGANDA (F9)' },
                   { id: 10, label: 'SIGNAL TRACE (F10)' },
+                  { id: 11, label: 'SCENARIOS (F11)' },
                 ].map((tab) => {
                   const isActive = playerState.activeTab === tab.id;
                   return (
