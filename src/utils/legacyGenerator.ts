@@ -1,4 +1,5 @@
 import { WorldState, PlayerState } from '../types';
+import { deriveDebriefAnalysis } from './debriefDataDeriver';
 
 export function generateLegacyNarrative(worldState: WorldState, playerState: PlayerState): string {
   const nationId = playerState.countryId;
@@ -6,107 +7,81 @@ export function generateLegacyNarrative(worldState: WorldState, playerState: Pla
   const nationName = country?.name || 'Your Nation';
   const ticks = worldState.currentTick;
   
-  // 1. Calculate active/past wars
-  const warsCount = country?.atWarWith?.length || 0;
+  // Derive robust analytical properties of this run
+  const { playerAssessment, turningPoints, analytics } = deriveDebriefAnalysis(worldState, playerState);
   
-  // 2. Count allies (Opinion > 50 with player)
-  const alliesCount = Object.keys(worldState.countries).filter(
-    (id) => id !== nationId && (worldState.countries[id]?.opinions[nationId] ?? 0) > 50
-  ).length;
-
-  // 3. Count player-launched strikes vs incoming strikes
-  const playerStrikes = worldState.activeStrikes.filter((s) => s.sourceCountryId === nationId);
-  const playerStrikesCount = playerStrikes.length;
-
-  const incomingStrikes = worldState.activeStrikes.filter((s) => s.targetCountryId === nationId);
-  const incomingStrikesCount = incomingStrikes.length;
-
-  // 4. Calculate total civilian casualties from incoming strikes on player
-  const playerCasualties = incomingStrikes
-    .filter((s) => s.status === 'IMPACT')
-    .reduce((acc, s) => acc + (s.damageDealt?.casualtiesEstimate || 0), 0);
-
-  // 5. Total nuclear detonations on player or globally
-  const globalNukes = worldState.activeStrikes.filter(
-    (s) => s.status === 'IMPACT' && (s.weaponType === 'ICBM' || s.weaponType === 'SLBM' || (s.warheadYieldMT !== undefined && s.warheadYieldMT > 0))
-  ).length;
-
-  const isNukeOccurred = worldState.nuclearExchangeOccurred || globalNukes > 0;
+  const alliesCount = analytics.diplomaticBalance.allies;
+  const isNukeOccurred = worldState.nuclearExchangeOccurred;
   const isVictory = playerState.aftermathType === 'VICTORY' || playerState.victoryAchieved;
 
-  // Formatting utility
+  const firstTurningPoint = turningPoints.length > 0 ? turningPoints[0] : null;
+  const tpMention = firstTurningPoint 
+    ? `The historical trajectory of this administration was permanently locked at Tick ${firstTurningPoint.tick} during the critical milestone of the ${firstTurningPoint.title}.`
+    : '';
+
   const formatNum = (n: number) => n.toLocaleString();
 
-  // Variant 1: Severe Global Nuclear Exchange
-  if (isNukeOccurred && globalNukes >= 2) {
-    return `Your command of ${nationName} concluded in a silent nuclear winter. When the simulation collapsed under a global exchange, ${globalNukes} nuclear detonations had vaporized key administrative quadrants, claiming over ${formatNum(playerCasualties || 450000)} estimated civilian lives. Your doctrine of mutual ruin leaves behind only radioactive ash and a grim warning to future command modules.`;
+  // Variant A: Nuclear Armageddon / Strategic Ruin
+  if (isNukeOccurred) {
+    const playerCasualties = worldState.activeStrikes
+      .filter((s) => s.targetCountryId === nationId && s.status === 'IMPACT')
+      .reduce((acc, s) => acc + (s.damageDealt?.casualtiesEstimate || 0), 0);
+
+    const falloutMention = playerCasualties > 0 
+      ? `Within your sovereign borders, metropolitan grids crumbled and over ${formatNum(playerCasualties)} estimated civilian casualties were instantly categorized as tactical collateral.`
+      : '';
+
+    return `Sovereignty over the sovereign lands of ${nationName} dissolved into a silent nuclear winter. When strategic command structures collapsed under unrestrained aerospace strikes, the simulation recorded the complete neutralization of all civil communication grids. By enacting a leadership doctrine of "${playerAssessment.title}," your response pattern to regional escalations bypassed bilateral compromises in favor of mutually assured tactical decay. ${fallbackTpMention(tpMention)} Geopoliticians will record your administration not as a political office, but as a severe warning to future autonomous strategic modules: a doctrine of radioactive ash and terminal deterrence.`;
   }
 
-  // Variant 2: United States Victory, Diplomatic
-  if (isVictory && nationId === 'US' && alliesCount >= 3) {
-    return `Under your command, the United States maintained the delicate balance of the global order. Over ${ticks} weeks of severe geopolitical friction, you forged ${alliesCount} major strategic alliances while completely avoiding kinetic escalation. History will record your administration as a triumph of democratic containment and unmatched diplomatic stewardship.`;
+  // Variant B: Diplomatic Mastery (The Peaceful Sovereign Circle)
+  if (isVictory && playerAssessment.classification === 'DIPLOMATIC_PACIFIER') {
+    return `History will record your command of ${nationName} as a masterclass of collective structural defense. Navigating ${ticks} weeks of extreme regional containment actions, you successfully locked in ${alliesCount} critical defensive agreements without authorizing a single kinetic weapon payload from your arsenal silos. By embodying a "${playerAssessment.title}" doctrine, your command transformed your borders into an unassailable bastion of multilateral sovereignty. ${tpMention} Your legacy stands as an absolute validation of containment theory and democratic balance in the modern geopolitical arena.`;
   }
 
-  // Variant 3: United States Victory, Kinetic/Hardline
-  if (isVictory && nationId === 'US' && playerStrikesCount >= 2) {
-    return `The United States secured absolute global hegemony through overwhelming kinetic dominance. In ${ticks} weeks, you authorized ${playerStrikesCount} ballistic missile strikes, neutralizing adversarial networks before they could mobilize. Your doctrine of unchecked technological deterrence has ushered in a Pax Americana under a permanent military shadow.`;
+  // Variant C: Hardline Kinetic Dominance (Sovereign Hegemon)
+  if (isVictory && strikesCount(worldState, nationId) >= 2) {
+    return `Through an uncompromising application of preemptive strategic force, the administrative modules of ${nationName} secured absolute regional hegemony. Across ${ticks} weeks of escalating tensions, your central commands authorized decisive kinetic operations to decapitate adversarial networks before multi-state containment circles could fully align. Backed by your leadership doctrine of a "${playerAssessment.title}," the state maintained nominal popular stability through aggressive aerospace superiority. Geopolitical textbooks will register this era as a triumph of technological deterrence under a permanent, unyielding sovereign shadow.`;
   }
 
-  // Variant 4: China Victory, Economic Hegemony
-  if (isVictory && nationId === 'CN' && (country?.economic?.treasuryCashB ?? 0) > 1500) {
-    return `China accomplished its historical rise, navigating ${ticks} weeks of Western containment to establish a new multipolar hegemony. By preserving of the state treasury at ${formatNum(Math.round(country.economic.treasuryCashB))}B, your administration decoupled from the old order without triggering war. Beijing now stands as the undisputed center of global trade.`;
+  // Variant D: Treasury Fortress / Economic Superpower
+  if (isVictory && playerAssessment.classification === 'MERCANTILE_GUARDIAN') {
+    const finalTreasuryB = Math.round(country?.economic?.treasuryCashB || 0);
+    return `Your administration rewritten the guidelines of modern friction by proving that treasury reserves are the ultimate defense shield. Holding the national treasury intact at a massive $${formatNum(finalTreasuryB)}B, ${nationName} established unrivaled global trade leverage without deploying kinetic missile arrays. Your command strategy, defined by a "${playerAssessment.title}" posture, systematically starved adversarial economic engines via targeted tariffs and embargoes while funding secondary defensive proxy grids. You leave behind a hyper-liquid legacy of mercantile immunity that outlasted all physical threats.`;
   }
 
-  // Variant 5: China Victory, Tactical/Defense
-  if (isVictory && nationId === 'CN' && playerStrikesCount >= 1) {
-    return `The Middle Kingdom was unified and secured under an unbreakable tactical shield. Your decision to authorize ${playerStrikesCount} tactical strikes smashed external containment circles and asserted absolute sovereign authority. Under your hardline command, China has rewritten the world balance in bold lines of aerospace dominance.`;
-  }
-
-  // Variant 6: Russia Victory, Alliance/Sovereign Perseverance
-  if (isVictory && nationId === 'RU') {
-    return `Russia emerged from decades of hostile containment to assert a decisive Eurasian coalition. Through ${ticks} weeks of economic friction, you held the federation intact, forging ${alliesCount} critical defense treaties and repelling incoming cyber campaigns. Moscow has successfully secured its defensive security sphere against all odds.`;
-  }
-
-  // Variant 7: Non-aligned nation victory (regional breakout)
-  if (isVictory && (nationId === 'IN' || nationId === 'KP' || nationId === 'IL' || nationId === 'IR' || nationId === 'PK')) {
-    return `As ${nationName}, you achieved a historic sovereign breakthrough, defying the expectations of the global superpowers. Through ${ticks} weeks of intense regional friction, your administration built ${alliesCount} critical mutual defense agreements, leaving behind a legacy of absolute self-reliance that permanently altered the balance of world power.`;
-  }
-
-  // Variant 8: US Defeat, Unrest/Civilian Breakdown
-  if (!isVictory && nationId === 'US' && (country?.political?.popularUnrest ?? 0) > 85) {
-    return `The American experiment fractured under your command. Exhausted by ${ticks} weeks of fiscal instability and popular polarization, unrest reached critical thresholds, triggering a massive constitutional collapse. Your legacy is one of administrative fragmentation, where federal authority was swallowed by domestic rebellion.`;
-  }
-
-  // Variant 9: China Defeat, Debt/Economic Collapse
-  if (!isVictory && nationId === 'CN' && (country?.economic?.debtStressIndex ?? 0) > 80) {
-    return `The economic engine of China ground to a catastrophic halt under your oversight. Trapped under ${ticks} weeks of Western trade embargoes and a bond debt stress index of ${Math.round(country.economic.debtStressIndex)}%, the state treasury defaulted. Your legacy is a warning of financial over-leverage, which fractured the state from within.`;
-  }
-
-  // Variant 10: Russia Defeat, Defense/Sovereign Encirclement
-  if (!isVictory && nationId === 'RU' && incomingStrikesCount >= 2) {
-    return `Federal commands in Moscow went dark after ${ticks} weeks of containment. Surrounded by expanding defense blocks and heavily pounded by ${incomingStrikesCount} ballistic intercepts, the federation's borders fractured under pressure. Your legacy ends with the administrative segmentation of the Russian state under international observation.`;
-  }
-
-  // Variant 11: Defeat via Kinetic Missile Overrun
-  if (!isVictory && incomingStrikesCount >= 2 && playerCasualties > 0) {
-    return `Your administration of ${nationName} collapsed under a devastating ballistic bombardment. Pounded by ${incomingStrikesCount} missile strikes, your civilian shields were overwhelmed, claiming ${formatNum(playerCasualties)} casualties. The sovereign institutions of your homeland were dismantled, ending your command in total devastation.`;
-  }
-
-  // Variant 12: Defeat via Bankruptcy/Quantitative Ruin
-  if (!isVictory && (country?.economic?.treasuryCashB ?? 0) < 10 && (country?.economic?.inflationRate ?? 0) > 25) {
-    return `Your administration of ${nationName} suffered sudden fiscal insolvency after ${ticks} weeks. Overwhelmed by massive treasury deficits and ${Math.round(country.economic.inflationRate)}% runaway inflation, your structural authority disintegrated. Your rule will be remembered for hyperinflation and currency ruin.`;
-  }
-
-  // Variant 13: Generic Victory, Balanced Statehood
+  // Variant E: Active Pragmatic Balance (Balanced Win)
   if (isVictory) {
-    return `You led ${nationName} through ${ticks} weeks of intense geopolitical storms to a hard-won victory. Navigating through ${warsCount} active wars and balancing ${alliesCount} global allies, you successfully secured your nation's sovereign survival and economic integrity. Your doctrine is the gold standard for future command responses.`;
+    return `Navigating the high-altitude turbulence of the global simulation, your command of ${nationName} successfully resolved in a calculated sovereign victory. Over ${ticks} weeks of intense intercontinental stress, your cabinet successfully sustained balance across critical economic stress indices, while managing ${alliesCount} active alliances and neutralizing targeted foreign disinformation subversions. Your balanced doctrine, classified as "${playerAssessment.title}," represents a highly cohesive defensive strategy. ${tpMention} Future strategic modules will model your decisions as the absolute benchmark of modern survivalism.`;
   }
 
-  // Variant 14: Defeat via Internal Coup/Purge failure
-  if (!isVictory && (country?.political?.coupRiskLevel ?? 0) > 75) {
-    return `Your rule over ${nationName} collapsed in a swift administrative Coup d'État. Having failed to subdue rising extreme political factions, your popular approval rating fell to ${Math.round(country.political.leaderApprovalRating ?? 0)}%. Dissident commanders seized federal radio networks, ending your command in ignominy.`;
+  // Variant F: Bankruptcy / Resource Insolvency Defeat
+  const finalCash = country?.economic?.treasuryCashB || 0;
+  const inflation = country?.economic?.inflationRate || 0;
+  if (!isVictory && finalCash < 50 && inflation > 25) {
+    return `The institutions of ${nationName} suffered sudden administrative rigor mortis due to total quantitative insolvency. Trapped in a spiral of runaway inflation peaking at a devastating ${Math.round(inflation)}% and complete treasury depletion, sovereign authority completely fractured from within. Enacting a strategic posture of "${playerAssessment.title}," your administration failed to decouple treasury allocations from costly military maintenance during extreme resource blockages. Your legacy is the fiscal fragmentation of your state, where sovereign authority was peacefully dissolved under international bankruptcy observation.`;
   }
 
-  // Variant 15: General Sovereign Collapse (Default Fallback)
-  return `The sovereign commands of ${nationName} went dark after ${ticks} ticks of intense global simulation. Despite securing ${alliesCount} alliances, your rule was overwhelmed by cascading crises. Your administration leaves behind a record of high-stakes persistence, ending a brief but serious chapter in modern geopolitical conflict.`;
+  // Variant G: Civil Revolt / Domestic Coup Defeat
+  const unrest = country?.political?.popularUnrest || 0;
+  if (!isVictory && unrest > 80) {
+    return `The sovereign framework of ${nationName} fractured under a catastrophic civil rebellion. Overwhelmed by ${ticks} weeks of fiscal emergency and unpacified ideological factions, popular unrest reached critical thresholds, triggering a decisive Coup d'État. Under your doctrine of a "${playerAssessment.title}," the central command was unable to subdue rising extreme domestic networks. Declassified dossiers reveal how opposition leaders successfully seized federal broadcast facilities, permanently terminating your executive authority in absolute ignominy.`;
+  }
+
+  // Variant H: Kinetic Overrun (Military Defeat)
+  const incomingCount = worldState.activeStrikes.filter((s) => s.targetCountryId === nationId).length;
+  if (!isVictory && incomingCount >= 2) {
+    return `Your administration of ${nationName} was terminated by devastating ballistic saturation of your civilian hubs. Incapable of sustaining intercept parameters across ${ticks} weeks of multi-theater encirclement, your defense grids collapsed, resulting in cascading infrastructural decay and massive casualties. Your leadership approach, categorized under a "${playerAssessment.title}," failed to deploy adequate anti-ballistic shields or forge mutual defense pacts before adversarial launch silos initialized. In the final geopolitical reckoning, your sovereignty remains segmented and under heavy foreign surveillance.`;
+  }
+
+  // Default Sovereign Collapse Fallback
+  return `The sovereign command modules of ${nationName} went dark after ${ticks} ticks of intense geopolitical friction. Enacting an administration categorized by a "${playerAssessment.title}" doctrine, your command attempted to preserve balance but was eventually overwhelmed by cascading intercontinental crises. ${tpMention} Despite managing to secure stable alliances, your rule concludes as a deeply serious, high-stakes chapter in modern geopolitical history.`;
+}
+
+function strikesCount(worldState: WorldState, sourceId: string): number {
+  return worldState.activeStrikes.filter(s => s.sourceCountryId === sourceId).length;
+}
+
+function fallbackTpMention(tpMention: string): string {
+  return tpMention ? ` ${tpMention}` : '';
 }

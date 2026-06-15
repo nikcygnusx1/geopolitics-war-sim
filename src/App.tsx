@@ -717,6 +717,9 @@ export default function App() {
     ? 'DEFEAT'
     : 'ONGOING';
 
+  const isDebriefOpen = ((resolution !== 'ONGOING') || (playerState.aftermathActive && showChoices)) && !spectatingAftermath;
+  const isMapFullyHidden = isDebriefOpen || (expandedWorkstation !== null) || showBazaar;
+
   // 1. Cinematic Intro Phase
   if (showIntro) {
     return <CinematicIntro onComplete={() => setShowIntro(false)} />;
@@ -863,7 +866,7 @@ export default function App() {
             {/* Left element: map / graph / timeline active surface */}
             <div data-testid="onboarding-surface" className="flex-1 flex flex-col overflow-hidden h-full relative">
               {/* Optional dynamic Layer controller */}
-              {(analysisMode === 'MAP' || analysisMode === 'SPLIT') && (
+              {(analysisMode === 'MAP' || analysisMode === 'SPLIT') && !isMapFullyHidden && (
                 <MapControls
                   activeLayer={activeLayer}
                   setActiveLayer={setActiveLayer}
@@ -873,7 +876,14 @@ export default function App() {
               {/* View selection routing */}
               <div className="flex-1 relative bg-black overflow-hidden select-none">
                 {analysisMode === 'MAP' && (
-                  <WorldMap activeLayer={activeLayer} />
+                  !isMapFullyHidden ? (
+                    <WorldMap activeLayer={activeLayer} />
+                  ) : (
+                    <div className="absolute inset-0 bg-black flex flex-col items-center justify-center text-gray-500 font-mono text-[10px] gap-2">
+                      <span className="animate-pulse">🔒 SECURE INTERFACE EMULATOR DETACHED</span>
+                      <span className="text-[8px] text-gray-600">MAP DISENGAGED UNDER SECURITY PROTOCOLS // DOCTRINE ARTIFACT LOADED</span>
+                    </div>
+                  )
                 )}
                 {analysisMode === 'GRAPH' && (
                   <AllianceGraph />
@@ -884,7 +894,14 @@ export default function App() {
                 {analysisMode === 'SPLIT' && (
                   <div className="h-full flex flex-col divide-y divide-[#1a5c1a]">
                     <div className="flex-1 relative">
-                      <WorldMap activeLayer={activeLayer} />
+                      {!isMapFullyHidden ? (
+                        <WorldMap activeLayer={activeLayer} />
+                      ) : (
+                        <div className="absolute inset-0 bg-black flex flex-col items-center justify-center text-gray-500 font-mono text-[10px] gap-2">
+                          <span className="animate-pulse">🔒 SECURE INTERFACE EMULATOR DETACHED</span>
+                          <span className="text-[8px] text-gray-600">MAP SHIELDED IN SIDE-PANE COMPARTMENT</span>
+                        </div>
+                      )}
                     </div>
                     <div className="flex-1 relative">
                       <AllianceGraph />
@@ -1013,7 +1030,7 @@ export default function App() {
       )}
 
       {/* Unified Campaign Resolution Modals with Checkpoint Rollback */}
-      {((resolution !== 'ONGOING') || (playerState.aftermathActive && showChoices && !spectatingAftermath)) && (
+      {isDebriefOpen && (
         <PostGameDebrief
           id="tactical-post-game-debrief-overlay"
           worldState={worldState}
