@@ -663,12 +663,36 @@ export function generateInitialCanonicalWorld(
   };
 
   // Treaty 1: North Atlantic Defensive Treaty
-  const treaty1: TreatyState = {
+  const treaty1: any = {
     id: 'NATO_CHARTER_ART_5',
     name: 'North Atlantic Mutual Defense Accord',
     type: 'ALLIANCE',
     signatoryCountryIds: ['US', 'GB', 'FR', 'DE'],
     obligations: ['Mutual Defense via military assistance under Article 5', 'Joint naval warfare synchronization'],
+    detailedObligations: [
+      {
+        id: 'OB-NATO-DEFENSE',
+        category: 'BASE_ACCESS',
+        description: 'Provide immediate base and air deployment rights to fellow signatories upon combat flare-up',
+        scope: 'MUTUAL_FORCE',
+        violationSeverityWeight: 80
+      },
+      {
+        id: 'OB-NATO-NAVAL',
+        category: 'TARIFF_REDUCTION',
+        description: 'Facilitate direct passage corridors under standard customs clearances',
+        scope: 'REGIONAL',
+        violationSeverityWeight: 35
+      }
+    ],
+    hiddenProtocols: [
+      {
+        id: 'SEC-NATO-COVERT',
+        title: 'Project Gallowglass Cryptography Annex',
+        clauseSummaryPrivate: 'Establish absolute real-time undersea sonar interception backups targeting specific ocean trenches.',
+        exposed: false
+      }
+    ],
     enforcementStrength: 98,
     secrecyLevel: 0, // Fully public
     startTick: -100,
