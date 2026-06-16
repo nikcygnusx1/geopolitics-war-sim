@@ -129,6 +129,8 @@ export interface EconomicProfile {
   sanctionedBy: string[];      // countryIds
   tradeSurplusDeficitB: number;
   spendingAllocation: SpendingAllocation;
+  policyPosture?: 'PRO_GROWTH' | 'AUSTERITY' | 'CURRENCY_DEFENSE' | 'IMPORT_SUPPORT' | 'DEBT_STABILIZATION' | 'INDUSTRIAL_ALLOCATION';
+  businessCyclePhase?: 'EXPANSION' | 'OVERHEATING' | 'SLOWDOWN' | 'CONTRACTION' | 'CRISIS' | 'STABILIZATION' | 'RECOVERY';
   sectors?: EconomicSectors;
   supplyChains?: SupplyChains;
   financialMarkets?: FinancialMarkets;
@@ -728,6 +730,30 @@ export interface EconomicState {
   fiscalSpace: number;
   economicStress: number;
   recoveryRate: number;
+  interestRate?: number; // central bank rate %
+
+  // Module 2.1 Macro additions (backward compatible)
+  businessCyclePhase?: 'EXPANSION' | 'OVERHEATING' | 'SLOWDOWN' | 'CONTRACTION' | 'CRISIS' | 'STABILIZATION' | 'RECOVERY';
+  fragilityScore?: number;      // 0 - 100 scale
+  resilienceScore?: number;     // 0 - 100 scale
+  externalExposureScore?: number; // 0 - 100 scale
+  importDependenceScore?: number; // 0 - 100 scale
+  exportConcentrationScore?: number; // 0 - 100 scale
+  shockLoad?: number;           // 0 - 100 score of active accumulated economic strain
+  recoveryMomentum?: number;    // 0 - 100 index of speed of shock decay
+  macroTrend?: 'BOOMING' | 'STABLE' | 'STAGNANT' | 'DETERIORATING' | 'CRISIS';
+  recentMacroDrivers?: string[];
+  policyPosture?: 'PRO_GROWTH' | 'AUSTERITY' | 'CURRENCY_DEFENSE' | 'IMPORT_SUPPORT' | 'DEBT_STABILIZATION' | 'INDUSTRIAL_ALLOCATION';
+  currencyStability?: number;  // 0 - 100 scale
+  sectors?: {
+    energy: number;            // extractive % of GDP
+    agriculture: number;       // agriculture/food %
+    manufacturing: number;     // factory output %
+    tech: number;              // high tech %
+    services: number;          // service/finance %
+    defense: number;           // defense-industrial output %
+    state: number;             // public sector burden %
+  };
 }
 
 export interface MilitaryState {
@@ -801,6 +827,7 @@ export interface CountryState {
   allianceIds: string[];
   rivalIds: string[];
   treatyIds: string[];
+  atWarWith?: string[]; // active war front state tracker
   leaderId: string;
   economy: EconomicState;
   military: MilitaryState;

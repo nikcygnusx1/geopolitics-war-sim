@@ -26,6 +26,8 @@ import GothamPanel from './components/panels/GothamPanel';
 import FoundryPanel from './components/panels/FoundryPanel';
 import FinintPanel from './components/panels/FinintPanel';
 import { useFinintStore } from './store/finintStore';
+import TradeMatrixPanel from './components/panels/TradeMatrixPanel';
+import { useTradeStore } from './store/tradeStore';
 import CommandEventBusPanel from './components/panels/CommandEventBusPanel';
 import ScenarioPersistencePanel from './components/panels/ScenarioPersistencePanel';
 import { checkAndRestoreSharedScenario, hydrateScenario, ScenarioPackage } from './utils/persistence';
@@ -99,6 +101,7 @@ const getTabClassification = (tabId: number): string => {
     case 12: return "GOTHAM SIGNAL GRAPH"; // Geopolitical network (F12)
     case 13: return "FOUNDRY LOGISTICS"; // Supply-Chain Intelligence (Shift+F1)
     case 14: return "FINANCIAL WARFARE"; // Financial Special Operations (Shift+F2)
+    case 15: return "COERCIVE TRADE GRAPH"; // Trade Interdependence (Shift+F3)
     default: return "CONFIDENTIAL";
   }
 };
@@ -176,6 +179,7 @@ function ActivePanelWrapper({ activeTab, getTabClassification }: { activeTab: nu
       {activeTab === 12 && <GothamPanel />}
       {activeTab === 13 && <FoundryPanel />}
       {activeTab === 14 && <FinintPanel />}
+      {activeTab === 15 && <TradeMatrixPanel />}
     </div>
   );
 }
@@ -327,6 +331,10 @@ export default function App() {
       case 14: { // FINANCIAL SPECIAL OPERATIONS (FININT)
         return `blowback:${Math.round(useFinintStore.getState().globalAggregatedBlowback)}%`;
       }
+      case 15: { // TRADE MATRIX (Shift+F3)
+        const campaignsCount = useTradeStore.getState().campaigns.length;
+        return `friction:${campaignsCount} active`;
+      }
       default:
         return '';
     }
@@ -422,6 +430,14 @@ export default function App() {
         e.preventDefault();
         audio.sfxKeyClick();
         usePlayerStore.getState().setActiveTab(14);
+        return;
+      }
+
+      // Check Shift+F3 for Trade Interdependence (TRADE MATRIX) command console
+      if (e.key === 'F3' && e.shiftKey) {
+        e.preventDefault();
+        audio.sfxKeyClick();
+        usePlayerStore.getState().setActiveTab(15);
         return;
       }
 
@@ -1101,6 +1117,7 @@ export default function App() {
                   { id: 12, label: 'GOTHAM GRAPH (F12)' },
                   { id: 13, label: 'FOUNDRY LOGISTICS (Shift+F1)' },
                   { id: 14, label: 'FINANCIAL WARFARE (Shift+F2)' },
+                  { id: 15, label: 'TRADE COERCION (Shift+F3)' },
                 ].map((tab) => {
                   const isActive = playerState.activeTab === tab.id;
                   return (

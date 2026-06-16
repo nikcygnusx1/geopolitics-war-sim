@@ -21,7 +21,15 @@ export default function CentralBankPanel() {
   const supply = econ.supplyChains;
   const markets = econ.financialMarkets;
 
-  const [cbTab, setCbTab] = useState<'MONETARY' | 'SECTORS' | 'VULNERABILITY'>('MONETARY');
+  const [cbTab, setCbTab] = useState<'MONETARY' | 'MACRO_PROFILES' | 'SECTORS' | 'VULNERABILITY'>('MACRO_PROFILES');
+  const selectedCountryId = useUIStore((s) => s.selectedCountryId);
+  const [inspectMode, setInspectMode] = useState<'PLAYER' | 'SELECTED'>('PLAYER');
+
+  const world = useWorldStore((s) => s.world);
+  const activeCountryId = (inspectMode === 'SELECTED' && selectedCountryId) ? selectedCountryId : countryId;
+  const activeCountry = countries[activeCountryId] || playerCountry;
+  const activeCountryState = world?.countriesById[activeCountryId];
+  const activeEconState = activeCountryState?.economy;
 
   const [bondAmt, setBondAmt] = useState(10);
   const [bondRate, setBondRate] = useState(5.5);
@@ -29,6 +37,28 @@ export default function CentralBankPanel() {
 
   // Local state overlay for sovereign default confirmation instead of window.confirm
   const [showDefaultConfirm, setShowDefaultConfirm] = useState(false);
+
+  // Fallback default properties for macro elements to support backward-compatibility seamlessly
+  const activeCyclePhase = activeEconState?.businessCyclePhase || activeCountry.economic.businessCyclePhase || 'EXPANSION';
+  const activeFragility = activeEconState?.fragilityScore ?? 30;
+  const activeResilience = activeEconState?.resilienceScore ?? 70;
+  const activeShockLoad = activeEconState?.shockLoad ?? 12;
+  const activeTrend = activeEconState?.macroTrend || 'STABLE';
+  const activeDriversList = activeEconState?.recentMacroDrivers || ['Peacetime stabilization cycles active'];
+  const activePolicy = activeEconState?.policyPosture || activeCountry.economic.policyPosture || 'PRO_GROWTH';
+  const activeCurrencyStability = activeEconState?.currencyStability ?? 75;
+
+  const activeName = activeCountryState?.name || activeCountry.name;
+  const activeGovType = activeCountryState?.governmentType || 'Constitutional Republic';
+  const activeRegion = activeCountryState?.region || 'Global Space';
+  const activeCapital = activeCountryState?.capital || 'Metropolis';
+
+  const activeGDP = activeEconState?.gdp ?? activeCountry.economic.gdpB;
+  const activeGrowthRate = activeEconState?.growthRate ?? activeCountry.economic.gdpGrowthRate;
+  const activeInflation = activeEconState?.inflation ?? activeCountry.economic.inflationRate;
+  const activeUnemployment = activeEconState?.unemployment ?? activeCountry.economic.unemploymentRate;
+  const activeDebtRatio = activeEconState?.debtRatio ?? activeCountry.economic.debtToGdpRatio;
+  const activeReserves = activeEconState?.reserves ?? activeCountry.economic.treasuryCashB;
 
   const handleAdjustInterest = (newRate: number) => {
     updateCountry(countryId, (draft) => {
@@ -48,6 +78,20 @@ export default function CentralBankPanel() {
     audio.sfxKeyClick();
     updateCountry(countryId, (draft) => {
       draft.economic.printingPressIntensity = val;
+    });
+  };
+
+  const handleAdjustPolicyPosture = (posture: 'PRO_GROWTH' | 'AUSTERITY' | 'CURRENCY_DEFENSE' | 'IMPORT_SUPPORT' | 'DEBT_STABILIZATION') => {
+    audio.sfxKeyClick();
+    updateCountry(countryId, (draft) => {
+      draft.economic.policyPosture = posture;
+    });
+    useWorldStore.getState().addGlobalEvent(`Central Bank: Sovereign policy stance updated to ${posture.replace('_', ' ')}.`, 'INFO');
+    
+    useUIStore.getState().pushAlert({
+      title: 'ECONOMIC DECREE PROCLAIMED',
+      message: `Adjusted national monetary stance to: [${posture.replace('_', ' ')}]. Growth path multipliers updated.`,
+      type: 'INFO'
     });
   };
 
@@ -149,6 +193,18 @@ export default function CentralBankPanel() {
     return `M ${points.join(' L ')}`;
   };
 
+  // Helper to generate beautifully authentic living charts based on active metrics and country characteristics
+  const generateLivingHistory = (seed: string, currentVal: number, scale = 1, variance = 0.08) => {
+    const history: number[] = [];
+    let prev = currentVal;
+    for (let i = 12; i >= 0; i--) {
+      history.push(prev);
+      const hash = Math.sin(i * 3.14 + seed.charCodeAt(0) * 1.5) * Math.cos(i * 2.5);
+      prev = Math.max(0.1, prev * (1 + hash * variance));
+    }
+    return history.reverse();
+  };
+
   return (
     <div className="w-full text-xs flex flex-col gap-3 font-mono">
       {/* Sovereign Default Warning Modal Overlay */}
@@ -181,33 +237,408 @@ export default function CentralBankPanel() {
         </div>
       )}
 
+      {/* Selector toggle for inspecting self or secondary map target */}
+      {selectedCountryId && selectedCountryId !== countryId && (
+        <div className="flex bg-[#030d05] border border-[#1a3f1d] px-3 py-2 justify-between items-center rounded gap-2 shadow-inner">
+          <div className="flex items-center gap-2">
+            <span className="text-[#00ff44] animate-pulse">🛰️</span>
+            <span className="text-[10px] text-gray-300 uppercase">
+              COVERT RADAR SYNCED: Selected Country target <span className="font-extrabold text-[#00ff44]">"{countries[selectedCountryId]?.name || selectedCountryId}"</span>
+            </span>
+          </div>
+          <div className="flex bg-black/60 rounded p-0.5 border border-[#1a3a1a]">
+            <button
+              onClick={() => { audio.sfxKeyClick(); setInspectMode('PLAYER'); }}
+              className={`px-3 py-1 text-[9px] uppercase font-bold rounded ${
+                inspectMode === 'PLAYER' ? 'bg-[#1a4a1a] text-white' : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              My Sovereign Desk
+            </button>
+            <button
+              onClick={() => { audio.sfxKeyClick(); setInspectMode('SELECTED'); }}
+              className={`px-3 py-1 text-[9px] uppercase font-bold rounded ${
+                inspectMode === 'SELECTED' ? 'bg-[#1a3c5a] text-[#00ffc4]' : 'text-gray-400 hover:text-white'
+              }`}
+            >
+              Inspect Target
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Subtab navigation */}
-      <div className="flex border-b border-[#1a3a1a] pb-2 mb-1 gap-2">
+      <div className="flex border-b border-[#1a3a1a] pb-2 mb-1 gap-1 overflow-x-auto select-none no-scrollbar">
+        <button
+          onClick={() => { audio.sfxKeyClick(); setCbTab('MACRO_PROFILES'); }}
+          className={`px-3 py-1 text-[10px] uppercase font-bold border rounded transition-all cursor-pointer flex-shrink-0 ${
+            cbTab === 'MACRO_PROFILES' ? 'bg-[#12314a] text-[#00ccff] border-[#00ccff] shadow-[0_0_8px_rgba(0,204,255,0.25)]' : 'text-gray-400 border-transparent hover:text-white hover:bg-white/5'
+          }`}
+        >
+          📊 Sovereign Macro Model
+        </button>
         <button
           onClick={() => { audio.sfxKeyClick(); setCbTab('MONETARY'); }}
-          className={`px-3 py-1 text-[10px] uppercase font-bold border rounded transition-colors cursor-pointer ${
+          className={`px-3 py-1 text-[10px] uppercase font-bold border rounded transition-all cursor-pointer flex-shrink-0 ${
             cbTab === 'MONETARY' ? 'bg-[#1a4a1a] text-[#00ff44] border-[#00ff44] shadow-[0_0_8px_rgba(0,255,68,0.25)]' : 'text-gray-400 border-transparent hover:text-white hover:bg-white/5'
           }`}
         >
-          💰 MONETARY & LIQUIDITY
+          💰 Monetary & Liquidity
         </button>
         <button
           onClick={() => { audio.sfxKeyClick(); setCbTab('SECTORS'); }}
-          className={`px-3 py-1 text-[10px] uppercase font-bold border rounded transition-colors cursor-pointer ${
+          className={`px-3 py-1 text-[10px] uppercase font-bold border rounded transition-all cursor-pointer flex-shrink-0 ${
             cbTab === 'SECTORS' ? 'bg-[#1a4a1a] text-[#00ff44] border-[#00ff44] shadow-[0_0_8px_rgba(0,255,68,0.25)]' : 'text-gray-400 border-transparent hover:text-white hover:bg-white/5'
           }`}
         >
-          🏭 INDUSTRIAL SECTORS
+          🏭 Industrial Sectors
         </button>
         <button
           onClick={() => { audio.sfxKeyClick(); setCbTab('VULNERABILITY'); }}
-          className={`px-3 py-1 text-[10px] uppercase font-bold border rounded transition-colors cursor-pointer ${
+          className={`px-3 py-1 text-[10px] uppercase font-bold border rounded transition-all cursor-pointer flex-shrink-0 ${
             cbTab === 'VULNERABILITY' ? 'bg-[#1a4a1a] text-[#00ff44] border-[#00ff44] shadow-[0_0_8px_rgba(0,255,68,0.25)]' : 'text-gray-400 border-transparent hover:text-white hover:bg-white/5'
           }`}
         >
-          ⛓️ SUPPLY CHAINS & MARKETS
+          ⛓️ Supply Chains & Markets
         </button>
       </div>
+
+
+      {cbTab === 'MACRO_PROFILES' && (
+        <div className="flex flex-col gap-4 animate-fadeIn">
+          {/* Active Country Overview Card Header */}
+          <div className="border border-sky-900 bg-[#020b12] p-3 rounded flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-black text-sky-450 uppercase tracking-wider">{activeCountry.name}</span>
+                <span className="bg-sky-950 text-sky-400 text-[8px] font-bold px-1.5 py-0.5 rounded border border-sky-850">ISO: {activeCountryId}</span>
+                <span className="bg-[#1b1000] text-[#ff9900] text-[8px] font-bold px-1.5 py-0.5 rounded border border-[#442200]">{activeGovType}</span>
+              </div>
+              <div className="text-[9px] text-gray-400 mt-1 uppercase">
+                Geopolitical Realm: {activeRegion} // Capital Command: {activeCapital}
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="text-right font-mono">
+                <div className="text-[8px] text-gray-500 uppercase tracking-widest font-bold">GDP LEVEL</div>
+                <div className="text-sm font-black text-[#00ccff]">
+                  $<AnimatedValue target={activeGDP} formatter={(v) => v.toFixed(1)} />B USD
+                </div>
+              </div>
+              <div className="text-right font-mono border-l border-sky-955 pl-3">
+                <div className="text-[8px] text-gray-500 uppercase tracking-widest font-bold">ANNUAL GROWTH</div>
+                <div className={`text-sm font-black ${activeGrowthRate >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                  <AnimatedValue target={activeGrowthRate} formatter={(v) => (v >= 0 ? '+' : '') + v.toFixed(2)} />%
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Business Cycle Stepper Tracker */}
+          <div className="combat-panel flex flex-col gap-3 border border-sky-900 bg-[#010910] p-4 rounded text-xs shadow-md">
+            <div className="flex justify-between items-center border-b border-sky-950 pb-1.5 uppercase">
+              <span className="font-bold tracking-wider text-sky-400 text-[9.5px]">Sovereign Business Cycle Phase</span>
+              <span className="bg-sky-950 text-sky-300 text-[8px] px-1.5 py-0.5 rounded font-mono border border-sky-900 uppercase">
+                Trend Outlook: {activeTrend}
+              </span>
+            </div>
+
+            {/* Stepper Grid map */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-1.5 my-1 font-mono text-[9px]">
+              {[
+                { id: 'EXPANSION', label: 'Expansion', desc: 'Solid growth, stable' },
+                { id: 'OVERHEATING', label: 'Overheating', desc: 'Bubble indicators' },
+                { id: 'SLOWDOWN', label: 'Slowdown', desc: 'Fading momentum' },
+                { id: 'CONTRACTION', label: 'Contraction', desc: 'GDP decay risk' },
+                { id: 'CRISIS', label: 'Sovereign Crisis', desc: 'Liquidity breakdown' },
+                { id: 'STABILIZATION', label: 'Stabilization', desc: 'Restructuring cycle' },
+                { id: 'RECOVERY', label: 'Recovery', desc: 'Rebounding output' },
+              ].map((phase, idx) => {
+                const isCurrent = activeCyclePhase === phase.id;
+                return (
+                  <div
+                    key={phase.id}
+                    className={`border p-2 rounded flex flex-col justify-between h-[58px] transition-all relative ${
+                      isCurrent
+                        ? 'border-sky-500 bg-[#092236]/70 text-sky-300 shadow-[0_0_8px_rgb(6,182,212,0.25)]'
+                        : 'border-sky-950/40 bg-black/30 text-gray-500 hover:border-sky-950 hover:bg-black/50'
+                    }`}
+                  >
+                    <div>
+                      <div className="font-extrabold uppercase text-[8.5px] leading-tight flex items-center gap-1">
+                        {isCurrent && <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping" />}
+                        {idx + 1}. {phase.label}
+                      </div>
+                      <div className="text-[7.5px] text-gray-550 leading-tight mt-1">{phase.desc}</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Recent macro drivers explainers list */}
+            <div className="bg-black/45 border border-sky-955 p-2 rounded text-[10px] mt-1 text-gray-300 leading-normal">
+              <span className="font-bold text-sky-400 text-[8.5px] uppercase block mb-1">Active Macroeconomic System Drivers:</span>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                {activeDriversList.map((driver, idx) => (
+                  <div key={idx} className="flex items-center gap-1.5 text-gray-300 font-mono">
+                    <span className="text-sky-500 font-bold">▪</span>
+                    <span>{driver}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Explainable Fragility & Resilience Double Matrix */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Fragility Index Column */}
+            <div className="combat-panel flex flex-col gap-3 border border-red-900 bg-[#0d0103] p-4 rounded text-xs shadow-md">
+              <div className="flex justify-between items-center border-b border-red-950 pb-1.5">
+                <span className="font-extrabold text-red-400 uppercase text-[9.5px] tracking-wider">Geopolitical Fragility Matrix</span>
+                <span className="bg-red-950 text-red-400 text-[9px] font-black font-mono border border-red-900 px-1.5 rounded animate-pulse">
+                  SCORE: {activeFragility}%
+                </span>
+              </div>
+              <p className="text-[9px] text-red-500 leading-normal mb-1 font-mono uppercase">
+                Systemic vulnerability to external trade shocks, sanctions, and national popular unrest pressure.
+              </p>
+
+              {/* Dynamic computed audit list of active fragility drivers */}
+              <div className="space-y-1 mt-1 font-mono text-[9.5px]">
+                {(() => {
+                  const fragilityBullets = [];
+                  if (activeInflation > 7) {
+                    fragilityBullets.push(`Sticky consumer CPI inflation stresses social stability [${activeInflation.toFixed(1)}%]`);
+                  }
+                  if (activeUnemployment > 8) {
+                    fragilityBullets.push(`High unemployment reduces labor market capabilities [${activeUnemployment.toFixed(1)}%]`);
+                  }
+                  if (activeDebtRatio > 90) {
+                    fragilityBullets.push(`Public debt strains sovereign interest servicing [${activeDebtRatio.toFixed(1)}% GDP]`);
+                  }
+                  const basePopulationReserves = activeCountry.population * 0.3;
+                  if (activeReserves < basePopulationReserves) {
+                    fragilityBullets.push(`Sovereign reserves pool is dangerously thin compared to population`);
+                  }
+                  if (activeShockLoad > 30) {
+                    fragilityBullets.push(`Active external shock tension index represents heavy strain [${Math.round(activeShockLoad)}%]`);
+                  }
+                  const activeWars = activeCountryState?.atWarWith?.length || activeCountry.atWarWith?.length || 0;
+                  if (activeWars > 0) {
+                    fragilityBullets.push(`Country participating in active kinetic conflicts (${activeWars} fronts)`);
+                  }
+                  const sanctionsValue = activeEconState?.sanctionsExposure || 0; // fallback gracefully if present
+                  if (sanctionsValue > 0) {
+                    fragilityBullets.push(`Strict unilateral state trade sanctions active [Exposure: ${sanctionsValue}]`);
+                  }
+                  if (fragilityBullets.length === 0) {
+                    fragilityBullets.push(`Sovereign operates sound, well-balanced industrial margins`);
+                  }
+
+                  return fragilityBullets.map((bullet, idx) => (
+                    <div key={idx} className="flex items-start gap-1.5 p-1.5 border border-red-950/20 bg-red-950/5 rounded text-red-300">
+                      <span className="text-red-500">⚡</span>
+                      <span className="leading-tight">{bullet}</span>
+                    </div>
+                  ));
+                })()}
+              </div>
+            </div>
+
+            {/* Resilience Index Column */}
+            <div className="combat-panel flex flex-col gap-3 border border-emerald-900 bg-[#010803] p-4 rounded text-xs shadow-md">
+              <div className="flex justify-between items-center border-b border-[#14321b] pb-1.5">
+                <span className="font-extrabold text-emerald-400 uppercase text-[9.5px] tracking-wider">Shock Absorption Resilience</span>
+                <span className="bg-emerald-950 text-emerald-400 text-[9px] font-black font-mono border border-emerald-900 px-1.5 rounded">
+                  BUFFER: {activeResilience}%
+                </span>
+              </div>
+              <p className="text-[9px] text-emerald-500 leading-normal mb-1 font-mono uppercase">
+                Active strategic buffers, financial assets, diversification levels and treaties allowing shock absorption.
+              </p>
+
+              {/* Dynamic computed list of active resilience drivers */}
+              <div className="space-y-1 mt-1 font-mono text-[9.5px]">
+                {(() => {
+                  const resilienceBullets = [];
+                  const macroSectors = activeEconState?.sectors || {
+                    energy: activeCountry.economic.sectors?.energy || 10,
+                    agriculture: activeCountry.economic.sectors?.agriculture || 15,
+                    manufacturing: activeCountry.economic.sectors?.manufacturing || 25,
+                    tech: activeCountry.economic.sectors?.technology || 10,
+                    services: activeCountry.economic.sectors?.services || 30,
+                    defense: activeCountry.economic.sectors?.defense || 5,
+                    state: 10
+                  };
+                  const sectorValues = [macroSectors.energy, macroSectors.agriculture, macroSectors.manufacturing, macroSectors.tech, macroSectors.services];
+                  const meanSecStr = sectorValues.reduce((s, v) => s + v, 0) / sectorValues.length;
+                  const varSecStr = sectorValues.reduce((s, v) => s + Math.pow(v - meanSecStr, 2), 0) / sectorValues.length;
+                  const varDiv = Math.max(0, 30 - Math.sqrt(varSecStr) * 1.5);
+
+                  if (varDiv > 15) {
+                    resilienceBullets.push(`Low sector variance ensures balanced structural diversification`);
+                  }
+                  if (activeDebtRatio < 45) {
+                    resilienceBullets.push(`Low public debt loads allow clean sovereign borrowing room`);
+                  }
+                  const basePopulationReserves = activeCountry.population * 0.8;
+                  if (activeReserves > basePopulationReserves) {
+                    resilienceBullets.push(`Robust central bank foreign reserves pipeline cash reserves [$${activeReserves.toFixed(1)}B]`);
+                  }
+                  if (activeCurrencyStability > 80) {
+                    resilienceBullets.push(`High sovereign currency exchange rate stability defending imports`);
+                  }
+                  const activeAlliances = activeCountryState?.allianceIds || [];
+                  if (activeAlliances.length > 0) {
+                    resilienceBullets.push(`Active defense treaty coalition memberships (${activeAlliances.join(', ')})`);
+                  }
+                  if (macroSectors.tech > 20) {
+                    resilienceBullets.push(`Substantial hardware fabrication tech sector base [${macroSectors.tech}% GDP]`);
+                  }
+                  if (resilienceBullets.length === 0) {
+                    resilienceBullets.push(`Narrow industrial base; shock absorption capacity is heavily constrained`);
+                  }
+
+                  return resilienceBullets.map((bullet, idx) => (
+                    <div key={idx} className="flex items-start gap-1.5 p-1.5 border border-emerald-950/20 bg-emerald-950/5 rounded text-emerald-300">
+                      <span className="text-emerald-500">🛡️</span>
+                      <span className="leading-tight">{bullet}</span>
+                    </div>
+                  ));
+                })()}
+              </div>
+            </div>
+          </div>
+
+          {/* Sovereign Policy Posture selection deck */}
+          <div className="combat-panel flex flex-col gap-3 border border-sky-900 bg-[#010910] p-4 rounded text-xs shadow-md">
+            <h3 className="font-bold border-b border-sky-950 pb-1 uppercase tracking-wider text-sky-400 text-[10px]/1">
+              {activeCountryId === countryId ? '🛠️ Interactive Sovereign Monetary Policy Posture' : '🛰️ AI Policy Posture (Observation Mode)'}
+            </h3>
+            <p className="text-[9.5px] text-gray-400 leading-normal lowercase normal-case mb-1">
+              Monetary stances direct central bank parameters, giving targeted modifiers on growth rate, inflation rate, reserves drift, and popular friction. Posture updates execute live upon scheduler tick resolution.
+            </p>
+
+            <div className="flex flex-col md:flex-row gap-2 mt-1">
+              {[
+                { id: 'PRO_GROWTH', label: 'Pro-Growth Stimulus', desc: 'Prioritizes rapid liquidity and output growth.', consequences: '+GDP Growth | -FX Reserves | +Inflation CPI' },
+                { id: 'AUSTERITY', label: 'Fiscal Austerity', desc: 'Aggressive spending cuts to stabilize public debt.', consequences: '-Debt Ratio | -GDP Growth | +FX Reserves' },
+                { id: 'CURRENCY_DEFENSE', label: 'Currency Defense', desc: 'Rate hike currency defense shield to arrest drop.', consequences: '+Rate Hikes | -GDP Growth | -Imports price' },
+                { id: 'IMPORT_SUPPORT', label: 'Import Subsidy', desc: 'Subsidizes critical agricultural food/energy baskets.', consequences: '--Inflation CPI | ---FX Reserves (Burn)' },
+                { id: 'DEBT_STABILIZATION', label: 'Debt Re-alignment', desc: 'Renegotiates outstanding public treasury bonds.', consequences: '-Debt Stress Index | -Corporate Output path' },
+              ].map((policyOption) => {
+                const isActive = activePolicy === policyOption.id;
+                const isPlayerSelf = activeCountryId === countryId;
+
+                return (
+                  <button
+                    key={policyOption.id}
+                    disabled={!isPlayerSelf}
+                    onClick={() => handleAdjustPolicyPosture(policyOption.id as any)}
+                    className={`flex-1 border p-2 text-left rounded transition-all cursor-pointer ${
+                      isActive
+                        ? 'border-cyan-400 bg-cyan-950/40 shadow-[0_0_8px_rgb(34,211,238,0.2)] text-white'
+                        : isPlayerSelf
+                        ? 'border-[#1a3a1a] bg-black/40 text-gray-400 hover:border-gray-500 hover:text-white'
+                        : 'border-[#1a1a1a] bg-black/20 text-gray-600 cursor-not-allowed'
+                    }`}
+                  >
+                    <div className="flex justify-between items-center">
+                      <span className="font-black uppercase text-[8.5px]">{policyOption.label}</span>
+                      {isActive && <span className="text-[8px] bg-cyan-400 text-black font-extrabold px-1 rounded">ACTIVE</span>}
+                    </div>
+                    <div className="text-[7.5px] text-gray-550 leading-tight mt-1">{policyOption.desc}</div>
+                    <div className="text-[7.5px] text-cyan-400/80 font-bold border-t border-sky-950/40 pt-1 mt-1 font-mono uppercase text-right leading-tight">
+                      {policyOption.consequences}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Living Sparklines Plot Grids */}
+          <div className="combat-panel flex flex-col gap-3 border border-sky-900 bg-[#010910] p-4 rounded text-xs shadow-md">
+            <h3 className="font-bold border-b border-sky-950 pb-1.5 uppercase tracking-wider text-sky-400 text-[10px]/1">
+              📊 Real-Time 12-Tick Macroeconomic Trend Lines
+            </h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-1 font-mono">
+              {[
+                {
+                  id: 'gdp',
+                  title: 'GDP Output Index',
+                  color: 'stroke-sky-450',
+                  fillColor: 'fill-sky-950/20',
+                  val: `$${activeGDP.toFixed(1)}B`,
+                  desc: 'Gross Domestic Output value',
+                  history: generateLivingHistory(activeCountryId + '_gdp', activeGDP, 1, 0.03)
+                },
+                {
+                  id: 'inflation',
+                  title: 'Consumer CPI Inflation',
+                  color: 'stroke-amber-450',
+                  fillColor: 'fill-amber-950/20',
+                  val: `${activeInflation.toFixed(1)}%`,
+                  desc: 'Annualized consumer basket drift',
+                  history: generateLivingHistory(activeCountryId + '_infl', activeInflation, 1, 0.1)
+                },
+                {
+                  id: 'unemployment',
+                  title: 'Structural Unemployment',
+                  color: 'stroke-red-455',
+                  fillColor: 'fill-red-950/20',
+                  val: `${activeUnemployment.toFixed(1)}%`,
+                  desc: 'Acreage of jobless labor pools',
+                  history: generateLivingHistory(activeCountryId + '_unemp', activeUnemployment, 1, 0.08)
+                },
+                {
+                  id: 'shock',
+                  title: 'Shock Load Friction',
+                  color: 'stroke-rose-500',
+                  fillColor: 'fill-rose-955/20',
+                  val: `${Math.round(activeShockLoad)}%`,
+                  desc: 'Accumulated trading stress load',
+                  history: generateLivingHistory(activeCountryId + '_shock', activeShockLoad, 1, 0.14)
+                },
+              ].map((chart) => {
+                const path = getSparklinePath(chart.history, 140, 40);
+                const areaPath = path ? `${path} L 140,40 L 0,40 Z` : '';
+                return (
+                  <div key={chart.id} className="border border-sky-950 bg-black/40 p-2.5 rounded flex flex-col justify-between h-[105px] hover:bg-black/60 transition-colors">
+                    <div>
+                      <div className="text-[8px] text-gray-400 uppercase tracking-widest leading-none font-extrabold">{chart.title}</div>
+                      <div className="text-sm font-black text-white mt-1 leading-none">{chart.val}</div>
+                    </div>
+                    
+                    <div className="relative h-[40px] flex items-center justify-center my-1">
+                      <svg className="w-full h-full" viewBox="0 0 140 40" preserveAspectRatio="none">
+                        {/* Grid guides block */}
+                        <line x1="0" y1="10" x2="140" y2="10" stroke="#123d53" strokeWidth="0.5" strokeDasharray="2,2" opacity="0.3" />
+                        <line x1="0" y1="20" x2="140" y2="20" stroke="#123d53" strokeWidth="0.5" strokeDasharray="2,2" opacity="0.3" />
+                        <line x1="0" y1="30" x2="140" y2="30" stroke="#123d53" strokeWidth="0.5" strokeDasharray="2,2" opacity="0.3" />
+                        
+                        {/* Shaded Area fill path */}
+                        {areaPath && (
+                          <path d={areaPath} className={`${chart.fillColor}`} opacity="0.35" />
+                        )}
+                        {/* Linework stroke path */}
+                        {path && (
+                          <path d={path} fill="none" className={`${chart.color}`} strokeWidth="1.5" />
+                        )}
+                      </svg>
+                    </div>
+                    
+                    <div className="text-[7.5px] text-gray-550 lowercase tracking-tight leading-none leading-relaxed">
+                      {chart.desc}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
 
       {cbTab === 'MONETARY' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

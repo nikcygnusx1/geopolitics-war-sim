@@ -7,6 +7,7 @@ import { useArachneStore } from '../store/arachneStore';
 import { useGothamStore } from '../store/gothamStore';
 import { useFoundryStore } from '../store/foundryStore';
 import { useFinintStore } from '../store/finintStore';
+import { useTradeStore } from '../store/tradeStore';
 import { pollScenarioStatus } from './scenarioEngine';
 import { processFactions } from './factionEngine';
 import { processFiscal } from './fiscalEngine';
@@ -130,6 +131,9 @@ export function executeSimulationStep() {
 
   // Synchronize financial-intelligence and capital networks
   useFinintStore.getState().tickFinint(useWorldStore.getState().currentTick);
+
+  // Synchronize Trade Matrix and Route Systems
+  useTradeStore.getState().tickTradeSystem(useWorldStore.getState().currentTick);
 
   // Regularly save a checkpoint if there is no ongoing nuclear exchange or active aftermath
   const currentWorld = useWorldStore.getState();

@@ -87,6 +87,284 @@ export function getGovernmentType(countryId: string, ideology: Ideology): string
   return 'Sovereign Administration Council';
 }
 
+function getInitialMacroData(id: string, rawGDP: number, rawDebt: number, rawStress: number) {
+  const defaults: Record<string, any> = {
+    US: {
+      businessCyclePhase: 'EXPANSION',
+      fragilityScore: 12,
+      resilienceScore: 92,
+      externalExposureScore: 20,
+      importDependenceScore: 30,
+      exportConcentrationScore: 15,
+      shockLoad: 5,
+      recoveryMomentum: 85,
+      macroTrend: 'BOOMING',
+      currencyStability: 95,
+      recentMacroDrivers: ['Tech sector expansion', 'Strong consumer demand', 'US dollar reserve status hegemony'],
+      policyPosture: 'PRO_GROWTH',
+      sectors: { energy: 15, agriculture: 5, manufacturing: 15, tech: 25, services: 35, defense: 5, state: 10 }
+    },
+    DE: {
+      businessCyclePhase: 'SLOWDOWN',
+      fragilityScore: 25,
+      resilienceScore: 80,
+      externalExposureScore: 45,
+      importDependenceScore: 55,
+      exportConcentrationScore: 30,
+      shockLoad: 15,
+      recoveryMomentum: 65,
+      macroTrend: 'STAGNANT',
+      currencyStability: 88,
+      recentMacroDrivers: ['Energy import shift transition', 'Export automotive slowdown', 'Fiscal constraints'],
+      policyPosture: 'AUSTERITY',
+      sectors: { energy: 5, agriculture: 3, manufacturing: 35, tech: 15, services: 35, defense: 2, state: 15 }
+    },
+    FR: {
+      businessCyclePhase: 'SLOWDOWN',
+      fragilityScore: 28,
+      resilienceScore: 78,
+      externalExposureScore: 40,
+      importDependenceScore: 50,
+      exportConcentrationScore: 25,
+      shockLoad: 12,
+      recoveryMomentum: 68,
+      macroTrend: 'STABLE',
+      currencyStability: 85,
+      recentMacroDrivers: ['High state sector presence', 'Labor market slack', 'European Central Bank interest rate normalization'],
+      policyPosture: 'AUSTERITY',
+      sectors: { energy: 8, agriculture: 10, manufacturing: 20, tech: 12, services: 30, defense: 5, state: 25 }
+    },
+    GB: {
+      businessCyclePhase: 'SLOWDOWN',
+      fragilityScore: 32,
+      resilienceScore: 74,
+      externalExposureScore: 50,
+      importDependenceScore: 55,
+      exportConcentrationScore: 20,
+      shockLoad: 18,
+      recoveryMomentum: 62,
+      macroTrend: 'STAGNANT',
+      currencyStability: 80,
+      recentMacroDrivers: ['Imported food & energy friction', 'Services sector stagnation', 'Sovereign interest debt burden'],
+      policyPosture: 'AUSTERITY',
+      sectors: { energy: 10, agriculture: 3, manufacturing: 15, tech: 15, services: 40, defense: 4, state: 18 }
+    },
+    CN: {
+      businessCyclePhase: 'EXPANSION',
+      fragilityScore: 28,
+      resilienceScore: 85,
+      externalExposureScore: 35,
+      importDependenceScore: 25,
+      exportConcentrationScore: 40,
+      shockLoad: 10,
+      recoveryMomentum: 80,
+      macroTrend: 'STABLE',
+      currencyStability: 85,
+      recentMacroDrivers: ['Manufacturing leadership', 'Supply chain dominance', 'Real estate deleveraging'],
+      policyPosture: 'INDUSTRIAL_ALLOCATION',
+      sectors: { energy: 10, agriculture: 8, manufacturing: 40, tech: 20, services: 12, defense: 5, state: 25 }
+    },
+    PK: {
+      businessCyclePhase: 'CRISIS',
+      fragilityScore: 85,
+      resilienceScore: 22,
+      externalExposureScore: 85,
+      importDependenceScore: 75,
+      exportConcentrationScore: 55,
+      shockLoad: 65,
+      recoveryMomentum: 25,
+      macroTrend: 'CRISIS',
+      currencyStability: 25,
+      recentMacroDrivers: ['Severe balance of payment stress', 'External debt amortization', 'Import food & energy inflation'],
+      policyPosture: 'DEBT_STABILIZATION',
+      sectors: { energy: 5, agriculture: 30, manufacturing: 15, tech: 5, services: 25, defense: 5, state: 15 }
+    },
+    EG: {
+      businessCyclePhase: 'SLOWDOWN',
+      fragilityScore: 72,
+      resilienceScore: 35,
+      externalExposureScore: 70,
+      importDependenceScore: 65,
+      exportConcentrationScore: 45,
+      shockLoad: 40,
+      recoveryMomentum: 40,
+      macroTrend: 'DETERIORATING',
+      currencyStability: 40,
+      recentMacroDrivers: ['Suez Canal revenue drop', 'Heavy food import dependencies', 'Sovereign interest burdens'],
+      policyPosture: 'AUSTERITY',
+      sectors: { energy: 15, agriculture: 20, manufacturing: 15, tech: 5, services: 30, defense: 3, state: 17 }
+    },
+    SA: {
+      businessCyclePhase: 'EXPANSION',
+      fragilityScore: 18,
+      resilienceScore: 88,
+      externalExposureScore: 60,
+      importDependenceScore: 40,
+      exportConcentrationScore: 75,
+      shockLoad: 5,
+      recoveryMomentum: 80,
+      macroTrend: 'BOOMING',
+      currencyStability: 95,
+      recentMacroDrivers: ['Elevated crude export pricing', 'Sovereign wealth diversification', 'State strategic investments'],
+      policyPosture: 'INDUSTRIAL_ALLOCATION',
+      sectors: { energy: 50, agriculture: 2, manufacturing: 10, tech: 8, services: 20, defense: 2, state: 40 }
+    },
+    RU: {
+      businessCyclePhase: 'STABILIZATION',
+      fragilityScore: 58,
+      resilienceScore: 60,
+      externalExposureScore: 50,
+      importDependenceScore: 45,
+      exportConcentrationScore: 70,
+      shockLoad: 50,
+      recoveryMomentum: 55,
+      macroTrend: 'STABLE',
+      currencyStability: 58,
+      recentMacroDrivers: ['Sanctions evasion networks', 'State military-industrial mobilization', 'Vostro rupee-ruble pipeline adaptation'],
+      policyPosture: 'INDUSTRIAL_ALLOCATION',
+      sectors: { energy: 35, agriculture: 10, manufacturing: 15, tech: 5, services: 12, defense: 18, state: 35 }
+    },
+    IR: {
+      businessCyclePhase: 'CONTRACTION',
+      fragilityScore: 78,
+      resilienceScore: 30,
+      externalExposureScore: 70,
+      importDependenceScore: 50,
+      exportConcentrationScore: 65,
+      shockLoad: 55,
+      recoveryMomentum: 35,
+      macroTrend: 'DETERIORATING',
+      currencyStability: 28,
+      recentMacroDrivers: ['Strict secondary sanctions blockade', 'Over-printing rial devaluation', 'Severe black market premium leakage'],
+      policyPosture: 'CURRENCY_DEFENSE',
+      sectors: { energy: 25, agriculture: 15, manufacturing: 18, tech: 4, services: 15, defense: 10, state: 28 }
+    },
+    BR: {
+      businessCyclePhase: 'EXPANSION',
+      fragilityScore: 48,
+      resilienceScore: 58,
+      externalExposureScore: 35,
+      importDependenceScore: 25,
+      exportConcentrationScore: 45,
+      shockLoad: 20,
+      recoveryMomentum: 60,
+      macroTrend: 'STABLE',
+      currencyStability: 70,
+      recentMacroDrivers: ['Agricultural export boom', 'Elevated state debt servicing costs', 'Commodity demand fluctuations'],
+      policyPosture: 'STIMULUS',
+      sectors: { energy: 15, agriculture: 22, manufacturing: 18, tech: 8, services: 25, defense: 2, state: 20 }
+    },
+    IN: {
+      businessCyclePhase: 'OVERHEATING',
+      fragilityScore: 32,
+      resilienceScore: 75,
+      externalExposureScore: 40,
+      importDependenceScore: 45,
+      exportConcentrationScore: 20,
+      shockLoad: 15,
+      recoveryMomentum: 88,
+      macroTrend: 'BOOMING',
+      currencyStability: 82,
+      recentMacroDrivers: ['Intense service export expansion', 'Public infrastructure capital surge', 'Core energy import basket inflation'],
+      policyPosture: 'PRO_GROWTH',
+      sectors: { energy: 8, agriculture: 15, manufacturing: 18, tech: 18, services: 32, defense: 4, state: 15 }
+    },
+    IL: {
+      businessCyclePhase: 'CONTRACTION',
+      fragilityScore: 52,
+      resilienceScore: 68,
+      externalExposureScore: 60,
+      importDependenceScore: 50,
+      exportConcentrationScore: 35,
+      shadowLoad: 45,
+      recoveryMomentum: 50,
+      macroTrend: 'DETERIORATING',
+      currencyStability: 75,
+      recentMacroDrivers: ['Military mobilization cost surge', 'High-tech sector continuity risk', 'Leisure tourism collapse'],
+      policyPosture: 'DEBT_STABILIZATION',
+      sectors: { energy: 5, agriculture: 2, manufacturing: 10, tech: 30, services: 32, defense: 12, state: 15 }
+    },
+    PS: {
+      businessCyclePhase: 'CRISIS',
+      fragilityScore: 95,
+      resilienceScore: 10,
+      externalExposureScore: 95,
+      importDependenceScore: 85,
+      exportConcentrationScore: 60,
+      shockLoad: 85,
+      recoveryMomentum: 10,
+      macroTrend: 'CRISIS',
+      currencyStability: 10,
+      recentMacroDrivers: ['Total infrastructure disruption', 'External transfers withholding', 'Civilian employment paralysis'],
+      policyPosture: 'IMPORT_SUPPORT',
+      sectors: { energy: 2, agriculture: 15, manufacturing: 8, tech: 2, services: 35, defense: 0, state: 48 }
+    },
+    JP: {
+      businessCyclePhase: 'RECOVERY',
+      fragilityScore: 30,
+      resilienceScore: 78,
+      externalExposureScore: 55,
+      importDependenceScore: 78,
+      exportConcentrationScore: 35,
+      shockLoad: 20,
+      recoveryMomentum: 70,
+      macroTrend: 'STABLE',
+      currencyStability: 80,
+      recentMacroDrivers: ['Global tech cycle rebound', 'Import food & fossil fuels price adaptation', 'Sovereign structural reforms'],
+      policyPosture: 'PRO_GROWTH',
+      sectors: { energy: 2, agriculture: 2, manufacturing: 38, tech: 25, services: 25, defense: 3, state: 10 }
+    },
+    KR: {
+      businessCyclePhase: 'RECOVERY',
+      fragilityScore: 28,
+      resilienceScore: 79,
+      externalExposureScore: 60,
+      importDependenceScore: 75,
+      exportConcentrationScore: 40,
+      shockLoad: 18,
+      recoveryMomentum: 72,
+      macroTrend: 'STABLE',
+      currencyStability: 82,
+      recentMacroDrivers: ['Semiconductor industrial demand rebound', 'Export electronics recovery', 'Pragmatic state micro-stimulus'],
+      policyPosture: 'PRO_GROWTH',
+      sectors: { energy: 2, agriculture: 2, manufacturing: 35, tech: 30, services: 23, defense: 3, state: 10 }
+    },
+    TW: {
+      businessCyclePhase: 'EXPANSION',
+      fragilityScore: 35,
+      resilienceScore: 72,
+      externalExposureScore: 75,
+      importDependenceScore: 65,
+      exportConcentrationScore: 65,
+      shockLoad: 25,
+      recoveryMomentum: 68,
+      macroTrend: 'STABLE',
+      currencyStability: 78,
+      recentMacroDrivers: ['Silicon semiconductor fab hegemony', 'Geopolitical isolation risks', 'Industrial tech capital inflows'],
+      policyPosture: 'PRO_GROWTH',
+      sectors: { energy: 2, agriculture: 2, manufacturing: 20, tech: 45, services: 20, defense: 6, state: 10 }
+    }
+  };
+
+  const selected = defaults[id] || {
+    businessCyclePhase: 'EXPANSION',
+    fragilityScore: Math.round(rawStress * 0.8) || 30,
+    resilienceScore: Math.round(100 - (rawStress * 0.8)) || 70,
+    externalExposureScore: 40,
+    importDependenceScore: 40,
+    exportConcentrationScore: 30,
+    shockLoad: Math.round(rawStress * 0.4) || 12,
+    recoveryMomentum: 50,
+    macroTrend: 'STABLE',
+    currencyStability: 70,
+    recentMacroDrivers: ['Inherent economic stabilization', 'Default baseline activity'],
+    policyPosture: 'PRO_GROWTH',
+    sectors: { energy: 10, agriculture: 15, manufacturing: 25, tech: 10, services: 30, defense: 5, state: 10 }
+  };
+
+  return selected;
+}
+
 export function generateInitialCanonicalWorld(
   countries: Record<string, Country>,
   leaders: Record<string, Leader>,
@@ -187,6 +465,7 @@ export function generateInitialCanonicalWorld(
         fiscalSpace: Math.max(0, Math.round(100 - raw.economic.debtToGdpRatio)),
         economicStress: Math.round(raw.economic.debtStressIndex),
         recoveryRate: 5,
+        ...getInitialMacroData(id, raw.economic.gdpB, raw.economic.debtToGdpRatio, raw.economic.debtStressIndex)
       },
       military: {
         manpower: Math.round(raw.population * 0.05), // Abstraction of force size
@@ -522,6 +801,7 @@ export function advanceCanonicalWorldTick(world: CanonicalWorld, updatedCountrie
       canonical.economy.economicStress = Math.round(raw.economic.debtStressIndex);
       canonical.economy.currencyStrength = raw.economic.currencyStrength;
       canonical.economy.tradeBalance = raw.economic.tradeSurplusDeficitB;
+      canonical.economy.policyPosture = raw.economic.policyPosture || 'PRO_GROWTH';
 
       // Update military readiness
       canonical.military.readiness = Math.round(raw.arsenal?.readinessLevel || 75);
@@ -612,6 +892,27 @@ export function advanceCanonicalWorldTick(world: CanonicalWorld, updatedCountrie
     ...formattedLogs,
     ...nextWorld.timeline
   ].slice(0, 100);
+
+  // Proactively sync-back computed macro values to interactive roster so UI elements stay congruent
+  Object.keys(updatedCountriesRoster).forEach((id) => {
+    const raw = updatedCountriesRoster[id];
+    const canonical = nextWorld.countriesById[id];
+    if (raw && canonical) {
+      raw.economic.businessCyclePhase = canonical.economy.businessCyclePhase;
+      raw.economic.policyPosture = canonical.economy.policyPosture;
+      
+      // Keep primary metrics in sync
+      raw.economic.gdpB = canonical.economy.gdp;
+      raw.economic.treasuryCashB = canonical.economy.reserves;
+      raw.economic.inflationRate = canonical.economy.inflation;
+      raw.economic.unemploymentRate = canonical.economy.unemployment;
+      raw.economic.debtToGdpRatio = canonical.economy.debtRatio;
+      raw.economic.debtStressIndex = canonical.economy.economicStress;
+      raw.economic.gdpGrowthRate = canonical.economy.growthRate;
+      raw.economic.currencyStrength = canonical.economy.currencyStrength;
+      raw.economic.tradeSurplusDeficitB = canonical.economy.tradeBalance;
+    }
+  });
 
   return nextWorld;
 }
