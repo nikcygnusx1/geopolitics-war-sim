@@ -34,6 +34,7 @@ import SanctionsPanel from './components/panels/SanctionsPanel';
 import { useSanctionsStore } from './store/sanctionsStore';
 import CommandEventBusPanel from './components/panels/CommandEventBusPanel';
 import ScenarioPersistencePanel from './components/panels/ScenarioPersistencePanel';
+import EconomicForecastPanel from './components/panels/EconomicForecastPanel';
 import { checkAndRestoreSharedScenario, hydrateScenario, ScenarioPackage } from './utils/persistence';
 
 import AnalysisModeSwitcher from './components/map/AnalysisModeSwitcher';
@@ -89,6 +90,7 @@ import { GEO_COORDS } from './data/geoCoords';
 import { getTickIncrement } from './sim/militaryEngine';
 import { useEconomyStore } from './store/economyStore';
 import { useUIStore } from './store/uiStore';
+import { useEconomicForecastStore } from './store/economicForecastStore';
 
 const getTabClassification = (tabId: number): string => {
   switch (tabId) {
@@ -108,6 +110,7 @@ const getTabClassification = (tabId: number): string => {
     case 15: return "COERCIVE TRADE GRAPH"; // Trade Interdependence (Shift+F3)
     case 16: return "ENERGY INTEGRITY MATRIX"; // Energy System (Shift+F4)
     case 17: return "COERCIVE SANCTIONS MATRIX"; // Sanctions (Shift+F5)
+    case 18: return "FINANCIAL HORIZONS FORECAST"; // Forecasting (Shift+F6)
     default: return "CONFIDENTIAL";
   }
 };
@@ -188,6 +191,7 @@ function ActivePanelWrapper({ activeTab, getTabClassification }: { activeTab: nu
       {activeTab === 15 && <TradeMatrixPanel />}
       {activeTab === 16 && <EnergyPanel />}
       {activeTab === 17 && <SanctionsPanel />}
+      {activeTab === 18 && <EconomicForecastPanel />}
     </div>
   );
 }
@@ -353,6 +357,10 @@ export default function App() {
         const activeCount = Object.values(useSanctionsStore.getState().campaigns).filter(c => c.status === 'ACTIVE').length;
         return `campaigns:${activeCount}`;
       }
+      case 18: { // FINANCIAL HORIZONS (Shift+F6)
+        const globalStress = useEconomicForecastStore.getState().calculateWorldEconomicStress().globalStressIndex;
+        return `gstress:${globalStress}%`;
+      }
       default:
         return '';
     }
@@ -472,6 +480,14 @@ export default function App() {
         e.preventDefault();
         audio.sfxKeyClick();
         usePlayerStore.getState().setActiveTab(17);
+        return;
+      }
+
+      // Check Shift+F6 for Financial Horizons forecast console
+      if (e.key === 'F6' && e.shiftKey) {
+        e.preventDefault();
+        audio.sfxKeyClick();
+        usePlayerStore.getState().setActiveTab(18);
         return;
       }
 
@@ -1154,6 +1170,7 @@ export default function App() {
                   { id: 15, label: 'TRADE COERCION (Shift+F3)' },
                   { id: 16, label: 'ENERGY INTEGRITY (Shift+F4)' },
                   { id: 17, label: 'COERCIVE SANCTIONS (Shift+F5)' },
+                  { id: 18, label: 'FINANCIAL HORIZONS (Shift+F6)' },
                 ].map((tab) => {
                   const isActive = playerState.activeTab === tab.id;
                   return (
