@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { PanelFxShell } from '../fx/PanelFxShell';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   ShieldAlert, 
@@ -103,7 +104,8 @@ export default function SanctionsPanel() {
     : null;
 
   return (
-    <div id="sanctions-architecture-console" className="min-h-screen bg-slate-950 text-slate-100 p-6 flex flex-col font-sans">
+    <PanelFxShell panelId="sanctions" relevantFxTypes={['SANCTIONS_ESCALATION','ECONOMIC_COLLAPSE','MARKET_CRASH']}>
+      <div id="sanctions-architecture-console" className="min-h-screen bg-slate-950 text-slate-100 p-6 flex flex-col font-sans">
       
       {/* HEADER SECTION WITH DESIGN SPEC DETAILS */}
       <header className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-slate-800 pb-5 mb-6">
@@ -824,5 +826,6 @@ export default function SanctionsPanel() {
       </footer>
 
     </div>
+    </PanelFxShell>
   );
 }

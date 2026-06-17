@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { PanelFxShell } from '../fx/PanelFxShell';
 import { useInfluenceStore } from '../../store/influenceStore';
 import { usePlayerStore } from '../../store/playerStore';
 import { useWorldStore } from '../../store/worldStore';
@@ -79,7 +80,8 @@ export default function AdversarialInfluencePanel() {
   };
 
   return (
-    <div id="influence-panel-root" className="flex flex-col h-full bg-[#030703] border border-[#1a5c1a]/40 text-gray-100 font-mono text-xs rounded shadow-2xl overflow-hidden p-4 select-none">
+    <PanelFxShell panelId="cognitive_shield" relevantFxTypes={['COUP_SUCCESS','REGIME_CHANGE','WAR_DECLARED','REGIME_PRESSURE_CRITICAL','CYBER_ATTACK']}>
+      <div id="influence-panel-root" className="flex flex-col h-full bg-[#030703] border border-[#1a5c1a]/40 text-gray-100 font-mono text-xs rounded shadow-2xl overflow-hidden p-4 select-none">
       
       {/* HEADER SECTION */}
       <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-[#144214] pb-3 mb-4 gap-3">
@@ -723,5 +725,6 @@ export default function AdversarialInfluencePanel() {
       </div>
 
     </div>
+    </PanelFxShell>
   );
 }

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { PanelFxShell } from '../fx/PanelFxShell';
 import { useWorldStore } from '../../store/worldStore';
 import { usePlayerStore } from '../../store/playerStore';
 import { useUIStore } from '../../store/uiStore';
@@ -59,7 +60,8 @@ export default function SpacePanel() {
   };
 
   return (
-    <div className="space-y-4">
+    <PanelFxShell panelId="haarp" relevantFxTypes={['HAARP_ACTIVATED','NUCLEAR_DETONATION']}>
+      <div className="space-y-4">
       <div className="flex justify-between items-center border-b border-[#1a5c1a] pb-2">
         <span className="text-xs uppercase font-bold text-[#00ff44] tracking-wider font-display">
           📡 Space Operations & Early Warning Matrix (F7)
@@ -208,5 +210,6 @@ export default function SpacePanel() {
         )}
       </div>
     </div>
+    </PanelFxShell>
   );
 }

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { PanelFxShell } from '../fx/PanelFxShell';
 import { useWorldStore } from '../../store/worldStore';
 import { usePlayerStore } from '../../store/playerStore';
 import { CovertOpType } from '../../types';
@@ -186,7 +187,8 @@ export default function IntelPanel() {
   };
 
   return (
-    <div className="w-full text-xs flex flex-col gap-3 font-mono">
+    <PanelFxShell panelId="intel" relevantFxTypes={['CYBER_ATTACK','OPERATIVE_BURNED','COUP_SUCCESS','REGIME_PRESSURE_CRITICAL']}>
+      <div className="w-full text-xs flex flex-col gap-3 font-mono">
       {/* Subtab selection info */}
       <div className="flex border-b border-[#1a3a1a] pb-2 mb-1 gap-2">
         <button
@@ -421,5 +423,6 @@ export default function IntelPanel() {
 
       {intelTab === 'DOSSIERS' && <LeaderProfilesPanel />}
     </div>
+    </PanelFxShell>
   );
 }

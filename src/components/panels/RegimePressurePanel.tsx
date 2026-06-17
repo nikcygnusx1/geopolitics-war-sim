@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { PanelFxShell } from '../fx/PanelFxShell';
 import { useWorldStore } from '../../store/worldStore';
 import { usePlayerStore } from '../../store/playerStore';
 import { ShieldAlert, Crosshair, Users, Coins, Globe, Megaphone, Flame, ServerCrash } from 'lucide-react';
@@ -106,7 +107,8 @@ export function RegimePressurePanel() {
   };
 
   return (
-    <div className="h-full flex flex-col pt-6 px-6">
+    <PanelFxShell panelId="regime_pressure" relevantFxTypes={['COUP_SUCCESS','COUP_ATTEMPT_FAILED','REGIME_CHANGE','REGIME_PRESSURE_CRITICAL','WAR_DECLARED']}>
+      <div className="h-full flex flex-col pt-6 px-6">
       <div className="flex justify-between items-center mb-6 border-b border-[#00e5ff]/20 pb-4">
         <h2 className="text-[#00e5ff] text-xl font-bold tracking-[0.2em] flex items-center shadow-text">
           <ShieldAlert className="w-6 h-6 mr-3 text-[#00e5ff]/80" />
@@ -299,6 +301,7 @@ export function RegimePressurePanel() {
         </div>
       </div>
     </div>
+    </PanelFxShell>
   );
 }
 

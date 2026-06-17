@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { PanelFxShell } from '../fx/PanelFxShell';
 import { useWorldStore } from '../../store/worldStore';
 import { usePlayerStore } from '../../store/playerStore';
 import GlowSlider from '../shared/GlowSlider';
@@ -254,7 +255,8 @@ export default function GovernmentPanel() {
   };
 
   return (
-    <div className="w-full text-xs flex flex-col gap-3 font-mono">
+    <PanelFxShell panelId="government_stability" relevantFxTypes={['COUP_SUCCESS','REGIME_CHANGE','REGIME_PRESSURE_CRITICAL','WAR_DECLARED','SANCTIONS_ESCALATION']}>
+      <div className="w-full text-xs flex flex-col gap-3 font-mono">
       {/* Sub tabs switches */}
       <div className="flex border-b border-[#1a3a1a] pb-2 mb-1 gap-2">
         <button
@@ -503,5 +505,6 @@ export default function GovernmentPanel() {
         </div>
       )}
     </div>
+    </PanelFxShell>
   );
 }

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { PanelFxShell } from '../fx/PanelFxShell';
 import { useWorldStore } from '../../store/worldStore';
 import { usePlayerStore } from '../../store/playerStore';
 import HexGauge from '../shared/HexGauge';
@@ -206,7 +207,8 @@ export default function CentralBankPanel() {
   };
 
   return (
-    <div className="w-full text-xs flex flex-col gap-3 font-mono">
+    <PanelFxShell panelId="central_bank" relevantFxTypes={['MARKET_CRASH','ECONOMIC_COLLAPSE']}>
+      <div className="w-full text-xs flex flex-col gap-3 font-mono">
       {/* Sovereign Default Warning Modal Overlay */}
       {showDefaultConfirm && (
         <div className="fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -921,5 +923,6 @@ export default function CentralBankPanel() {
         </div>
       )}
     </div>
+    </PanelFxShell>
   );
 }

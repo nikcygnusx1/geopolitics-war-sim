@@ -1,4 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
+import { PanelFxShell } from '../fx/PanelFxShell';
 import { useWorldStore } from '../../store/worldStore';
 import { useLinkedAnalysisStore } from '../../store/linkedAnalysisStore';
 import { parseGlobalEvent } from '../../utils/eventConverter';
@@ -155,7 +156,8 @@ export default function AnalysisInspector() {
   };
 
   return (
-    <div data-testid="onboarding-inspector" className="w-full h-full gotham-panel gotham-panel--secondary p-3 text-white font-mono text-[11px] overflow-y-auto space-y-4 flex flex-col justify-between scrollbar-thin" data-classification="RESTRICTED" style={{ maxHeight: '100%' }}>
+    <PanelFxShell panelId="intelligence" relevantFxTypes={['COUP_SUCCESS','REGIME_CHANGE','OPERATIVE_BURNED','CYBER_ATTACK','NUCLEAR_DETONATION']}>
+      <div data-testid="onboarding-inspector" className="w-full h-full gotham-panel gotham-panel--secondary p-3 text-white font-mono text-[11px] overflow-y-auto space-y-4 flex flex-col justify-between scrollbar-thin" data-classification="RESTRICTED" style={{ maxHeight: '100%' }}>
       <div className="space-y-4">
         {/* Dual Tab Router Row */}
         <div className="grid grid-cols-2 gap-1 bg-[#010401] p-1 border border-[#1a5c1a]/40 rounded-sm select-none">
@@ -888,5 +890,6 @@ export default function AnalysisInspector() {
         </div>
       </div>
     </div>
+    </PanelFxShell>
   );
 }

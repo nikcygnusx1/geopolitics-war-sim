@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { PanelFxShell } from '../fx/PanelFxShell';
 import { produce } from 'immer';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -173,7 +174,8 @@ export default function EnergyPanel() {
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#050505] text-gray-200 font-sans border border-zinc-900 rounded-lg overflow-hidden" id="energy_integrity_deck">
+    <PanelFxShell panelId="energy_dependency" relevantFxTypes={['SANCTIONS_ESCALATION','MARKET_CRASH','ECONOMIC_COLLAPSE']}>
+      <div className="flex flex-col h-full bg-[#050505] text-gray-200 font-sans border border-zinc-900 rounded-lg overflow-hidden" id="energy_integrity_deck">
       {/* 1. STATUS HEADER */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-[#070707] border-b border-zinc-900 px-6 py-4 gap-4">
         <div>
@@ -1120,5 +1122,6 @@ export default function EnergyPanel() {
       </div>
 
     </div>
+    </PanelFxShell>
   );
 }

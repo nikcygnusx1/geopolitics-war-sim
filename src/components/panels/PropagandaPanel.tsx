@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { PanelFxShell } from '../fx/PanelFxShell';
 import { useWorldStore } from '../../store/worldStore';
 import { usePlayerStore } from '../../store/playerStore';
 import { usePropagandaStore, MediaOperation } from '../../store/propagandaStore';
@@ -70,7 +71,8 @@ export default function PropagandaPanel() {
     : 0;
 
   return (
-    <div className="flex flex-col h-full text-slate-200 font-mono text-xs w-full select-none" id="propaganda-operations-dashboard">
+    <PanelFxShell panelId="psyop" relevantFxTypes={['COUP_SUCCESS','REGIME_CHANGE','WAR_DECLARED','REGIME_PRESSURE_CRITICAL']}>
+      <div className="flex flex-col h-full text-slate-200 font-mono text-xs w-full select-none" id="propaganda-operations-dashboard">
       
       {/* 1. Header and Selector */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 p-3 border-b border-[#1e3540]/60 bg-[#0d1418]/40">
@@ -395,5 +397,6 @@ export default function PropagandaPanel() {
       </div>
 
     </div>
+    </PanelFxShell>
   );
 }

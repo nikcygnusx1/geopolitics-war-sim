@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { PanelFxShell } from '../fx/PanelFxShell';
 import { produce } from 'immer';
 import { useUNStore } from '../../store/unStore';
 import { useWorldStore } from '../../store/worldStore';
@@ -169,7 +170,8 @@ export default function UNPanel() {
   };
 
   return (
-    <div className="gotham-panel gotham-panel--primary flex flex-col font-mono text-green-400 font-bold select-none h-full min-h-[640px]" data-classification="CONFIDENTIAL">
+    <PanelFxShell panelId="un" relevantFxTypes={['UN_RESOLUTION_PASSED','UN_VETO_CAST','WAR_DECLARED','CEASEFIRE_SIGNED']}>
+      <div className="gotham-panel gotham-panel--primary flex flex-col font-mono text-green-400 font-bold select-none h-full min-h-[640px]" data-classification="CONFIDENTIAL">
       {/* Header section */}
       <div className="flex justify-between items-center border-b border-[#1a5c1a]/55 pb-3 mb-4">
         <div>
@@ -1030,5 +1032,6 @@ export default function UNPanel() {
         )}
       </div>
     </div>
+    </PanelFxShell>
   );
 }

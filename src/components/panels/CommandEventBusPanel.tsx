@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { PanelFxShell } from '../fx/PanelFxShell';
 import { useWorldStore } from '../../store/worldStore';
 import { usePlayerStore } from '../../store/playerStore';
 import { createBusEvent } from '../../sim/eventBus/eventFactories';
@@ -184,7 +185,8 @@ export default function CommandEventBusPanel() {
   };
 
   return (
-    <div className="flex flex-col h-full font-mono text-[10px] text-gray-300 bg-[#020502]/95 border-b border-[#1a5c1a]/30 relative select-none">
+    <PanelFxShell panelId="black_market" relevantFxTypes={['BLACK_MARKET_BUST','SANCTIONS_ESCALATION','CYBER_ATTACK']}>
+      <div className="flex flex-col h-full font-mono text-[10px] text-gray-300 bg-[#020502]/95 border-b border-[#1a5c1a]/30 relative select-none">
       
       {/* Header Bar */}
       <div className="flex items-center justify-between border-b border-[#1a5c1a]/40 bg-[#050f05] px-3.5 py-2 shrink-0">
@@ -482,5 +484,6 @@ export default function CommandEventBusPanel() {
       </div>
 
     </div>
+    </PanelFxShell>
   );
 }

@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { PanelFxShell } from '../fx/PanelFxShell';
 import { useWorldStore } from '../../store/worldStore';
 import { usePlayerStore } from '../../store/playerStore';
 import { useFoundryStore } from '../../store/foundryStore';
@@ -212,7 +213,8 @@ export default function FoundryPanel() {
   };
 
   return (
-    <div id="foundry-supply-chain-console" className="flex flex-col h-full bg-[#030703]/95 text-gray-200 p-2 font-mono text-[10px] leading-relaxed select-none">
+    <PanelFxShell panelId="military_oob" relevantFxTypes={['WAR_DECLARED','MISSILE_LAUNCH','DEFCON_ESCALATION','ALLIANCE_FORMED','ALLIANCE_BROKEN']}>
+      <div id="foundry-supply-chain-console" className="flex flex-col h-full bg-[#030703]/95 text-gray-200 p-2 font-mono text-[10px] leading-relaxed select-none">
       
       {/* 1. TOP STATS telemetry header */}
       <div id="foundry-kpi-bar" className="flex flex-wrap justify-between items-center border-b border-[#143c14] pb-2 mb-2 gap-2">
@@ -901,5 +903,6 @@ export default function FoundryPanel() {
       </div>
 
     </div>
+    </PanelFxShell>
   );
 }

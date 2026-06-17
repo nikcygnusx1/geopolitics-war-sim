@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { PanelFxShell } from '../fx/PanelFxShell';
 import { 
   listSavedScenarios, 
   saveScenarioToBrowser, 
@@ -235,7 +236,8 @@ export default function ScenarioPersistencePanel() {
   const isDirty = lastSavedTick !== null && lastSavedTick !== currentTick;
 
   return (
-    <div className="space-y-4 max-h-[580px] overflow-y-auto pr-1">
+    <PanelFxShell panelId="scenarios" relevantFxTypes={['CYBER_ATTACK']}>
+      <div className="space-y-4 max-h-[580px] overflow-y-auto pr-1">
       {/* Simulation Current State Overview row */}
       <div className="border border-[#1a5c1a]/30 rounded-sm bg-black/60 p-3 flex flex-wrap gap-4 justify-between items-center text-[10px]">
         <div className="space-y-1">
@@ -510,6 +512,7 @@ export default function ScenarioPersistencePanel() {
         </div>
       </div>
     </div>
+    </PanelFxShell>
   );
 }
 

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { PanelFxShell } from '../fx/PanelFxShell';
 import { produce } from 'immer';
 import { motion } from 'motion/react';
 import { useBlocStore } from '../../store/blocStore';
@@ -272,7 +273,8 @@ export default function BlocsPanel() {
   if (!selectedBloc) return <div className="text-red-500 p-8 font-mono">CRITICAL ERROR: Bloc registry uninitialized.</div>;
 
   return (
-    <div id="blocs-panel-root" className="gotham-panel gotham-panel--primary flex flex-col h-full bg-[#030d03] text-[#4af626] font-sans overflow-y-auto">
+    <PanelFxShell panelId="alliance" relevantFxTypes={['ALLIANCE_FORMED','ALLIANCE_BROKEN','WAR_DECLARED']}>
+      <div id="blocs-panel-root" className="gotham-panel gotham-panel--primary flex flex-col h-full bg-[#030d03] text-[#4af626] font-sans overflow-y-auto">
       {/* Top Strategic Header */}
       <div className="border-b border-[#0f3d0f] bg-[#051605] p-5 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
@@ -1620,5 +1622,6 @@ export default function BlocsPanel() {
         </div>
       </div>
     </div>
+    </PanelFxShell>
   );
 }

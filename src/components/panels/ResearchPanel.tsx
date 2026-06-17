@@ -1,4 +1,5 @@
 import React from 'react';
+import { PanelFxShell } from '../fx/PanelFxShell';
 import { useWorldStore } from '../../store/worldStore';
 import { usePlayerStore } from '../../store/playerStore';
 import { RESEARCH_TREES } from '../../constants';
@@ -45,7 +46,8 @@ export default function ResearchPanel() {
   };
 
   return (
-    <div className="w-full text-xs grid grid-cols-1 md:grid-cols-2 gap-4 font-mono">
+    <PanelFxShell panelId="research_tech" relevantFxTypes={['CYBER_ATTACK','SANCTIONS_ESCALATION','ALLIANCE_FORMED']}>
+      <div className="w-full text-xs grid grid-cols-1 md:grid-cols-2 gap-4 font-mono">
       {/* List of research specs */}
       <div className="combat-panel flex flex-col gap-2.5 col-span-1 md:col-span-2 border border-[#1a3a1a] bg-[#030503] p-4 rounded shadow-inner">
         <h3 className="font-bold border-b border-[#1a3a1a] pb-1.5 uppercase tracking-wider text-[#00ff44] text-[10px]/1">
@@ -106,5 +108,6 @@ export default function ResearchPanel() {
         </div>
       </div>
     </div>
+    </PanelFxShell>
   );
 }

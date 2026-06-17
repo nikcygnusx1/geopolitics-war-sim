@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { PanelFxShell } from '../fx/PanelFxShell';
 import { useWorldStore } from '../../store/worldStore';
 import { usePlayerStore } from '../../store/playerStore';
 import { useEconomyStore } from '../../store/economyStore';
@@ -138,7 +139,8 @@ export default function DiplomacyPanel() {
   const activeSessionInstance = activeSessionId ? negotiationSessions[activeSessionId] : null;
 
   return (
-    <div className="w-full text-xs font-mono flex flex-col gap-4">
+    <PanelFxShell panelId="diplomacy" relevantFxTypes={['CEASEFIRE_SIGNED','PEACE_TREATY_RATIFIED','WAR_DECLARED','ALLIANCE_FORMED','ALLIANCE_BROKEN','UN_RESOLUTION_PASSED','UN_VETO_CAST']}>
+      <div className="w-full text-xs font-mono flex flex-col gap-4">
       {/* Sovereign Panel Tabs */}
       <div className="flex border-b border-[#1a3a1a] bg-[#020502] p-1 gap-1 items-center rounded shadow">
         <button
@@ -1020,5 +1022,6 @@ export default function DiplomacyPanel() {
         </div>
       )}
     </div>
+    </PanelFxShell>
   );
 }

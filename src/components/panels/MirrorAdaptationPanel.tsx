@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { PanelFxShell } from '../fx/PanelFxShell';
 import { useMirrorStore } from '../../store/mirrorStore';
 import { useWorldStore } from '../../store/worldStore';
 import { usePlayerStore } from '../../store/playerStore';
@@ -89,7 +90,8 @@ export default function MirrorAdaptationPanel() {
   const currentFp = getFingerprintLabel(fingerprint);
 
   return (
-    <div className="w-full text-xs flex flex-col gap-3 font-mono text-gray-300">
+    <PanelFxShell panelId="ai_opponent" relevantFxTypes={['COUP_SUCCESS','WAR_DECLARED','DEFCON_ESCALATION','REGIME_CHANGE']}>
+      <div className="w-full text-xs flex flex-col gap-3 font-mono text-gray-300">
       
       {/* Top Profile Header Summary Block */}
       <div className="border border-[#1a3a1a] bg-[#020502]/95 p-3 rounded flex flex-col gap-2 shadow-inner relative overflow-hidden">
@@ -511,5 +513,6 @@ export default function MirrorAdaptationPanel() {
       )}
 
     </div>
+    </PanelFxShell>
   );
 }

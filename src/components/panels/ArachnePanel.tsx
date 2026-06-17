@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { PanelFxShell } from '../fx/PanelFxShell';
 import { useArachneStore } from '../../store/arachneStore';
 import { useWorldStore } from '../../store/worldStore';
 import { usePlayerStore } from '../../store/playerStore';
@@ -107,7 +108,8 @@ export default function ArachnePanel() {
   };
 
   return (
-    <div className="w-full text-xs flex flex-col gap-3 font-mono">
+    <PanelFxShell panelId="cyber_warfare" relevantFxTypes={['CYBER_ATTACK','CYBER_BLACKOUT','SAT_DESTROYED']}>
+      <div className="w-full text-xs flex flex-col gap-3 font-mono">
       {/* Search and Filters Strip */}
       <div className="border border-[#1a3a1a] bg-[#030503] p-3 rounded flex flex-col gap-2.5 shadow-md">
         {/* Search Input and PDB Toggle */}
@@ -353,5 +355,6 @@ export default function ArachnePanel() {
         </div>
       </div>
     </div>
+    </PanelFxShell>
   );
 }

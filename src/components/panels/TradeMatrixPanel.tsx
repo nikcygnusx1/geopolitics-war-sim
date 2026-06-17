@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { PanelFxShell } from '../fx/PanelFxShell';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Ship, 
@@ -104,7 +105,8 @@ export default function TradeMatrixPanel() {
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#030703]/90 text-gray-300 font-sans border border-emerald-950/60 rounded p-4 text-[11px] overflow-hidden">
+    <PanelFxShell panelId="trade_matrix" relevantFxTypes={['SANCTIONS_ESCALATION','MARKET_CRASH','ALLIANCE_BROKEN','ECONOMIC_COLLAPSE']}>
+      <div className="flex flex-col h-full bg-[#030703]/90 text-gray-300 font-sans border border-emerald-950/60 rounded p-4 text-[11px] overflow-hidden">
       
       {/* 2.2 Title & Sub-tabs */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-emerald-950/60 pb-3 mb-3 gap-2 shrink-0">
@@ -945,5 +947,6 @@ export default function TradeMatrixPanel() {
       </div>
 
     </div>
+    </PanelFxShell>
   );
 }

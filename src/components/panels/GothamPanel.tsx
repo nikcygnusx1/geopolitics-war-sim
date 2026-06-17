@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { PanelFxShell } from '../fx/PanelFxShell';
 import { useWorldStore } from '../../store/worldStore';
 import { usePlayerStore } from '../../store/playerStore';
 import { useGothamStore } from '../../store/gothamStore';
@@ -164,7 +165,8 @@ export default function GothamPanel() {
   };
 
   return (
-    <div id="gotham-strategic-analysis-console" className="flex flex-col h-full bg-[#030703]/95 text-gray-200 p-2 font-mono text-[10px] leading-relaxed select-none">
+    <PanelFxShell panelId="nation_relationship" relevantFxTypes={['WAR_DECLARED','CEASEFIRE_SIGNED','ALLIANCE_FORMED','ALLIANCE_BROKEN','SANCTIONS_ESCALATION']}>
+      <div id="gotham-strategic-analysis-console" className="flex flex-col h-full bg-[#030703]/95 text-gray-200 p-2 font-mono text-[10px] leading-relaxed select-none">
       
       {/* 1. TOP HEADER & TELEMETRY PANEL */}
       <div id="gotham-kpi-bar" className="flex flex-wrap justify-between items-center border-b border-[#143c14] pb-2 mb-2 gap-2">
@@ -890,5 +892,6 @@ export default function GothamPanel() {
       </div>
 
     </div>
+    </PanelFxShell>
   );
 }

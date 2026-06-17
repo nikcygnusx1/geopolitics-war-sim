@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { PanelFxShell } from '../fx/PanelFxShell';
 import { useOperativeStore } from '../../store/operativeStore';
 import { Network, ShieldAlert, Cpu, Activity, UserX, UserCheck, Search, Filter } from 'lucide-react';
 import AnimatedValue from '../shared/AnimatedValue';
@@ -37,7 +38,8 @@ export default function OperativeNetworkPanel() {
   }, [operatives.length, directives]);
 
   return (
-    <div className="flex flex-col h-full bg-black/60 text-[#00e5ff] font-mono p-4" style={{ WebkitFontSmoothing: 'none' }}>
+    <PanelFxShell panelId="cia_operatives" relevantFxTypes={['COUP_SUCCESS','COUP_ATTEMPT_FAILED','REGIME_CHANGE','OPERATIVE_BURNED','REGIME_PRESSURE_CRITICAL']}>
+      <div className="flex flex-col h-full bg-black/60 text-[#00e5ff] font-mono p-4" style={{ WebkitFontSmoothing: 'none' }}>
       
       {/* Header */}
       <div className="flex justify-between items-center mb-4 border-b border-[#00e5ff]/30 pb-3">
@@ -86,6 +88,7 @@ export default function OperativeNetworkPanel() {
       </div>
 
     </div>
+    </PanelFxShell>
   );
 }
 

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { PanelFxShell } from '../fx/PanelFxShell';
 import { useWorldStore } from '../../store/worldStore';
 import { usePlayerStore } from '../../store/playerStore';
 import { useUnitStore } from '../../store/unitStore';
@@ -220,7 +221,8 @@ export default function ArsenalPanel() {
   };
 
   return (
-    <div className="w-full text-xs flex flex-col gap-3 font-mono">
+    <PanelFxShell panelId="strategic_arsenal" relevantFxTypes={['NUCLEAR_DETONATION','MISSILE_LAUNCH','DEFCON_ESCALATION','NUCLEAR_DETERRENCE_ACHIEVED']}>
+      <div className="w-full text-xs flex flex-col gap-3 font-mono">
       {/* Subtab selection */}
       <div className="flex border-b border-[#162a16] pb-2 mb-1 gap-2">
         <button
@@ -699,5 +701,6 @@ export default function ArsenalPanel() {
         </div>
       )}
     </div>
+    </PanelFxShell>
   );
 }

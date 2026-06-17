@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { PanelFxShell } from '../fx/PanelFxShell';
 import { useSoftPowerStore, ALL_COUNTRIES } from '../../store/softPowerStore';
 import { useWorldStore } from '../../store/worldStore';
 import { usePlayerStore } from '../../store/playerStore';
@@ -178,7 +179,8 @@ export default function SoftPowerPanel() {
   const playerBacklashes = backlashRecords[playerCountryId] || [];
 
   return (
-    <div id="soft-power-workspace" className="text-gray-100 p-1 flex flex-col gap-4 text-xs h-full">
+    <PanelFxShell panelId="soft_power" relevantFxTypes={['REGIME_CHANGE','COUP_SUCCESS','CEASEFIRE_SIGNED','ALLIANCE_FORMED']}>
+      <div id="soft-power-workspace" className="text-gray-100 p-1 flex flex-col gap-4 text-xs h-full">
       {/* HEADER SECTION */}
       <div className="flex justify-between items-center bg-[#09120a] p-3 border-b border-[#00f344]/30 rounded">
         <div>
@@ -1048,5 +1050,6 @@ export default function SoftPowerPanel() {
 
       </div>
     </div>
+    </PanelFxShell>
   );
 }

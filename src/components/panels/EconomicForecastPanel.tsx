@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { PanelFxShell } from '../fx/PanelFxShell';
 import {
   TrendingUp,
   TrendingDown,
@@ -111,7 +112,8 @@ export default function EconomicForecastPanel() {
   };
 
   return (
-    <div className="w-full flex flex-col gap-3 py-1 text-[#e5e7eb] font-sans antialiased text-xs">
+    <PanelFxShell panelId="economic_forecast" relevantFxTypes={['MARKET_CRASH','ECONOMIC_COLLAPSE','SANCTIONS_ESCALATION']}>
+      <div className="w-full flex flex-col gap-3 py-1 text-[#e5e7eb] font-sans antialiased text-xs">
       
       {/* 1. TOP-LEVEL WORLD ECONOMIC STRESS RIBBON */}
       <div id="world-stress-ribbon-bar" className="w-full border border-[#1b5c1b] bg-[#020502] rounded-md p-3 shadow-inner">
@@ -1119,5 +1121,6 @@ export default function EconomicForecastPanel() {
       </div>
 
     </div>
+    </PanelFxShell>
   );
 }

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { PanelFxShell } from '../fx/PanelFxShell';
 import { useWorldStore } from '../../store/worldStore';
 import { usePlayerStore } from '../../store/playerStore';
 import { useUIStore } from '../../store/uiStore';
@@ -48,7 +49,8 @@ export default function PopulationPanel() {
   };
 
   return (
-    <div className="space-y-4 font-mono">
+    <PanelFxShell panelId="supply_chain" relevantFxTypes={['SANCTIONS_ESCALATION','WAR_DECLARED','MARKET_CRASH']}>
+      <div className="space-y-4 font-mono">
       {/* Title & Sub-tab headers panel */}
       <div className="flex flex-col sm:flex-row justify-between sm:items-center border-b border-[#1a5c1a] pb-2 gap-3">
         <span className="text-xs uppercase font-bold text-[#00ff44] tracking-wider font-display flex items-center gap-2">
@@ -220,5 +222,6 @@ export default function PopulationPanel() {
         </div>
       )}
     </div>
+    </PanelFxShell>
   );
 }
