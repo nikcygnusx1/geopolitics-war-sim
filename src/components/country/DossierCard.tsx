@@ -830,7 +830,7 @@ export const DossierCard: React.FC<DossierCardProps> = ({ countryId, onClose }) 
                                     SOVEREIGN STRATEGIC AGENT STATUS REPORT
                                   </span>
                                   <p className="text-zinc-400 text-[8px] mt-0.5">
-                                    Autonomous 5-Vector Planner active under ID: <span className="text-white font-bold">{countryId}</span> • Cooldown remaining: <span className="text-amber-500 font-bold">{sovereignAgent.constraintsState.executionCooldownRemaining} ticks</span>
+                                    Autonomous 5-Vector Planner active under ID: <span className="text-white font-bold">{countryId}</span> • Cooldown remaining: <span className="text-amber-500 font-bold">{sovereignAgent.planExecution?.remainingTicks || 0} ticks</span>
                                   </p>
                                 </div>
                                 <div className="text-right">

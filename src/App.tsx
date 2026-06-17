@@ -45,6 +45,10 @@ import { useMirrorStore } from './store/mirrorStore';
 import MirrorAdaptationPanel from './components/panels/MirrorAdaptationPanel';
 import { useInfluenceStore } from './store/influenceStore';
 import AdversarialInfluencePanel from './components/panels/AdversarialInfluencePanel';
+import OperativeNetworkPanel from './components/panels/OperativeNetworkPanel';
+import { RegimePressurePanel } from './components/panels/RegimePressurePanel';
+import NuclearPosturePanel from './components/panels/NuclearPosturePanel';
+import { useOperativeStore } from './store/operativeStore';
 import { checkAndRestoreSharedScenario, hydrateScenario, ScenarioPackage } from './utils/persistence';
 
 import AnalysisModeSwitcher from './components/map/AnalysisModeSwitcher';
@@ -96,6 +100,8 @@ import CommandLogPanel from './components/hud/CommandLogPanel';
 import DefconBar from './components/hud/DefconBar';
 import WhiteFlashOverlay from './components/hud/WhiteFlashOverlay';
 import { useDefconStore, applyDefconPalette } from './store/defconStore';
+import { PANEL_REGISTRY, getAvailablePanels, getAvailablePersonas, PERSONAS } from './config/defconRegistry';
+import { PersonaId } from './types/defconPersona';
 import { GEO_COORDS } from './data/geoCoords';
 import { getTickIncrement } from './sim/militaryEngine';
 import { useEconomyStore } from './store/economyStore';
@@ -126,6 +132,9 @@ const getTabClassification = (tabId: number): string => {
     case 21: return "SOFT POWER & COALITION PRESTIGE"; // Soft power (Shift+F9)
     case 22: return "COGNITIVE MIRROR ARCHIVE"; // Mirror adaptation (Shift+F10)
     case 23: return "COGNITIVE SHIELD & DECEPTION (Shift+F11)"; // Adversarial influence & CI
+    case 24: return "NETWORK COMMAND CELL"; // Operative Network Management (Shift+F12)
+    case 25: return "REGIME PRESSURE TOOLKIT";
+    case 100: return "NUCLEAR STRATEGIC DETERRENCE EXTREME CLASSIFIED";
     default: return "CONFIDENTIAL";
   }
 };
@@ -212,6 +221,9 @@ function ActivePanelWrapper({ activeTab, getTabClassification }: { activeTab: nu
       {activeTab === 21 && <SoftPowerPanel />}
       {activeTab === 22 && <MirrorAdaptationPanel />}
       {activeTab === 23 && <AdversarialInfluencePanel />}
+      {activeTab === 24 && <OperativeNetworkPanel />}
+      {activeTab === 25 && <RegimePressurePanel />}
+      {activeTab === 100 && <NuclearPosturePanel />}
     </div>
   );
 }
@@ -231,7 +243,23 @@ export default function App() {
   const playerState = usePlayerStore();
   const worldState = useWorldStore();
   const setTickSpeed = usePlayerStore((s) => s.setTickSpeed);
+  const activePersona = useDefconStore((s) => s.activePersona);
+  const currentDefconLevel = useDefconStore((s) => s.currentDefconLevel);
+  const setPersona = useDefconStore((s) => s.setPersona);
   const suspicion = useBlackMarketStore((s) => s.internationalSuspicion);
+  
+  const personaDef = PERSONAS[activePersona];
+  const availablePanels = getAvailablePanels(currentDefconLevel, personaDef.authorityTier);
+
+  useEffect(() => {
+    // If the active panel is no longer available due to DEFCON or persona changes, reset it.
+    if (availablePanels.length > 0) {
+      const isAvailable = availablePanels.some(p => p.id === playerState.activeTab);
+      if (!isAvailable) {
+        playerState.setActiveTab(availablePanels[0].id);
+      }
+    }
+  }, [availablePanels, playerState.activeTab, playerState.setActiveTab]);
 
   useEffect(() => {
     // Synchronize DEFCON variables and classes on initial mount
@@ -408,6 +436,15 @@ export default function App() {
         const infl = useInfluenceStore.getState();
         return `sus:${infl.warningMetrics.deceptionSuspicion}% poison:${infl.warningMetrics.contaminationLevel}%`;
       }
+      case 24: { // OPERATIVE NETWORK
+        const store = useOperativeStore.getState();
+        const burned = Object.values(store.operatives).filter(o => o.state === 'BURNED').length;
+        const active = Object.values(store.operatives).filter(o => o.state === 'ACTIVE').length;
+        return `assets:${active} burned:${burned}`;
+      }
+      case 25: { // REGIME PRESSURE
+        return `toolkit:online`;
+      }
       default:
         return '';
     }
@@ -578,6 +615,22 @@ export default function App() {
         return;
       }
 
+      // Check Shift+F12 for Operative Network Management console
+      if (e.key === 'F12' && e.shiftKey) {
+        e.preventDefault();
+        audio.sfxKeyClick();
+        usePlayerStore.getState().setActiveTab(24);
+        return;
+      }
+      
+      // Check Alt+1 for Regime Pressure toolkit
+      if (e.key === '1' && e.altKey) {
+        e.preventDefault();
+        audio.sfxKeyClick();
+        usePlayerStore.getState().setActiveTab(25);
+        return;
+      }
+
       // Check key 'c' to toggle Comms Center
       if (e.key.toLowerCase() === 'c' && !e.altKey && !e.ctrlKey && !e.metaKey) {
         const isInputActive = document.activeElement && (
@@ -592,6 +645,14 @@ export default function App() {
           setCommsOpen((prev) => !prev);
           return;
         }
+      }
+      
+      // Check Alt+2 for Nuclear Posture
+      if (e.key === '2' && e.altKey) {
+        e.preventDefault();
+        audio.sfxKeyClick();
+        usePlayerStore.getState().setActiveTab(100);
+        return;
       }
 
       // 2. Alt combinations for strategic rapid actions
@@ -1039,8 +1100,21 @@ export default function App() {
           </div>
         </div>
 
-        {/* Global actions: Black Market & Speed controls */}
+        {/* Global actions: Persona, Black Market & Speed controls */}
         <div className="flex gap-2 items-center">
+          
+          <select 
+            value={activePersona}
+            onChange={(e) => setPersona(e.target.value as PersonaId)}
+            className={`px-2 py-1 text-[9px] font-bold uppercase bg-transparent border cursor-pointer outline-none ${currentDefconLevel <= 2 ? 'border-red-800 text-red-500' : currentDefconLevel === 3 ? 'border-amber-700 text-amber-500' : 'border-[#1a3a1a] text-[#00ff44]'}`}
+          >
+            {getAvailablePersonas(currentDefconLevel).map(p => (
+              <option key={p.id} value={p.id} className="bg-black text-[#00ff44]">{p.name}</option>
+            ))}
+          </select>
+
+          <div className="h-4 w-[1px] bg-[#1a3a1a]" />
+
           <button
             onClick={() => { audio.playPhaseReveal(); useOnboardingStore.getState().startOnboarding(); }}
             className="px-2.5 py-1 border border-cyan-800 text-cyan-400 bg-cyan-950/10 hover:bg-cyan-900/40 text-[9px] uppercase font-bold cursor-pointer transition-all"
@@ -1242,40 +1316,16 @@ export default function App() {
             {/* Action command tabs button matrices (F1 - F8) */}
             <div className="flex justify-between items-center mb-3">
               <div className="flex gap-1 overflow-x-auto py-1 scrollbar-none w-full">
-                {[
-                  { id: 1, label: 'GOVERNMENT (F1)' },
-                  { id: 2, label: 'CENTRAL BANK (F2)' },
-                  { id: 3, label: 'ARSENAL (F3)' },
-                  { id: 4, label: 'DIPLOMACY (F4)' },
-                  { id: 5, label: 'RESEARCH (F5)' },
-                  { id: 6, label: 'INTELLIGENCE (F6)' },
-                  { id: 7, label: 'SPACE (F7)' },
-                  { id: 8, label: 'POPULATION (F8)' },
-                  { id: 9, label: 'PROPAGANDA (F9)' },
-                  { id: 10, label: 'SIGNAL TRACE (F10)' },
-                  { id: 11, label: 'SCENARIOS (F11)' },
-                  { id: 12, label: 'GOTHAM GRAPH (F12)' },
-                  { id: 13, label: 'FOUNDRY LOGISTICS (Shift+F1)' },
-                  { id: 14, label: 'FINANCIAL WARFARE (Shift+F2)' },
-                  { id: 15, label: 'TRADE COERCION (Shift+F3)' },
-                  { id: 16, label: 'ENERGY INTEGRITY (Shift+F4)' },
-                  { id: 17, label: 'COERCIVE SANCTIONS (Shift+F5)' },
-                  { id: 18, label: 'FINANCIAL HORIZONS (Shift+F6)' },
-                  { id: 19, label: 'UN & LEGAL INQ (Shift+F7)' },
-                  { id: 20, label: 'REGIONAL BLOCS (Shift+F8)' },
-                  { id: 21, label: 'SOFT POWER (Shift+F9)' },
-                  { id: 22, label: 'MIRROR ADAPTATION (Shift+F10)' },
-                  { id: 23, label: 'COGNITIVE SHIELD (Shift+F11)' },
-                ].map((tab) => {
-                  const isActive = playerState.activeTab === tab.id;
+                {availablePanels.map((panel) => {
+                  const isActive = playerState.activeTab === panel.id;
                   return (
                     <TabButton
-                      key={tab.id}
-                      id={tab.id}
-                      label={tab.label}
+                      key={panel.id}
+                      id={panel.id}
+                      label={panel.name}
                       isActive={isActive}
                       getTabKPI={getTabKPI}
-                      onClick={() => { audio.sfxKeyClick(); playerState.setActiveTab(tab.id); }}
+                      onClick={() => { audio.sfxKeyClick(); playerState.setActiveTab(panel.id); }}
                     />
                   );
                 })}

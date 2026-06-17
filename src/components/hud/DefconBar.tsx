@@ -71,7 +71,8 @@ export const DefconBar: React.FC = () => {
               <div 
                 key={lvl.value}
                 id={`defcon-pip-btn-${lvl.value}`}
-                className="flex items-center gap-1.5 px-2.5 py-0.5 border rounded-sm"
+                onClick={() => useDefconStore.getState().setDefconLevel(lvl.value as any, 'PLAYER', 'Manual command override', currentTick)}
+                className="flex items-center gap-1.5 px-2.5 py-0.5 border rounded-sm cursor-pointer transition-all"
                 style={{
                   borderColor: isActive ? 'var(--defcon-accent)' : 'rgba(255, 255, 255, 0.04)',
                   backgroundColor: isActive ? 'var(--defcon-accent-soft)' : 'transparent',

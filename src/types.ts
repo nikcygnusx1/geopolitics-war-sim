@@ -1,3 +1,4 @@
+import { RegimePressureState } from './types/regimePressure';
 import { BusEvent } from './sim/eventBus/types';
 
 export type Ideology = 'DEMOCRACY' | 'AUTOCRACY' | 'MILITARY_JUNTA' | 'THEOCRACY' | 'TECHNOCRACY' | 'OLIGARCHY' | 'COMMUNISM' | 'MONARCHY';
@@ -171,6 +172,7 @@ export interface PoliticalProfile {
   censorship: number;              // 0-100
   diasporaInfluence: number;       // 0-100 — expats sending money/info back
   infoWarfare?: InformationCampaign;
+  regimePressure?: RegimePressureState;
 }
 
 export interface SatelliteAsset {

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { useDefconStore, DefconLevel } from './defconStore';
+import { useWorldStore } from './worldStore';
 
 export interface NuclearScar {
   id: string;
@@ -81,7 +82,8 @@ export const useNuclearStore = create<NuclearState>((set, get) => ({
     const currentDefcon = useDefconStore.getState().currentDefconLevel;
     if (currentDefcon > 1) {
       const nextDefcon = (currentDefcon - 1) as DefconLevel;
-      useDefconStore.getState().setDefconLevel(nextDefcon);
+      const currentTick = useWorldStore.getState().currentTick;
+      useDefconStore.getState().setDefconLevel(nextDefcon, 'SYSTEM', 'Nuclear detonation detected', currentTick);
     }
   },
 

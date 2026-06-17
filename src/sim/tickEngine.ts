@@ -25,10 +25,12 @@ import { processSentiment } from './propagandaEngine';
 import { processAllAI } from './aiDecisionEngine';
 import { processComplexPhase2Geopolitics } from './geopoliticalEngine';
 import { tickLeadersAndPsychology } from './leaderPsychologyEngine';
+import { regimePressureEngine } from './regimePressureEngine';
 import { CovertOp, WorldState } from '../types';
 import { dampenOpinionDelta } from '../utils/pacing';
 import { ConsequenceEngine } from './consequenceEngine';
 import { saveAutosaveScenario } from '../utils/persistence';
+import { processOperativeNetwork } from './operativeEngine';
 
 export const TICK_INTERVALS: Record<"day" | "week" | "month", number> = {
   day: 2000,
@@ -114,6 +116,9 @@ export function executeSimulationStep() {
     // 11. Run Leader Psychological drift, event decays, stress, and succession assessments
     tickLeadersAndPsychology(draft);
 
+    // 12. Run Regime Pressure strategies
+    regimePressureEngine(draft);
+
     // T3.5 Consequence core engine tick integration
     ConsequenceEngine.tick(draft.currentTick, draft);
   });
@@ -126,6 +131,9 @@ export function executeSimulationStep() {
 
   // Keep clock store in lock-step with simulation ticks
   useClockStore.getState().advanceTick();
+
+  // Phase 5: Tick Operative Network Engine
+  processOperativeNetwork(useWorldStore.getState().currentTick);
 
   // 10. Sync player's cash levels with their nation's real treasury reserves
   usePlayerStore.getState().syncCashFromCountry();

@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 import { audio } from '../utils/audio';
+import { PersonaId, DefconTransitionLog } from '../types/defconPersona';
+import { getDefaultPersona } from '../config/defconRegistry';
 
 export type DefconLevel = 5 | 4 | 3 | 2 | 1;
 
@@ -86,17 +88,44 @@ export function applyDefconPalette(level: DefconLevel) {
 }
 
 interface DefconStoreActions {
-  setDefconLevel: (level: DefconLevel) => void;
+  setDefconLevel: (level: DefconLevel, source: 'SYSTEM' | 'PLAYER' | 'SCENARIO', reason: string, currentTick: number) => void;
+  setPersona: (personaId: PersonaId) => void;
   resetDefcon: () => void;
 }
 
-export const useDefconStore = create<{ currentDefconLevel: DefconLevel } & DefconStoreActions>((set, get) => ({
-  currentDefconLevel: 5,
+interface DefconStoreState {
+  currentDefconLevel: DefconLevel;
+  activePersona: PersonaId;
+  transitionHistory: DefconTransitionLog[];
+}
 
-  setDefconLevel: (level) => {
+export const useDefconStore = create<DefconStoreState & DefconStoreActions>((set, get) => ({
+  currentDefconLevel: 5,
+  activePersona: 'ANALYST',
+  transitionHistory: [],
+
+  setDefconLevel: (level, source, reason, currentTick) => {
     const current = get().currentDefconLevel;
     if (current !== level) {
-      set({ currentDefconLevel: level });
+      
+      const newLog: DefconTransitionLog = {
+        id: `defcon_${Date.now()}`,
+        tick: currentTick,
+        fromLevel: current,
+        toLevel: level,
+        reason,
+        source
+      };
+
+      set((state) => ({ 
+        currentDefconLevel: level,
+        transitionHistory: [newLog, ...state.transitionHistory]
+      }));
+
+      // Automatically upgrade persona if required
+      const newDefaultPersona = getDefaultPersona(level);
+      get().setPersona(newDefaultPersona);
+
       applyDefconPalette(level);
       
       // Fire synthesized harmony chord signature on DEFCON level transition
@@ -105,8 +134,16 @@ export const useDefconStore = create<{ currentDefconLevel: DefconLevel } & Defco
     }
   },
 
+  setPersona: (personaId) => {
+    set({ activePersona: personaId });
+  },
+
   resetDefcon: () => {
-    set({ currentDefconLevel: 5 });
+    set({ 
+      currentDefconLevel: 5, 
+      activePersona: 'ANALYST',
+      transitionHistory: []
+    });
     applyDefconPalette(5);
     audio.playDefconTransition(5);
     audio.updateAmbientScore(5);

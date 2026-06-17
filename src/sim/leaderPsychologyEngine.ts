@@ -1,3 +1,4 @@
+import { produce } from 'immer';
 import {
   Leader,
   LeaderPersonality,
@@ -486,212 +487,218 @@ export function tickLeadersAndPsychology(worldDraft: WorldState) {
     if (!leader) {
       // If we don't have a leader, instantiate on the fly
       const source = 'INITIAL';
-      const fakeSeed = `${countryId}_${source}_${worldDraft.currentTick}_42`;
       leader = leaderStore.generateNewLeader(countryId, source, worldDraft.currentTick);
       leaderStore.setLeader(countryId, leader);
     }
 
     // Ensure leader has valid psychology. If missing (legacy load), generate it immediately
     if (!leader.psychology) {
-      leader.psychology = generatePsychologyForLeader(
-        countryId,
-        leader.type,
-        leader.portraitSeed || `${countryId}_seed`,
-        worldDraft.currentTick
-      );
+      leader = {
+        ...leader,
+        psychology: generatePsychologyForLeader(
+          countryId,
+          leader.type,
+          leader.portraitSeed || `${countryId}_seed`,
+          worldDraft.currentTick
+        )
+      };
       leaderStore.setLeader(countryId, leader);
     }
 
-    // Capture mutable reference
-    const psych = leader.psychology;
+    const nextLeader = produce(leader, (draftLeader) => {
+      const psych = draftLeader.psychology;
+      if (!psych) return;
 
-    // --- 1. TIME DECAY OF EMOTIONS ---
-    // Decay humiliation, fear, emboldenment, and other short-lived emotions towards baseline levels (typically 10-15)
-    const decay = (val: number, rate: number = 2, floor: number = 0) => {
-      if (val > floor) return Math.max(floor, val - rate);
-      if (val < floor) return Math.min(floor, val + rate);
-      return val;
-    };
+      // --- 1. TIME DECAY OF EMOTIONS ---
+      // Decay humiliation, fear, emboldenment, and other short-lived emotions towards baseline levels (typically 10-15)
+      const decay = (val: number, rate: number = 2, floor: number = 0) => {
+        if (val > floor) return Math.max(floor, val - rate);
+        if (val < floor) return Math.min(floor, val + rate);
+        return val;
+      };
 
-    psych.emotions.humiliation = decay(psych.emotions.humiliation, 3, 0);
-    psych.emotions.fear = decay(psych.emotions.fear, 2, 10);
-    psych.emotions.emboldenment = decay(psych.emotions.emboldenment, 1, 15);
-    psych.emotions.anger = decay(psych.emotions.anger, 4, 0);
-    psych.emotions.anxiety = decay(psych.emotions.anxiety, 2, 5);
-    psych.emotions.pride = decay(psych.emotions.pride, 1, 30);
-    psych.emotions.resentment = decay(psych.emotions.resentment, 1, 15);
-    psych.emotions.vindication = decay(psych.emotions.vindication, 2, 0);
-    psych.emotions.desperation = decay(psych.emotions.desperation, 2, 0);
-    psych.emotions.overconfidence = decay(psych.emotions.overconfidence, 2, 10);
-    psych.emotions.fatigue = Math.min(100, psych.emotions.fatigue + (psych.stress.currentStress > 60 ? 3 : 1));
-    psych.emotions.relief = decay(psych.emotions.relief, 3, 0);
-    psych.emotions.paranoiaSpike = decay(psych.emotions.paranoiaSpike, 5, 0);
-    psych.emotions.shame = decay(psych.emotions.shame, 2, 0);
+      psych.emotions.humiliation = decay(psych.emotions.humiliation, 3, 0);
+      psych.emotions.fear = decay(psych.emotions.fear, 2, 10);
+      psych.emotions.emboldenment = decay(psych.emotions.emboldenment, 1, 15);
+      psych.emotions.anger = decay(psych.emotions.anger, 4, 0);
+      psych.emotions.anxiety = decay(psych.emotions.anxiety, 2, 5);
+      psych.emotions.pride = decay(psych.emotions.pride, 1, 30);
+      psych.emotions.resentment = decay(psych.emotions.resentment, 1, 15);
+      psych.emotions.vindication = decay(psych.emotions.vindication, 2, 0);
+      psych.emotions.desperation = decay(psych.emotions.desperation, 2, 0);
+      psych.emotions.overconfidence = decay(psych.emotions.overconfidence, 2, 10);
+      psych.emotions.fatigue = Math.min(100, psych.emotions.fatigue + (psych.stress.currentStress > 60 ? 3 : 1));
+      psych.emotions.relief = decay(psych.emotions.relief, 3, 0);
+      psych.emotions.paranoiaSpike = decay(psych.emotions.paranoiaSpike, 5, 0);
+      psych.emotions.shame = decay(psych.emotions.shame, 2, 0);
 
-    // --- 2. STRESS CALCULATION ---
-    // Base stress sits near a composite of paranoia and the nation's nuclear threshold status / popular unrest
-    const unrestBonus = country.political.popularUnrest / 3;
-    const stabilityDeficit = (100 - country.political.stabilityIndex) / 3;
-    const targetStress = Math.min(100, (psych.personality.traits.paranoia + unrestBonus + stabilityDeficit + psych.emotions.fear + (psych.emotions.humiliation * 1.5)) / 2.5);
+      // --- 2. STRESS CALCULATION ---
+      // Base stress sits near a composite of paranoia and the nation's nuclear threshold status / popular unrest
+      const unrestBonus = country.political.popularUnrest / 3;
+      const stabilityDeficit = (100 - country.political.stabilityIndex) / 3;
+      const targetStress = Math.min(100, (psych.personality.traits.paranoia + unrestBonus + stabilityDeficit + psych.emotions.fear + (psych.emotions.humiliation * 1.5)) / 2.5);
+      
+      // Smooth transition
+      psych.stress.currentStress = Math.round(psych.stress.currentStress * 0.85 + targetStress * 0.15);
+      if (psych.stress.currentStress > psych.stress.peakStress) {
+        psych.stress.peakStress = psych.stress.currentStress;
+      }
+      if (psych.stress.currentStress >= 90) {
+        psych.stress.ticksAtMaxStress++;
+      } else {
+        psych.stress.ticksAtMaxStress = Math.max(0, psych.stress.ticksAtMaxStress - 1);
+      }
+
+      // --- 3. EVALUATING ACTIVE RED LINES ---
+      // Look through non-public red lines and trigger escalation if breached!
+      psych.redLines.forEach((rl) => {
+        if (rl.isTriggered) return;
+
+        let triggerBreached = false;
+
+        switch (rl.type) {
+          case RedLineTriggerType.TERRITORIAL_INTEGRITY:
+            // Triggered if sovereignty under kinetic threat or borders breached
+            if (country.atWarWith.length > 0 && country.political.stabilityIndex < 35) {
+              triggerBreached = true;
+            }
+            break;
+          case RedLineTriggerType.REGIME_SURVIVAL:
+            // Coups/Unrest above 78% triggers regime survival
+            if (country.political.popularUnrest > 78 || country.political.stabilityIndex < 25) {
+              triggerBreached = true;
+            }
+            break;
+          case RedLineTriggerType.ECONOMIC_STRANGULATION:
+            // Huge inflation or trade blocks trigger this
+            if (country.economic.inflationRate > 25 || country.economic.gdpGrowthRate < -15) {
+              triggerBreached = true;
+            }
+            break;
+          case RedLineTriggerType.ALLIANCE_BETRAYAL:
+            // Look at defensive pact blocks or defection signals
+            if (country.political.stabilityIndex < 40 && country.atWarWith.length > 0) {
+              triggerBreached = true;
+            }
+            break;
+          case RedLineTriggerType.MILITARY_ENCIRCLEMENT:
+            // Threat triggers
+            if (country.atWarWith.length > 0 && country.arsenal.totalPowerRating > 800) {
+              triggerBreached = true;
+            }
+            break;
+          default:
+            break;
+        }
+
+        if (triggerBreached) {
+          rl.isTriggered = true;
+          
+          // Push triggering event
+          psych.stress.triggerLogs.push({
+            triggerType: 'RED_LINE_CROSSED',
+            tickOccurred: worldDraft.currentTick,
+            emotionShifted: 'fear/anger/desperation',
+            magnitude: rl.severityIndex
+          });
+
+          // Trigger severe emotional spikes
+          psych.emotions.fear = Math.min(100, psych.emotions.fear + rl.severityIndex * 0.7);
+          psych.emotions.anger = Math.min(100, psych.emotions.anger + rl.severityIndex * 0.8);
+          psych.emotions.desperation = Math.min(100, psych.emotions.desperation + rl.severityIndex * 0.9);
+          psych.emotions.paranoiaSpike = Math.min(100, psych.emotions.paranoiaSpike + 50);
+
+          // Record a major warning log to timeline
+          worldDraft.world.timeline.unshift({
+            tick: worldDraft.currentTick,
+            desc: `ALERT: Classified analytical sensors log catastrophic shift in ${draftLeader.name}'s disposition. Private strategic limit crossed: [${rl.type} - ${rl.description}]. Immediate military escalation recommended.`,
+            category: 'CRITICAL'
+          });
+
+          // Apply instant military mobilization changes
+          country.political.popularUnrest = Math.min(100, country.political.popularUnrest + 25);
+          country.political.stabilityIndex = Math.max(0, country.political.stabilityIndex - 20);
+        }
+      });
+
+      // --- 4. GAINING RED LINE DISCOVERY PROGRESS ---
+      // Gradually uncover red lines if state surveillance, SIGINT, or spy networks are high
+      psych.redLines.forEach((rl) => {
+        if (rl.discoveryProgress >= 100) return;
+
+        // Small passive progress
+        let delta = 1 + Math.floor(Math.random() * 2);
+
+        // Boost if player country's black budget or intel is robust
+        const playerCountry = worldDraft.countries['US'] || worldDraft.countries['CN'] || null;
+        if (playerCountry) {
+          if (playerCountry.intelligence.blackBudgetB > 5.0) delta += 2;
+          if (playerCountry.intelligence.signalIntelScore > 75) delta += 1;
+        }
+
+        // Add to discovery
+        rl.discoveryProgress = Math.min(100, rl.discoveryProgress + delta);
+        if (rl.discoveryProgress === 100) {
+          rl.sourceOfDiscovery = ['SIGINT', 'HUMINT', 'FININT', 'COVERT_INTERCEPT'][Math.floor(Math.random() * 4)];
+        }
+      });
+
+      // --- 5. EMOTIONAL MEMORIES TICK ---
+      // Decay older personal memories
+      psych.memories.forEach((mem) => {
+        mem.weight = Math.max(0, mem.weight - 2);
+      });
+      // Remove completely withered memories
+      psych.memories = psych.memories.filter((m) => m.weight > 5);
+    });
     
-    // Smooth transition
-    psych.stress.currentStress = Math.round(psych.stress.currentStress * 0.85 + targetStress * 0.15);
-    if (psych.stress.currentStress > psych.stress.peakStress) {
-      psych.stress.peakStress = psych.stress.currentStress;
-    }
-    if (psych.stress.currentStress >= 90) {
-      psych.stress.ticksAtMaxStress++;
-    } else {
-      psych.stress.ticksAtMaxStress = Math.max(0, psych.stress.ticksAtMaxStress - 1);
-    }
-
-    // --- 3. EVALUATING ACTIVE RED LINES ---
-    // Look through non-public red lines and trigger escalation if breached!
-    psych.redLines.forEach((rl) => {
-      if (rl.isTriggered) return;
-
-      let triggerBreached = false;
-
-      switch (rl.type) {
-        case RedLineTriggerType.TERRITORIAL_INTEGRITY:
-          // Triggered if sovereignty under kinetic threat or borders breached
-          if (country.atWarWith.length > 0 && country.political.stabilityIndex < 35) {
-            triggerBreached = true;
-          }
-          break;
-        case RedLineTriggerType.REGIME_SURVIVAL:
-          // Coups/Unrest above 78% triggers regime survival
-          if (country.political.popularUnrest > 78 || country.political.stabilityIndex < 25) {
-            triggerBreached = true;
-          }
-          break;
-        case RedLineTriggerType.ECONOMIC_STRANGULATION:
-          // Huge inflation or trade blocks trigger this
-          if (country.economic.inflationRate > 25 || country.economic.gdpGrowthRate < -15) {
-            triggerBreached = true;
-          }
-          break;
-        case RedLineTriggerType.ALLIANCE_BETRAYAL:
-          // Look at defensive pact blocks or defection signals
-          if (country.political.stabilityIndex < 40 && country.atWarWith.length > 0) {
-            triggerBreached = true;
-          }
-          break;
-        case RedLineTriggerType.MILITARY_ENCIRCLEMENT:
-          // Threat triggers
-          if (country.atWarWith.length > 0 && country.arsenal.totalPowerRating > 800) {
-            triggerBreached = true;
-          }
-          break;
-        default:
-          break;
-      }
-
-      if (triggerBreached) {
-        rl.isTriggered = true;
-        
-        // Push triggering event
-        psych.stress.triggerLogs.push({
-          triggerType: 'RED_LINE_CROSSED',
-          tickOccurred: worldDraft.currentTick,
-          emotionShifted: 'fear/anger/desperation',
-          magnitude: rl.severityIndex
-        });
-
-        // Trigger severe emotional spikes
-        psych.emotions.fear = Math.min(100, psych.emotions.fear + rl.severityIndex * 0.7);
-        psych.emotions.anger = Math.min(100, psych.emotions.anger + rl.severityIndex * 0.8);
-        psych.emotions.desperation = Math.min(100, psych.emotions.desperation + rl.severityIndex * 0.9);
-        psych.emotions.paranoiaSpike = Math.min(100, psych.emotions.paranoiaSpike + 50);
-
-        // Record a major warning log to timeline
-        worldDraft.world.timeline.unshift({
-          tick: worldDraft.currentTick,
-          desc: `ALERT: Classified analytical sensors log catastrophic shift in ${leader.name}'s disposition. Private strategic limit crossed: [${rl.type} - ${rl.description}]. Immediate military escalation recommended.`,
-          category: 'CRITICAL'
-        });
-
-        // Apply instant military mobilization changes
-        country.political.popularUnrest = Math.min(100, country.political.popularUnrest + 25);
-        country.political.stabilityIndex = Math.max(0, country.political.stabilityIndex - 20);
-      }
-    });
-
-    // --- 4. GAINING RED LINE DISCOVERY PROGRESS ---
-    // Gradually uncover red lines if state surveillance, SIGINT, or spy networks are high
-    psych.redLines.forEach((rl) => {
-      if (rl.discoveryProgress >= 100) return;
-
-      // Small passive progress
-      let delta = 1 + Math.floor(Math.random() * 2);
-
-      // Boost if player country's black budget or intel is robust
-      const playerCountry = worldDraft.countries['US'] || worldDraft.countries['CN'] || null;
-      if (playerCountry) {
-        if (playerCountry.intelligence.blackBudgetB > 5.0) delta += 2;
-        if (playerCountry.intelligence.signalIntelScore > 75) delta += 1;
-      }
-
-      // Add to discovery
-      rl.discoveryProgress = Math.min(100, rl.discoveryProgress + delta);
-      if (rl.discoveryProgress === 100) {
-        rl.sourceOfDiscovery = ['SIGINT', 'HUMINT', 'FININT', 'COVERT_INTERCEPT'][Math.floor(Math.random() * 4)];
-      }
-    });
-
-    // --- 5. EMOTIONAL MEMORIES TICK ---
-    // Decay older personal memories
-    psych.memories.forEach((mem) => {
-      mem.weight = Math.max(0, mem.weight - 2);
-    });
-    // Remove completely withered memories
-    psych.memories = psych.memories.filter((m) => m.weight > 5);
-
     // --- 6. CHECK SUCCESSION CRITICALS / ELECTORAL TIMERS ---
     // If stress, age, coup risk, or unrest is hyper-escalated, a leader could be ousted or ousted during coup!
-    const coupRisk = psych.succession.coupRiskScore + (country.political.popularUnrest / 4) + (unrestBonus);
+    const unrestBonus = country.political.popularUnrest / 3;
+    const coupRisk = nextLeader.psychology!.succession.coupRiskScore + (country.political.popularUnrest / 4) + (unrestBonus);
+    
     if (coupRisk > 75 && Math.random() < 0.04) {
       // TRIGGER REVOLUTION / PALACE TRANSITION
       const possibleSources: ('ELECTION' | 'COUP')[] = ['COUP', 'ELECTION'];
       const source = possibleSources[Math.floor(Math.random() * 2)];
       
-      const nextLeader = leaderStore.generateNewLeader(countryId, source, worldDraft.currentTick);
+      const newLeader = leaderStore.generateNewLeader(countryId, source, worldDraft.currentTick);
       
       // Inherit partial legacy to preserve history continuity as demanded in point 15, 16
-      nextLeader.psychology = generatePsychologyForLeader(
+      newLeader.psychology = generatePsychologyForLeader(
         countryId,
-        nextLeader.type,
-        nextLeader.portraitSeed,
+        newLeader.type,
+        newLeader.portraitSeed,
         worldDraft.currentTick
       );
 
       // Carry forward memories of allies/adversaries but decay weight
-      const decayingLegacyMemories = psych.memories.map(m => ({
+      const decayingLegacyMemories = nextLeader.psychology!.memories.map(m => ({
         ...m,
         weight: Math.round(m.weight * 0.5) // partial memory persistence
       }));
-      nextLeader.psychology.memories = [...nextLeader.psychology.memories, ...decayingLegacyMemories];
+      newLeader.psychology.memories = [...newLeader.psychology.memories, ...decayingLegacyMemories];
 
       // Carry forward some partial red line discovery progress
-      nextLeader.psychology.redLines.forEach(newRl => {
-        const oldRl = psych.redLines.find(o => o.type === newRl.type);
+      newLeader.psychology.redLines.forEach(newRl => {
+        const oldRl = nextLeader.psychology!.redLines.find(o => o.type === newRl.type);
         if (oldRl) {
           newRl.discoveryProgress = Math.round(oldRl.discoveryProgress * 0.70); // 70% retention of intelligence profiles
         }
       });
 
       // Commit successor
-      leaderStore.setLeader(countryId, nextLeader);
+      leaderStore.setLeader(countryId, newLeader);
 
       // Log event
       worldDraft.world.timeline.unshift({
         tick: worldDraft.currentTick,
-        desc: `CRITICAL DETECTED: Supreme Command shifts in ${country.name}. Leader ${leader.name} removed from office via ${source}. Successor ${nextLeader.name} assumes state control of diplomatic and nuclear systems immediately.`,
+        desc: `CRITICAL DETECTED: Supreme Command shifts in ${country.name}. Leader ${nextLeader.name} removed from office via ${source}. Successor ${newLeader.name} assumes state control of diplomatic and nuclear systems immediately.`,
         category: 'CRITICAL'
       });
     } else {
       // Just save the updated leader state back to the store
-      leaderStore.setLeader(countryId, leader);
+      leaderStore.setLeader(countryId, nextLeader);
     }
   });
 }
@@ -708,64 +715,66 @@ export function triggerEmotionalEvent(
   const leader = leaderStore.getLeader(countryId);
   if (!leader || !leader.psychology) return;
 
-  const psych = leader.psychology;
-  const mag = customMagnitude || Math.round(30 + Math.random() * 30); // default magnitude range 30-60
+  const nextLeader = produce(leader, (draftLeader) => {
+    const psych = draftLeader.psychology!;
+    const mag = customMagnitude || Math.round(30 + Math.random() * 30); // default magnitude range 30-60
 
-  switch (eventType) {
-    case 'PUBLIC_DEFEAT':
-      // Humiliation spikes, anger surges, pride plummets
-      psych.emotions.humiliation = Math.min(100, psych.emotions.humiliation + mag);
-      psych.emotions.anger = Math.min(100, psych.emotions.anger + mag * 0.8);
-      psych.emotions.pride = Math.max(0, psych.emotions.pride - mag * 0.5);
-      psych.emotions.shame = Math.min(100, psych.emotions.shame + mag * 0.4);
-      break;
+    switch (eventType) {
+      case 'PUBLIC_DEFEAT':
+        // Humiliation spikes, anger surges, pride plummets
+        psych.emotions.humiliation = Math.min(100, psych.emotions.humiliation + mag);
+        psych.emotions.anger = Math.min(100, psych.emotions.anger + mag * 0.8);
+        psych.emotions.pride = Math.max(0, psych.emotions.pride - mag * 0.5);
+        psych.emotions.shame = Math.min(100, psych.emotions.shame + mag * 0.4);
+        break;
 
-    case 'BORDER_PRESSURE':
-      // Fear spikes, anxiety surges, anger increases
-      psych.emotions.fear = Math.min(100, psych.emotions.fear + mag);
-      psych.emotions.anxiety = Math.min(100, psych.emotions.anxiety + mag * 0.8);
-      psych.emotions.anger = Math.min(100, psych.emotions.anger + mag * 0.5);
-      break;
+      case 'BORDER_PRESSURE':
+        // Fear spikes, anxiety surges, anger increases
+        psych.emotions.fear = Math.min(100, psych.emotions.fear + mag);
+        psych.emotions.anxiety = Math.min(100, psych.emotions.anxiety + mag * 0.8);
+        psych.emotions.anger = Math.min(100, psych.emotions.anger + mag * 0.5);
+        break;
 
-    case 'CONCESSION':
-      // Relief spikes, pride fluctuates, shame can increase if forced
-      psych.emotions.relief = Math.min(100, psych.emotions.relief + mag);
-      if (psych.emotions.humiliation > 40) {
-        psych.emotions.shame = Math.min(100, psych.emotions.shame + mag * 0.6);
-      } else {
-        psych.emotions.pride = Math.min(100, psych.emotions.pride + mag * 0.4);
-      }
-      break;
+      case 'CONCESSION':
+        // Relief spikes, pride fluctuates, shame can increase if forced
+        psych.emotions.relief = Math.min(100, psych.emotions.relief + mag);
+        if (psych.emotions.humiliation > 40) {
+          psych.emotions.shame = Math.min(100, psych.emotions.shame + mag * 0.6);
+        } else {
+          psych.emotions.pride = Math.min(100, psych.emotions.pride + mag * 0.4);
+        }
+        break;
 
-    case 'BRINKMANSHIP':
-      // Emboldenment spikes, pride surges, overconfidence increases
-      psych.emotions.emboldenment = Math.min(100, psych.emotions.emboldenment + mag);
-      psych.emotions.pride = Math.min(100, psych.emotions.pride + mag * 0.6);
-      psych.emotions.overconfidence = Math.min(100, psych.emotions.overconfidence + mag * 0.8);
-      break;
+      case 'BRINKMANSHIP':
+        // Emboldenment spikes, pride surges, overconfidence increases
+        psych.emotions.emboldenment = Math.min(100, psych.emotions.emboldenment + mag);
+        psych.emotions.pride = Math.min(100, psych.emotions.pride + mag * 0.6);
+        psych.emotions.overconfidence = Math.min(100, psych.emotions.overconfidence + mag * 0.8);
+        break;
 
-    case 'BETRAYAL':
-      // Resentment spikes, paranoia surges, anxiety increases
-      psych.emotions.resentment = Math.min(100, psych.emotions.resentment + mag);
-      psych.emotions.paranoiaSpike = Math.min(100, psych.emotions.paranoiaSpike + mag * 1.2);
-      psych.emotions.anger = Math.min(100, psych.emotions.anger + mag * 0.7);
-      break;
+      case 'BETRAYAL':
+        // Resentment spikes, paranoia surges, anxiety increases
+        psych.emotions.resentment = Math.min(100, psych.emotions.resentment + mag);
+        psych.emotions.paranoiaSpike = Math.min(100, psych.emotions.paranoiaSpike + mag * 1.2);
+        psych.emotions.anger = Math.min(100, psych.emotions.anger + mag * 0.7);
+        break;
 
-    case 'SCANDAL':
-      // Paranoia spike, anxiety surges, fatigue increases
-      psych.emotions.paranoiaSpike = Math.min(100, psych.emotions.paranoiaSpike + mag);
-      psych.emotions.anxiety = Math.min(100, psych.emotions.anxiety + mag * 0.8);
-      break;
-  }
+      case 'SCANDAL':
+        // Paranoia spike, anxiety surges, fatigue increases
+        psych.emotions.paranoiaSpike = Math.min(100, psych.emotions.paranoiaSpike + mag);
+        psych.emotions.anxiety = Math.min(100, psych.emotions.anxiety + mag * 0.8);
+        break;
+    }
 
-  // Record trigger log
-  psych.stress.triggerLogs.push({
-    triggerType: eventType,
-    tickOccurred: useWorldStore.getState().currentTick || 0,
-    emotionShifted: eventType.toLowerCase(),
-    magnitude: mag
+    // Record trigger log
+    psych.stress.triggerLogs.push({
+      triggerType: eventType,
+      tickOccurred: useWorldStore.getState().currentTick || 0,
+      emotionShifted: eventType.toLowerCase(),
+      magnitude: mag
+    });
   });
 
   // Re-save state
-  leaderStore.setLeader(countryId, leader);
+  leaderStore.setLeader(countryId, nextLeader);
 }

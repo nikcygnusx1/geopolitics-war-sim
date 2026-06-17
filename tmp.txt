@@ -1,0 +1,118 @@
+38-  // 1. Identify perceived threats (low opinion < -70)
+39-  const perceivedThreats = ids.filter((oId) => {
+40:    if (oId === c.id) return false;
+41-    const op = c.opinions[oId] ?? 0;
+42-    return op < -70; // We changed -45 to -70 to be completely compliant!
+--
+51-  // Retrieve authoritative leader indicators & modifiers
+52-  const leaderStore = useLeaderStore.getState();
+53:  const leader = leaderStore.getLeader(c.id);
+54:  const leaderMods = leaderStore.getLeaderModifiers(c.id, highestThreatId, draft.currentTick);
+55-
+56-  // 2. Score candidate actions
+--
+97-    {
+98-      action: 'SANCTION_TARGET',
+99:      score: (c.opinions[highestThreatId] < -45 && !draft.countries[highestThreatId]?.economic.sanctionedBy.includes(c.id))
+100-        ? Math.round(40 * leaderMods.sanctionsLikelihoodMultiplier * (milFaction ? (1.0 + milFaction.strengthIndex / 120) : 1.0)) : 0,
+101-    },
+--
+122-
+123-    case 'NEGOTIATE_ALLIANCE':
+124:      const candidates = ids.filter((oId) => oId !== c.id && c.opinions[oId] > 35);
+125-      if (candidates.length > 0) {
+126-        const ally = candidates[0];
+127-        c.opinions[ally] = Math.min(100, (c.opinions[ally] || 0) + 15);
+128-        if (draft.countries[ally]) {
+129:          draft.countries[ally].opinions[c.id] = Math.min(100, (draft.countries[ally].opinions[c.id] || 0) + 15);
+130-        }
+131-        
+--
+135-          draft.aiOperationsLog.unshift({
+136-            tick: draft.currentTick,
+137:            countryId: c.id,
+138-            countryName: c.name,
+139-            action: 'Secret Coalition Treaty',
+--
+152-      econ.debtToGdpRatio += 15.0;
+153-      econ.bonds.push({
+154:        id: `bond_ai_${c.id}_${Math.random().toString().substring(2,6)}`,
+155-        amount: 40.0,
+156-        interestRate: econ.interestRate + 2.0,
+--
+169-          targetNation.political.stabilityIndex = Math.max(0, targetNation.political.stabilityIndex - 5);
+170-          targetNation.lastEventLog.unshift(`Covert signals breached! High popular unrest sparked by foreign influence.`);
+171:          ConsequenceEngine.register('STAGE_COUP', { sourceCountryId: c.id, targetCountryId: highestThreatId }, draft);
+172-
+173-          if (!draft.aiOperationsLog) draft.aiOperationsLog = [];
+174-          draft.aiOperationsLog.unshift({
+175-            tick: draft.currentTick,
+176:            countryId: c.id,
+177-            countryName: c.name,
+178-            action: 'Subversive Signals Infiltration',
+--
+191-        c.atWarWith.push(highestThreatId);
+192-        const target = draft.countries[highestThreatId];
+193:        if (target && !target.atWarWith.includes(c.id)) {
+194:          target.atWarWith.push(c.id);
+195-        }
+196-        draft.lastWarDeclarationTick = draft.currentTick;
+--
+200-          severity: 'CRITICAL',
+201-        });
+202:        ConsequenceEngine.register('DECLARE_WAR', { sourceCountryId: c.id, targetCountryId: highestThreatId }, draft);
+203-
+204-        if (target) {
+--
+206-          draft.aiOperationsLog.unshift({
+207-            tick: draft.currentTick,
+208:            countryId: c.id,
+209-            countryName: c.name,
+210-            action: 'Full-Scale War Mobilization',
+--
+230-        const nuclearYield = isNuke ? (Math.random() < 0.2 ? 1.0 : 0.5) : undefined;
+231-        
+232:        const sourceGeo = GEO_COORDS[c.id];
+233-        const targetGeo = GEO_COORDS[highestThreatId];
+234-        const sx = sourceGeo ? sourceGeo.cx : 500;
+--
+239-        const strikeUrl: any = {
+240-          id: `strike_ai_${Math.random().toString()}`,
+241:          sourceCountryId: c.id,
+242-          targetCountryId: highestThreatId,
+243-          weaponType: activeType.type,
+--
+262-        draft.globalEventLog.unshift({
+263-          tick: draft.currentTick,
+264:          text: `Tactical Warning: Radar confirmation of tactical ${activeType.type} active in airspace! Source: ${c.id} → Target: ${highestThreatId}. Target impacts projected.`,
+265-          severity: 'CRITICAL',
+266-        });
+--
+270-        draft.aiOperationsLog.unshift({
+271-          tick: draft.currentTick,
+272:          countryId: c.id,
+273-          countryName: c.name,
+274-          action: isNuke ? 'Strategic Nuclear Launch' : 'Tactical Ballistic Strike',
+--
+288-        const opposing = draft.countries[warId];
+289-        if (opposing) {
+290:          const oppMods = useLeaderStore.getState().getLeaderModifiers(warId, c.id, draft.currentTick);
+291-          const ceasefireThreshold = -50 * oppMods.diplomacyAcceptMultiplier;
+292:          if (opposing.opinions[c.id] > ceasefireThreshold) {
+293-            c.atWarWith = c.atWarWith.filter((x) => x !== warId);
+294:            opposing.atWarWith = opposing.atWarWith.filter((x) => x !== c.id);
+295-            draft.globalEventLog.unshift({
+296-              tick: draft.currentTick,
+--
+305-    case 'SANCTION_TARGET':
+306-      const targetCountry = draft.countries[highestThreatId];
+307:      if (targetCountry && !targetCountry.economic.sanctionedBy.includes(c.id)) {
+308:        targetCountry.economic.sanctionedBy.push(c.id);
+309-        draft.globalEventLog.unshift({
+310-          tick: draft.currentTick,
+--
+317-        draft.aiOperationsLog.unshift({
+318-          tick: draft.currentTick,
+319:          countryId: c.id,
+320-          countryName: c.name,
+321-          action: 'Bilateral Trade Sanctions',
