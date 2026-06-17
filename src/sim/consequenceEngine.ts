@@ -1,6 +1,7 @@
 import { BallisticStrike, WorldState, Country, ConsequenceEffectType, MajorActionType, ConsequenceEffect, ScheduledConsequence } from '../types';
 import { WorldScar, useConsequenceStore } from '../store/consequenceStore';
 import { useLeaderStore } from '../store/leaderStore';
+import { useSovereignStore } from '../store/sovereignStore';
 
 // Get center coordinates of country for scar display (D3 SVG center coordinates fallback)
 export function getCountryCentroid(countryId: string): { lat: number; lon: number } {
@@ -164,6 +165,20 @@ export class ConsequenceEngine {
     context: { sourceCountryId: string; targetCountryId?: string; [key: string]: any },
     draft: WorldState
   ) {
+    // Notify Sovereign Agents of major geopolitical event
+    try {
+      useSovereignStore.getState().handleWorldEvent(
+        draft,
+        actionType,
+        context.sourceCountryId,
+        context.targetCountryId,
+        'HIGH',
+        context
+      );
+    } catch (e) {
+      console.warn('Failed to notify Sovereign Agents of event:', e);
+    }
+
     if (!draft.scheduledConsequences) {
       draft.scheduledConsequences = [];
     }

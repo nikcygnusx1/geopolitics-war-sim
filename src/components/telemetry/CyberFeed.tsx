@@ -626,8 +626,14 @@ export function CyberWorkstation({ onClose }: { onClose: () => void }) {
           // Exfiltrate cash: subtract cash from enemy and transfer straight to player!
           const cashStolen = 15; // Billion B
           country.economic.treasuryCashB = Math.max(0, country.economic.treasuryCashB - cashStolen);
+          
+          const playerCountryId = usePlayerStore.getState().countryId;
+          const playerCountry = draft.countries[playerCountryId];
+          if (playerCountry) {
+            playerCountry.economic.treasuryCashB += cashStolen;
+          }
+          
           usePlayerStore.setState((s) => ({ cashB: s.cashB + cashStolen }));
-          usePlayerStore.getState().syncCashToCountry();
           audio.sfxKeyClick();
           pushTerminalLine(`EXFIL LOG: Siphoned $${cashStolen}B from target offshore shell companies directly into Treasury.`, 'SUCCESS' as any);
         } else if (selectedHack === 'MEDIA_HIJACK') {

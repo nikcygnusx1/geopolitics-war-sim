@@ -3,8 +3,12 @@ import { getTickIncrement } from './militaryEngine';
 import { GEO_COORDS } from '../data/geoCoords';
 import { useLeaderStore } from '../store/leaderStore';
 import { ConsequenceEngine } from './consequenceEngine';
+import { useSovereignStore } from '../store/sovereignStore';
 
 export function processAllAI(draft: WorldState, playerCountryId: string) {
+  // Tick Sovereign Strategic Agents
+  useSovereignStore.getState().tickSovereignAgents(draft, playerCountryId);
+
   Object.keys(draft.countries).forEach((id) => {
     if (id === playerCountryId) return; // Skip human player
 

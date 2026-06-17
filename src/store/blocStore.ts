@@ -784,11 +784,9 @@ export const useBlocStore = create<BlocState & BlocActions>((set, get) => {
 
         // Deduct treasury from anchor power
         const anchorId = org.primaryAnchorPowerId;
-        const worldDraft = useWorldStore.getState();
-        const country = worldDraft.countries[anchorId];
-        if (country) {
-          country.economic.treasuryCashB = Math.max(0, country.economic.treasuryCashB - 10);
-        }
+        useWorldStore.getState().updateCountry(anchorId, (c) => {
+          c.economic.treasuryCashB = Math.max(0, c.economic.treasuryCashB - 10);
+        });
 
         draft.institutionalMemories[blocId].historyLog.unshift({
           tick: useWorldStore.getState().currentTick,
@@ -805,10 +803,9 @@ export const useBlocStore = create<BlocState & BlocActions>((set, get) => {
         const org = draft.organizations[blocId];
         const donorId = org.primaryAnchorPowerId;
         
-        const donor = useWorldStore.getState().countries[donorId];
-        if (donor) {
-          donor.economic.treasuryCashB = Math.max(0, donor.economic.treasuryCashB - amountB);
-        }
+        useWorldStore.getState().updateCountry(donorId, (c) => {
+          c.economic.treasuryCashB = Math.max(0, c.economic.treasuryCashB - amountB);
+        });
 
         org.economicMechanism.developmentBankReservesB += amountB * 0.8;
         org.economicMechanism.fundedInfrastructureProjects.push({
@@ -1003,10 +1000,9 @@ export const useBlocStore = create<BlocState & BlocActions>((set, get) => {
         state.posture.concessionsExtractedB += payout;
 
         // Trace to country economy treasury
-        const targetCountry = useWorldStore.getState().countries[countryId];
-        if (targetCountry) {
-          targetCountry.economic.treasuryCashB += payout;
-        }
+        useWorldStore.getState().updateCountry(countryId, (c) => {
+          c.economic.treasuryCashB += payout;
+        });
 
         useUIStore.getState().pushTerminalLine(`SWING STATE POSTURE: ${countryId} executed hedging tactic, securing $${payout}B in utility concessions.`, 'INFO');
       }));
@@ -1235,10 +1231,9 @@ export const useBlocStore = create<BlocState & BlocActions>((set, get) => {
             swing.posture.concessionsExtractedB += payout;
             swing.posture.lastHedgingAction = `Automated alignment deconfliction of type ${chosenAction} executed with ${chosenBloc} partner.`;
 
-            const normalCountry = useWorldStore.getState().countries[sid];
-            if (normalCountry) {
-              normalCountry.economic.treasuryCashB += payout;
-            }
+            useWorldStore.getState().updateCountry(sid, (c) => {
+              c.economic.treasuryCashB += payout;
+            });
           }
         });
 

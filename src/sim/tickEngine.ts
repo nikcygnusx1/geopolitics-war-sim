@@ -12,6 +12,7 @@ import { useEnergyStore } from '../store/energyStore';
 import { useSanctionsStore } from '../store/sanctionsStore';
 import { useUNStore } from '../store/unStore';
 import { useBlocStore } from '../store/blocStore';
+import { useSoftPowerStore } from '../store/softPowerStore';
 import { pollScenarioStatus } from './scenarioEngine';
 import { processFactions } from './factionEngine';
 import { processFiscal } from './fiscalEngine';
@@ -107,15 +108,15 @@ export function executeSimulationStep() {
     // 10. Process Phase 2 evolved Geopolitical, Population, Cabinet, Sectors, and Provinces systems
     processComplexPhase2Geopolitics(draft, player.countryId);
 
-    // 11. Advance deployable tactical units position state
-    useUnitStore.getState().updateUnitPositions(draft.currentTick);
-
-    // T3.3 Black Market ticker integration
-    useBlackMarketStore.getState().tickMarket(draft.currentTick);
-
     // T3.5 Consequence core engine tick integration
     ConsequenceEngine.tick(draft.currentTick, draft);
   });
+
+  // Advance deployable tactical units position state
+  useUnitStore.getState().updateUnitPositions(useWorldStore.getState().currentTick);
+
+  // T3.3 Black Market ticker integration
+  useBlackMarketStore.getState().tickMarket(useWorldStore.getState().currentTick);
 
   // Keep clock store in lock-step with simulation ticks
   useClockStore.getState().advanceTick();
@@ -150,6 +151,9 @@ export function executeSimulationStep() {
 
   // Synchronize Regional Blocs and Institutions System
   useBlocStore.getState().tickBlocSystem(useWorldStore.getState().currentTick);
+
+  // Synchronize Soft Power and Symbolic Influence System
+  useSoftPowerStore.getState().tickSoftPowerSystem(useWorldStore.getState().currentTick);
 
   // Regularly save a checkpoint if there is no ongoing nuclear exchange or active aftermath
   const currentWorld = useWorldStore.getState();

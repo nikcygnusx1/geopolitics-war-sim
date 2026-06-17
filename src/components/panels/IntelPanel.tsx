@@ -6,6 +6,7 @@ import { audio } from '../../utils/audio';
 import { useUIStore } from '../../store/uiStore';
 import AnimatedValue from '../shared/AnimatedValue';
 import ArachnePanel from './ArachnePanel';
+import LeaderDossiersView from './LeaderDossiersView';
 
 export default function IntelPanel() {
   const countryId = usePlayerStore((s) => s.countryId);
@@ -21,7 +22,7 @@ export default function IntelPanel() {
   const intel = playerCountry.intelligence;
   const spyAssets = intel.spyAssets || [];
 
-  const [intelTab, setIntelTab] = useState<'ARACHNE' | 'OPS' | 'ASSETS'>('ARACHNE');
+  const [intelTab, setIntelTab] = useState<'ARACHNE' | 'OPS' | 'ASSETS' | 'DOSSIERS'>('ARACHNE');
   const [opType, setOpType] = useState<CovertOpType>('PLANT_PROPAGANDA');
 
   const opSpecs: Record<CovertOpType, { name: string; costB: number; ticks: number; desc: string; success: number; blowback: number }> = {
@@ -207,6 +208,14 @@ export default function IntelPanel() {
           }`}
         >
           📁 SIGINT & CLANDESTINE ASSETS
+        </button>
+        <button
+          onClick={() => { audio.sfxKeyClick(); setIntelTab('DOSSIERS'); }}
+          className={`px-3 py-1 text-[10px] uppercase font-bold border rounded transition-colors cursor-pointer ${
+            intelTab === 'DOSSIERS' ? 'bg-[#1a4a1a] text-[#00ff44] border-[#00ff44] shadow-[0_0_8px_rgba(0,255,68,0.25)]' : 'text-gray-400 border-transparent hover:text-white hover:bg-white/5'
+          }`}
+        >
+          👤 LEADER DOSSIERS
         </button>
       </div>
 
@@ -405,6 +414,8 @@ export default function IntelPanel() {
           </div>
         </div>
       )}
+
+      {intelTab === 'DOSSIERS' && <LeaderDossiersView />}
     </div>
   );
 }

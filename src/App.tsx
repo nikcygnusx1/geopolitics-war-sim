@@ -39,6 +39,8 @@ import UNPanel from './components/panels/UNPanel';
 import { useUNStore } from './store/unStore';
 import BlocsPanel from './components/panels/BlocsPanel';
 import { useBlocStore } from './store/blocStore';
+import SoftPowerPanel from './components/panels/SoftPowerPanel';
+import { useSoftPowerStore } from './store/softPowerStore';
 import { checkAndRestoreSharedScenario, hydrateScenario, ScenarioPackage } from './utils/persistence';
 
 import AnalysisModeSwitcher from './components/map/AnalysisModeSwitcher';
@@ -117,6 +119,7 @@ const getTabClassification = (tabId: number): string => {
     case 18: return "FINANCIAL HORIZONS FORECAST"; // Forecasting (Shift+F6)
     case 19: return "COSMIC MULTILATERAL UNIT"; // UN & Legal (Shift+F7)
     case 20: return "REGIONAL ALLIANCES CONSOLE"; // Blocs (Shift+F8)
+    case 21: return "SOFT POWER & COALITION PRESTIGE"; // Soft power (Shift+F9)
     default: return "CONFIDENTIAL";
   }
 };
@@ -200,6 +203,7 @@ function ActivePanelWrapper({ activeTab, getTabClassification }: { activeTab: nu
       {activeTab === 18 && <EconomicForecastPanel />}
       {activeTab === 19 && <UNPanel />}
       {activeTab === 20 && <BlocsPanel />}
+      {activeTab === 21 && <SoftPowerPanel />}
     </div>
   );
 }
@@ -380,6 +384,12 @@ export default function App() {
         const natoCohesion = blocStore.organizations.NATO?.cohesion?.overallScore ?? 78;
         const bricsCohesion = blocStore.organizations.BRICS?.cohesion?.overallScore ?? 66;
         return `nato:${natoCohesion}% brics:${bricsCohesion}%`;
+      }
+      case 21: { // SOFT POWER
+        const spStore = useSoftPowerStore.getState();
+        const pId = usePlayerStore.getState().countryId || 'US';
+        const reach = spStore.profiles[pId]?.index?.globalCompositeScore ?? 50;
+        return `prestige:${reach}%`;
       }
       default:
         return '';
@@ -1209,6 +1219,7 @@ export default function App() {
                   { id: 18, label: 'FINANCIAL HORIZONS (Shift+F6)' },
                   { id: 19, label: 'UN & LEGAL INQ (Shift+F7)' },
                   { id: 20, label: 'REGIONAL BLOCS (Shift+F8)' },
+                  { id: 21, label: 'SOFT POWER (Shift+F9)' },
                 ].map((tab) => {
                   const isActive = playerState.activeTab === tab.id;
                   return (
