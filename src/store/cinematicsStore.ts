@@ -3,6 +3,7 @@ import { create } from 'zustand';
 export type CinematicSceneType =
   | 'SCENARIO_BOOT'           // Cold boot intro on first load
   | 'SCENARIO_START'        // When player starts a new scenario
+  | 'PRESIDENTIAL_DAILY_BRIEF' // Session start / daily overview
   | 'DEFCON_1_LOCKDOWN'     // Full DEFCON 1 nuclear war protocols
   | 'NUCLEAR_EXCHANGE'      // Multiple strikes confirmed
   | 'NUCLEAR_AFTERMATH'     // Post-exchange epilogue

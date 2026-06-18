@@ -75,7 +75,6 @@ import CommsPanel from './components/hud/CommsPanel';
 import CommsSyncController from './components/hud/CommsSyncController';
 import { useCommsStore } from './store/commsStore';
 
-import CinematicsSyncController from './components/cinematics/CinematicsSyncController';
 import CinematicsManager from './components/cinematics/CinematicsManager';
 import { useCinematicsStore } from './store/cinematicsStore';
 
@@ -101,6 +100,7 @@ import BlackMarketBazaar from './components/blackmarket/BlackMarketBazaar';
 import { useBlackMarketStore } from './store/blackMarketStore';
 import CommandLogPanel from './components/hud/CommandLogPanel';
 import DefconBar from './components/hud/DefconBar';
+import FlashPrecedenceBanner from './components/hud/FlashPrecedenceBanner';
 import WhiteFlashOverlay from './components/hud/WhiteFlashOverlay';
 import { useDefconStore, applyDefconPalette } from './store/defconStore';
 import { PANEL_REGISTRY, getAvailablePanels, getAvailablePersonas, PERSONAS } from './config/defconRegistry';
@@ -1158,11 +1158,11 @@ export default function App() {
       {showBazaar && <BlackMarketBazaar onClose={() => setShowBazaar(false)} />}
       <CommsSyncController />
       <CommsPanel isOpen={commsOpen} onClose={() => setCommsOpen(false)} />
-      <CinematicsSyncController />
       <CinematicsManager />
 
       {/* Top command status HUD bar */}
       <DefconBar />
+      <FlashPrecedenceBanner />
 
       {/* Header bar */}
       <header className="w-full h-11 bg-[#040804] border-b border-[#1a3a1a] flex justify-between items-center px-4 shrink-0 select-none">
@@ -1504,6 +1504,7 @@ export default function App() {
 
       {/* Presidential Daily Briefing Card Stack Overlay */}
       <ArachneBriefingModal />
+      <WhiteFlashOverlay />
       </div>
     </div>
   );

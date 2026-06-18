@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useWorldStore } from '../../store/worldStore';
 import { usePlayerStore } from '../../store/playerStore';
 import { audio } from '../../utils/audio';
+import { ClassifiedDocument } from '../shared/ClassifiedDocument';
 
 export function getEventCategory(text: string): 'MILITARY' | 'ECONOMY' | 'DIPLOMACY' | 'INTELLIGENCE' | 'SYSTEM' {
   const t = text.toLowerCase();
@@ -175,8 +176,9 @@ export default function CommandLogPanel() {
   };
 
   return (
-    <div className="gotham-panel gotham-panel--secondary p-3 flex flex-col font-mono text-[10.5px] shrink-0 overflow-hidden w-full mb-3" data-classification="SECRET" style={{ minHeight: '210px', maxHeight: '310px' }}>
-      {/* Header and Filter Buttons */}
+    <ClassifiedDocument className="w-[320px] mb-2 shrink-0 z-10" classification="SECRET" codewords={['ORCON', 'NOFORN']} title="COMMAND LOG">
+      <div className="flex flex-col font-mono text-[10.5px] shrink-0 overflow-hidden w-full h-full" style={{ minHeight: '210px', maxHeight: '310px' }}>
+        {/* Header and Filter Buttons */}
       <div className="flex justify-between items-center border-b border-[#1a5c1a]/50 pb-2 mb-2 select-none">
         <span className="text-[10px] font-black uppercase text-[#00ff44] tracking-widest flex items-center gap-1.5 animate-pulse">
           📡 LIVE OPERATIONS COMMAND STREAM
@@ -347,6 +349,7 @@ export default function CommandLogPanel() {
           </button>
         </div>
       </div>
-    </div>
+      </div>
+    </ClassifiedDocument>
   );
 }

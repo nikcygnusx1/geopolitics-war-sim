@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useCommsStore, CommsMessage } from '../../store/commsStore';
 import { audio } from '../../utils/audio';
+import { ClassifiedDocument } from '../shared/ClassifiedDocument';
 
 interface CommsPanelProps {
   isOpen: boolean;
@@ -54,13 +55,14 @@ export default function CommsPanel({ isOpen, onClose }: CommsPanelProps) {
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ type: 'spring', damping: 26, stiffness: 220 }}
-            className="fixed right-0 top-0 h-screen w-full sm:w-[460px] bg-[#020502]/95 border-l border-[#00ff44]/30 backdrop-blur-md z-50 flex flex-col font-mono text-xs text-gray-300 shadow-[0_0_40px_rgba(0,0,0,0.85)] select-none"
+            className="fixed right-0 top-0 h-screen w-full sm:w-[500px] z-[100] flex flex-col p-4 pointer-events-none"
           >
-            {/* Cybersecurity digital scanning lines */}
-            <div className="absolute inset-x-0 top-0 h-0.5 bg-[#00ff44]/20 animate-pulse pointer-events-none" />
+            <ClassifiedDocument classification="TOP SECRET" codewords={['UMBRA', 'GAMMA']} className="h-full w-full pointer-events-auto flex flex-col">
+              {/* Cybersecurity digital scanning lines */}
+              <div className="absolute inset-x-0 top-0 h-0.5 bg-red-600/30 animate-pulse pointer-events-none" />
 
-            {/* Header Plate */}
-            <div className="p-4 border-b border-[#00ff44]/35 bg-[#040904] flex flex-col gap-2">
+              {/* Header Plate */}
+              <div className="p-4 border-b border-[#00ff44]/35 bg-[#040904] flex flex-col gap-2 shrink-0">
               <div className="flex justify-between items-center">
                 <span className="text-sm font-black tracking-widest text-[#00ff44] uppercase flex items-center gap-2">
                   <span className="relative flex h-2 w-2">
@@ -229,9 +231,10 @@ export default function CommsPanel({ isOpen, onClose }: CommsPanelProps) {
             </div>
 
             {/* Bottom Safe Area Warning */}
-            <div className="p-3 bg-[#030603] border-t border-[#1a3a1a] text-center text-[7.5px] text-gray-600 uppercase tracking-widest select-none">
+            <div className="p-3 bg-[#030603] border-t border-[#1a3a1a] text-center text-[7.5px] text-gray-600 uppercase tracking-widest select-none shrink-0">
               Sovereign Command Comms Panel // All audio secure & isolated.
             </div>
+            </ClassifiedDocument>
           </motion.div>
         </>
       )}

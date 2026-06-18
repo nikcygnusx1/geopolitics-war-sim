@@ -1,6 +1,12 @@
 import React, { useEffect, useRef } from 'react';
 import { useCinematicsStore, CinematicScene } from '../../store/cinematicsStore';
 
+import { NuclearExchangeScene } from './renderers/nuclear';
+import { PDBSciRenderer } from './renderers/pdb';
+import { OperativeBurnedRenderer as ExtOperativeBurnedRenderer } from './renderers/operative';
+import { GameOverSceneRenderer } from './renderers/gameover';
+import { CinematicsSyncController } from './CinematicsSyncController';
+
 // === HELPER FOR SKIP BUTTON ===
 function SkipButton({ onClick, isSkippable }: { onClick: () => void, isSkippable: boolean }) {
   if (!isSkippable) return null;
@@ -846,7 +852,7 @@ function GameOverVictoryRenderer({ scene }: { scene: CinematicScene }) {
 // =========================================================================
 
 export default function CinematicsManager() {
-  const { activeScene, skipScene } = useCinematicsStore();
+  const { activeScene, skipScene, completeScene } = useCinematicsStore();
 
   if (!activeScene) return null;
 
@@ -854,8 +860,9 @@ export default function CinematicsManager() {
     switch (activeScene.type) {
       case 'SCENARIO_BOOT': return <ScenarioBootRenderer scene={activeScene} />;
       case 'SCENARIO_START': return <ScenarioStartRenderer scene={activeScene} />;
+      case 'PRESIDENTIAL_DAILY_BRIEF': return <PDBSciRenderer scene={activeScene} onComplete={completeScene} />;
       case 'DEFCON_1_LOCKDOWN': return <DefconLockdownRenderer scene={activeScene} />;
-      case 'NUCLEAR_EXCHANGE': return <NuclearExchangeRenderer scene={activeScene} />;
+      case 'NUCLEAR_EXCHANGE': return <NuclearExchangeScene scene={activeScene} onComplete={completeScene} />;
       case 'REGIME_CHANGE_SEQUENCE': return <RegimeChangeRenderer scene={activeScene} />;
       case 'CEASEFIRE_EPILOGUE': return <CeasefireEpilogueRenderer scene={activeScene} />;
       case 'MARKET_CRASH_BROADCAST': return <MarketCrashRenderer scene={activeScene} />;
@@ -864,16 +871,17 @@ export default function CinematicsManager() {
       case 'PEACE_TREATY_CEREMONY': return <PeaceTreatyRenderer scene={activeScene} />;
       case 'ALLIANCE_SUMMIT': return <AllianceSummitRenderer scene={activeScene} />;
       case 'CYBER_WAR_DECLARATION': return <CyberWarRenderer scene={activeScene} />;
-      case 'OPERATIVE_BURNED_REPORT': return <OperativeBurnedRenderer scene={activeScene} />;
+      case 'OPERATIVE_BURNED_REPORT': return <ExtOperativeBurnedRenderer scene={activeScene} />;
       case 'NUCLEAR_DETERRENCE_WIN': return <NuclearDeterrenceRenderer scene={activeScene} />;
-      case 'GAME_OVER_DEFEAT': return <GameOverDefeatRenderer scene={activeScene} />;
-      case 'GAME_OVER_VICTORY': return <GameOverVictoryRenderer scene={activeScene} />;
+      case 'GAME_OVER_DEFEAT': return <GameOverSceneRenderer scene={activeScene} onComplete={completeScene} isVictory={false} />;
+      case 'GAME_OVER_VICTORY': return <GameOverSceneRenderer scene={activeScene} onComplete={completeScene} isVictory={true} />;
       default: return null;
     }
   };
 
   return (
     <>
+      <CinematicsSyncController />
       {/* 
         Container must span full screen and be absolutely positioned above HUD.
         Pointer events none is on shake root in App, but here we can block clicks

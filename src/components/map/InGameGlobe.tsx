@@ -1,9 +1,11 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
+import SunCalc from 'suncalc';
 import { useWorldStore } from '../../store/worldStore';
 import { useNuclearStore } from '../../store/nuclearStore';
 import { usePlayerStore } from '../../store/playerStore';
 import { useUIStore } from '../../store/uiStore';
+import { useDefconStore } from '../../store/defconStore';
 import { SEEDED_HOTSPOTS } from '../../data/hotspots';
 import { getCentroid } from './countryCentroids';
 import { MAP_THEME } from './mapStyles';
@@ -133,6 +135,7 @@ export function InGameGlobe({ theme = 'dark', layers }: InGameGlobeProps) {
   const playerCountryId = mapState.playerCountryId;
   const hudMode = mapState.activeHudMode;
   const targetCountryId = mapState.targetCountryId;
+  const currentDefcon = useDefconStore((s) => s.currentDefconLevel);
 
   // Track actions
   const setTargetCountry = usePlayerStore((s) => s.setTargetCountry);
@@ -175,6 +178,8 @@ export function InGameGlobe({ theme = 'dark', layers }: InGameGlobeProps) {
   const starPointsRef = useRef<THREE.Points | null>(null);
   const ambientLightRef = useRef<THREE.AmbientLight | null>(null);
 
+  const atmMeshRef = useRef<THREE.Mesh | null>(null);
+
   // Camera, rotation and zoom interactive targets
   const isDragging = useRef(false);
   const lastMouse = useRef({ x: 0, y: 0 });
@@ -188,6 +193,11 @@ export function InGameGlobe({ theme = 'dark', layers }: InGameGlobeProps) {
   useEffect(() => {
     layersRef.current = layers;
   }, [layers]);
+
+  const defconRef = useRef(currentDefcon);
+  useEffect(() => {
+    defconRef.current = currentDefcon;
+  }, [currentDefcon]);
 
   const isDark = theme === 'dark';
 
@@ -317,74 +327,85 @@ export function InGameGlobe({ theme = 'dark', layers }: InGameGlobeProps) {
     };
 
     const dayTex = loadTextureWithFallback('/textures/earth-blue-marble.jpg', [
+      'https://eoimages.gsfc.nasa.gov/images/imagerecords/73000/73909/world.topo.bathy.200412.3x5400x2700.jpg',
       'https://cdn.jsdelivr.net/npm/three-globe/example/img/earth-blue-marble.jpg',
       'https://raw.githubusercontent.com/vasturiano/three-globe/master/example/img/earth-blue-marble.jpg'
     ]);
     const nightTex = loadTextureWithFallback('/textures/earth-night.jpg', [
+      'https://eoimages.gsfc.nasa.gov/images/imagerecords/55000/55167/earth_lights_lrg.jpg',
       'https://cdn.jsdelivr.net/npm/three-globe/example/img/earth-night.jpg',
       'https://raw.githubusercontent.com/vasturiano/three-globe/master/example/img/earth-night.jpg'
     ]);
 
     // 1. Solid Earth Core (Day / Night Shaded)
     const earthGeo = new THREE.SphereGeometry(1, 64, 64);
-    const earthMat = new THREE.MeshPhongMaterial({
-      color: new THREE.Color(0xffffff), // Fully white so texture details display perfectly
-      map: dayTex,
-      emissiveMap: nightTex,
-      emissive: new THREE.Color(isDark ? 0x112135 : 0x1e1e1e),
-      emissiveIntensity: isDark ? 1.6 : 0.35,
-      specular: new THREE.Color(isDark ? 0x0d283c : 0x111111),
-      shininess: isDark ? 28 : 6,
+    const earthMat = new THREE.ShaderMaterial({
+      uniforms: THREE.UniformsUtils.merge([
+        THREE.UniformsLib.lights,
+        {
+          uDayTex: { value: dayTex },
+          uNightTex: { value: nightTex },
+          uSunDirection: { value: new THREE.Vector3(1, 0, 0) },
+          uScarCenters: { value: [] },
+          uScarRadii: { value: [] },
+          uScarCount: { value: 0 },
+          uEmissiveIntensity: { value: isDark ? 1.6 : 0.35 }
+        }
+      ]),
+      lights: true,
+      vertexShader: `
+        varying vec2 vUv;
+        varying vec3 vNormal;
+        varying vec3 vModelPosition;
+        void main() {
+          vUv = uv;
+          vNormal = normalize((modelMatrix * vec4(normal, 0.0)).xyz);
+          vModelPosition = vec3(position);
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform sampler2D uDayTex;
+        uniform sampler2D uNightTex;
+        uniform vec3 uSunDirection;
+        uniform vec3 uScarCenters[15];
+        uniform float uScarRadii[15];
+        uniform int uScarCount;
+        uniform float uEmissiveIntensity;
+        
+        varying vec2 vUv;
+        varying vec3 vNormal;
+        varying vec3 vModelPosition;
+        
+        void main() {
+          vec3 dayColor = texture2D(uDayTex, vUv).rgb;
+          vec3 nightColor = texture2D(uNightTex, vUv).rgb * uEmissiveIntensity;
+          
+          float intensity = dot(vNormal, uSunDirection);
+          float blend = smoothstep(-0.2, 0.2, intensity);
+          
+          vec3 baseColor = mix(nightColor, dayColor, blend);
+          
+          float darkFactor = 1.0;
+          vec3 normPos = normalize(vModelPosition);
+          for(int i = 0; i < 15; i++) {
+            if (i >= uScarCount) break;
+            float d = distance(normPos, uScarCenters[i]);
+            float r = uScarRadii[i];
+            if (d < r) {
+              float t = smoothstep(r, r * 0.4, d);
+              darkFactor *= mix(1.0, 0.12, t);
+            }
+          }
+          gl_FragColor = vec4(baseColor * darkFactor, 1.0);
+        }
+      `
     });
 
     earthMat.userData = {
-      uScarCenters: { value: [] },
-      uScarRadii: { value: [] },
-      uScarCount: { value: 0 }
-    };
-
-    earthMat.onBeforeCompile = (shader) => {
-      shader.uniforms.uScarCenters = earthMat.userData.uScarCenters;
-      shader.uniforms.uScarRadii = earthMat.userData.uScarRadii;
-      shader.uniforms.uScarCount = earthMat.userData.uScarCount;
-
-      shader.vertexShader = shader.vertexShader.replace(
-        '#include <common>',
-        `#include <common>
-        varying vec3 vModelPosition;`
-      );
-
-      shader.vertexShader = shader.vertexShader.replace(
-        '#include <begin_vertex>',
-        `#include <begin_vertex>
-        vModelPosition = vec3(position);`
-      );
-
-      shader.fragmentShader = shader.fragmentShader.replace(
-        '#include <common>',
-        `#include <common>
-        varying vec3 vModelPosition;
-        uniform vec3 uScarCenters[15];
-        uniform float uScarRadii[15];
-        uniform int uScarCount;`
-      );
-
-      shader.fragmentShader = shader.fragmentShader.replace(
-        '#include <dithering_fragment>',
-        `#include <dithering_fragment>
-        float darkFactor = 1.0;
-        vec3 normPos = normalize(vModelPosition);
-        for(int i = 0; i < 15; i++) {
-          if (i >= uScarCount) break;
-          float d = distance(normPos, uScarCenters[i]);
-          float r = uScarRadii[i];
-          if (d < r) {
-            float t = smoothstep(r, r * 0.4, d);
-            darkFactor *= mix(1.0, 0.12, t);
-          }
-        }
-        gl_FragColor.rgb *= darkFactor;`
-      );
+      uScarCenters: earthMat.uniforms.uScarCenters,
+      uScarRadii: earthMat.uniforms.uScarRadii,
+      uScarCount: earthMat.uniforms.uScarCount
     };
 
     // Load initial scars synchronously
@@ -421,13 +442,15 @@ export function InGameGlobe({ theme = 'dark', layers }: InGameGlobeProps) {
     // 4. Atmosphere Glow Rim
     const atmGeo = new THREE.SphereGeometry(1.04, 32, 32);
     const atmMat = new THREE.MeshBasicMaterial({
-      color: isDark ? 0x00cfff : 0x73a2bf,
+      color: 0x00cfff,
       transparent: true,
-      opacity: isDark ? 0.085 : 0.045,
+      opacity: 0.08,
       side: THREE.BackSide,
+      blending: THREE.AdditiveBlending
     });
     const atmMesh = new THREE.Mesh(atmGeo, atmMat);
     globeGroup.add(atmMesh);
+    atmMeshRef.current = atmMesh;
 
     // 5. Starfield cluster (ambient deep space backdrop)
     const starCount = 400;
@@ -735,6 +758,18 @@ export function InGameGlobe({ theme = 'dark', layers }: InGameGlobeProps) {
       window.addEventListener('nuclear-impact', handleNuclearImpactEvent);
     }
 
+    const unsubscribeNuclearEvents = useWorldStore.subscribe((state, prevState) => {
+       const newCount = state.globalEventLog.length - prevState.globalEventLog.length;
+       if (newCount > 0) {
+          const newEvents = state.globalEventLog.slice(0, newCount); // Logs are inserted at beginning
+          newEvents.forEach(evt => {
+             if (evt.text.toLowerCase().includes('nuclear detonation') || evt.text.toLowerCase().includes('thermonuclear')) {
+                // Approximate random location for global event if needed, but the actual window event handled it
+             }
+          });
+       }
+    });
+
     // Subscribe to useNuclearStore to sync physical scars dynamically in our custom shader uniforms
     const unsubscribeNuclear = useNuclearStore.subscribe((state) => {
       const activeScars = state.nuclearScars || [];
@@ -779,6 +814,17 @@ export function InGameGlobe({ theme = 'dark', layers }: InGameGlobeProps) {
 
       globeGroup.rotation.y = rotation.current.y;
       globeGroup.rotation.x = rotation.current.x;
+
+      // SunCalc day/night terminator blend
+      if (earthMeshRef.current && earthMeshRef.current.material instanceof THREE.ShaderMaterial) {
+        const now = new Date();
+        const pos = SunCalc.getPosition(now, 0, 0); 
+        const sunLat = pos.altitude * (180 / Math.PI);
+        const utcHours = now.getUTCHours() + now.getUTCMinutes() / 60 + now.getUTCSeconds() / 3600;
+        const sunLng = (12 - utcHours) * 15;
+        const sunDir = latLngToVector3(sunLat, sunLng, 1.0).normalize();
+        earthMeshRef.current.material.uniforms.uSunDirection.value.copy(sunDir);
+      }
 
       // Starfield drifts at slower parallax speed
       starPoints.rotation.y = rotation.current.y * 0.12;
@@ -1107,6 +1153,7 @@ export function InGameGlobe({ theme = 'dark', layers }: InGameGlobeProps) {
       renderer.dispose();
 
       unsubscribeNuclear();
+      unsubscribeNuclearEvents();
       if (typeof window !== 'undefined') {
         window.removeEventListener('nuclear-impact', handleNuclearImpactEvent);
       }
@@ -1312,6 +1359,17 @@ export function InGameGlobe({ theme = 'dark', layers }: InGameGlobeProps) {
         } else {
           pinColor = 0x768790;
         }
+      } else if (hudMode === 'ANALYST') {
+        const confidence = ((id.charCodeAt(0) * 11 + id.charCodeAt(id.length - 1) * 7) % 100);
+        if (confidence > 70) {
+           pinColor = 0x00ffaa;
+        } else if (confidence > 30) {
+           pinColor = 0xeec152;
+        } else {
+           pinColor = 0xff3b4e;
+        }
+        pinScale = 0.016;
+        shouldRender = true;
       }
 
       // If we are zoomed out, filter out low-priority pins to keep scene content legible
@@ -1498,23 +1556,27 @@ export function InGameGlobe({ theme = 'dark', layers }: InGameGlobeProps) {
         // Generate dynamic curves over the spherical terrain using CatmullRomCurve3
         const midPoint = new THREE.Vector3().addVectors(pStart, pEnd).multiplyScalar(0.5);
         const dist = pStart.distanceTo(pEnd);
-        const arcHeight = Math.min(0.55, Math.max(0.15, dist * 0.35));
-        const pMid = midPoint.normalize().multiplyScalar(1.0 + arcHeight);
+        const isNuke = strike.warheadYieldMT && strike.warheadYieldMT > 0;
+        const arcHeight = isNuke ? 2.0 : 1.2;
+
+        const pMid = midPoint.normalize().multiplyScalar(1.0 + arcHeight * dist);
 
         const curve = new THREE.CatmullRomCurve3([pStart, pMid, pEnd]);
         const pts = curve.getPoints(48);
         const arcGeo = new THREE.BufferGeometry().setFromPoints(pts);
 
-        const isNuke = strike.warheadYieldMT && strike.warheadYieldMT > 0;
         const trailColor = isNuke ? 0x00cfff : 0xff3b4e;
 
-        const arcMat = new THREE.LineBasicMaterial({
+        const arcMat = new THREE.LineDashedMaterial({
           color: trailColor,
           transparent: true,
-          opacity: strike.status === 'IN_FLIGHT' ? 0.4 : 0.15,
+          opacity: strike.status === 'IN_FLIGHT' ? 0.8 : 0.15,
+          dashSize: 0.02,
+          gapSize: 0.02,
         });
 
         const line = new THREE.Line(arcGeo, arcMat);
+        line.computeLineDistances();
         arcs.add(line);
 
         // Render volumetric missile flight trail using TubeGeometry
@@ -1949,6 +2011,16 @@ export function InGameGlobe({ theme = 'dark', layers }: InGameGlobeProps) {
             🔄 RESET VIEW
           </button>
         </div>
+      )}
+
+      {/* INTEL FOG OF WAR OVERLAY */}
+      {hudMode === 'ANALYST' && (
+        <div 
+          className="absolute inset-0 pointer-events-none z-[11] opacity-[0.12] mix-blend-overlay"
+          style={{ 
+            backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` 
+          }}
+        />
       )}
 
       {/* SATELLITE HUD WATERMARKS & GRATICULE LAYOUT */}

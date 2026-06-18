@@ -3,6 +3,17 @@ import { useDefconStore } from '../store/defconStore';
 
 export type DefconLevel = 5 | 4 | 3 | 2 | 1;
 
+export type TensionState = 
+  | 'PEACETIME_MONITORING'    // DEFCON 5, no active crises
+  | 'DIPLOMATIC_FRICTION'     // DEFCON 4 OR active sanctions/tensions
+  | 'CRISIS_EMERGING'         // DEFCON 3 OR first military deployment
+  | 'ACTIVE_CONFLICT'         // DEFCON 2 OR ongoing military engagement
+  | 'NUCLEAR_ALERT'           // DEFCON 1 OR nuclear launch detected
+  | 'ENDGAME'                 // Final tick countdown, victory/defeat imminent
+  | 'RESOLUTION';             // Post-conflict, ceasefire/peace achieved
+
+export type AcousticEnvironment = 'war_room' | 'oval_office' | 'underground_bunker' | 'field_ops' | 'submarine_comms';
+
 class AudioEngine {
   // Public core Web Audio API components (Non-Negotiable requirement)
   public ctx: AudioContext | null = null;
@@ -23,6 +34,282 @@ class AudioEngine {
   private isDroneRunning: boolean = false;
 
   private musicLayers: any[] = [];
+  
+  // Tension state audio engine components
+  public currentTensionState: TensionState = 'PEACETIME_MONITORING';
+  private tensionLayers: any[] = [];
+  
+  // Convolver for environment setup
+  private convolverNode: ConvolverNode | null = null;
+  private convolverGain: GainNode | null = null;
+  private currentAcousticEnv: string = 'war_room';
+  
+  setTensionState(state: TensionState, transitionDurationMs: number) {
+    if (!this.ctx || !this.ambientGain) return;
+    this.resume();
+    
+    if (this.currentTensionState === state && this.tensionLayers.length > 0) return;
+    this.currentTensionState = state;
+    const now = this.ctx.currentTime;
+    const transitionSecs = transitionDurationMs / 1000;
+
+    // Fade out previous layers
+    this.tensionLayers.forEach(layer => {
+      try {
+        if (layer.gainNode) {
+          layer.gainNode.gain.setValueAtTime(layer.gainNode.gain.value, now);
+          layer.gainNode.gain.exponentialRampToValueAtTime(0.001, now + transitionSecs);
+          setTimeout(() => { try { layer.osc.stop(); } catch(e){} }, transitionDurationMs + 100);
+        }
+      } catch (e) {}
+    });
+    this.tensionLayers = [];
+
+    // Base settings for drone
+    let droneGainTarget = 0.08;
+    let lfoRate = 0.05;
+    
+    if (state === 'PEACETIME_MONITORING') {
+      droneGainTarget = 0.08; lfoRate = 0.05;
+      this.playHarmonicLayer(now, transitionSecs, 65, 'sine', 0.05); // C2
+      this.playHarmonicLayer(now, transitionSecs, 98, 'sine', 0.04); // G2
+      this.playHarmonicLayer(now, transitionSecs, 165, 'sine', 0.03); // E3
+    } else if (state === 'DIPLOMATIC_FRICTION') {
+      droneGainTarget = 0.12; lfoRate = 0.08;
+      this.playHarmonicLayer(now, transitionSecs, 73, 'sawtooth', 0.04, 800); // D2
+      this.playHarmonicLayer(now, transitionSecs, 110, 'sawtooth', 0.04, 800); // A2
+    } else if (state === 'CRISIS_EMERGING') {
+      droneGainTarget = 0.18;
+      this.playPulseLayer(now, transitionSecs, 55, 'square', 2.4, 0.06); // A1 pulse
+      this.playHarmonicLayer(now, transitionSecs, 440, 'sawtooth', 0.03, 600); // High strings
+    } else if (state === 'ACTIVE_CONFLICT') {
+      droneGainTarget = 0.25;
+      this.playPulseLayer(now, transitionSecs, 55, 'square', 1.6, 0.08);
+      this.playNoiseLayer(now, transitionSecs, 200, 800, 0.04);
+      this.playHarmonicLayer(now, transitionSecs, 220, 'sine', 0.03); // Tritone base
+      this.playHarmonicLayer(now, transitionSecs, 311, 'sine', 0.03); // Tritone top
+    } else if (state === 'NUCLEAR_ALERT') {
+      droneGainTarget = 0.35;
+      this.playPulseLayer(now, transitionSecs, 55, 'square', 0.8, 0.1, 65); // Portamento pulse
+      this.playNoiseLayer(now, transitionSecs, 400, 1200, 0.06);
+      this.playHarmonicLayer(now, transitionSecs, 1760, 'sine', 0.02); // A6 pure sine
+      
+      // Tremolo on ambient
+      const tremolo = this.ctx.createOscillator();
+      tremolo.frequency.value = 0.3;
+      const tGain = this.ctx.createGain();
+      tGain.gain.value = 0.5;
+      tremolo.connect(tGain);
+      tremolo.start(now);
+      this.tensionLayers.push({ osc: tremolo, gainNode: tGain });
+    } else if (state === 'ENDGAME') {
+      droneGainTarget = 0.02; // Score drops
+      this.playHarmonicLayer(now, transitionSecs, 110, 'sine', 0.15); // A2 held breath
+    } else if (state === 'RESOLUTION') {
+      droneGainTarget = 0.03;
+      // Pure major chord
+      this.playHarmonicLayer(now, transitionSecs, 130, 'sine', 0.08, undefined, 3); // C3 fade slowly
+      this.playHarmonicLayer(now, transitionSecs, 165, 'sine', 0.08, undefined, 3); // E3
+      this.playHarmonicLayer(now, transitionSecs, 196, 'sine', 0.08, undefined, 3); // G3
+      this.sfxPeaceResolution();
+    }
+
+    // Update ambient drone parameters
+    if (this.ambientDroneGainNode) {
+      this.ambientDroneGainNode.gain.setValueAtTime(this.ambientDroneGainNode.gain.value, now);
+      this.ambientDroneGainNode.gain.exponentialRampToValueAtTime(Math.max(0.001, droneGainTarget), now + transitionSecs);
+    }
+    if (this.ambientLFOSource) {
+      this.ambientLFOSource.frequency.setValueAtTime(this.ambientLFOSource.frequency.value, now);
+      this.ambientLFOSource.frequency.linearRampToValueAtTime(lfoRate, now + transitionSecs);
+    }
+  }
+
+  getTensionState(): TensionState {
+    return this.currentTensionState;
+  }
+
+  mapDefconToTensionState(defcon: number, worldTension: number): TensionState {
+    if (defcon === 1) return 'NUCLEAR_ALERT';
+    if (defcon === 2) return 'ACTIVE_CONFLICT';
+    if (defcon === 3 || (defcon === 4 && worldTension > 0.8)) return 'CRISIS_EMERGING';
+    if (defcon === 4 || worldTension > 0.6) return 'DIPLOMATIC_FRICTION';
+    return 'PEACETIME_MONITORING';
+  }
+
+  private playHarmonicLayer(now: number, transitionDelay: number, freq: number, type: OscillatorType, targetGain: number, lpFreq?: number, fadeSecs?: number) {
+    if (!this.ctx || !this.ambientGain) return;
+    const osc = this.ctx.createOscillator();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, now);
+    const gainNode = this.ctx.createGain();
+    gainNode.gain.setValueAtTime(0.0001, now);
+    gainNode.gain.exponentialRampToValueAtTime(targetGain, now + (fadeSecs || transitionDelay));
+    if (lpFreq) {
+      const filter = this.ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.frequency.value = lpFreq;
+      osc.connect(filter);
+      filter.connect(gainNode);
+    } else {
+      osc.connect(gainNode);
+    }
+    gainNode.connect(this.ambientGain);
+    osc.start(now);
+    this.tensionLayers.push({ osc, gainNode });
+  }
+
+  private playPulseLayer(now: number, transitionDelay: number, freq: number, type: OscillatorType, intervalSecs: number, targetGain: number, targetFreq?: number) {
+    if (!this.ctx || !this.ambientGain) return;
+    const osc = this.ctx.createOscillator();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, now);
+    
+    if (targetFreq) { // Portamento simulator
+      const pitchLfo = this.ctx.createOscillator();
+      pitchLfo.type = 'sawtooth';
+      pitchLfo.frequency.value = 1 / intervalSecs;
+      const pGain = this.ctx.createGain();
+      pGain.gain.value = targetFreq - freq;
+      pitchLfo.connect(pGain);
+      pGain.connect(osc.frequency);
+      pitchLfo.start(now);
+      this.tensionLayers.push({ osc: pitchLfo, gainNode: null });
+    }
+    
+    const pulseLfo = this.ctx.createOscillator();
+    pulseLfo.type = 'sine';
+    pulseLfo.frequency.value = 1 / intervalSecs;
+    const pulseGain = this.ctx.createGain();
+    pulseGain.gain.value = 1.0;
+    pulseLfo.connect(pulseGain);
+    
+    const gainNode = this.ctx.createGain();
+    gainNode.gain.setValueAtTime(0.0001, now);
+    gainNode.gain.exponentialRampToValueAtTime(targetGain, now + transitionDelay);
+    pulseGain.connect(gainNode.gain);
+    
+    osc.connect(gainNode);
+    gainNode.connect(this.ambientGain);
+    osc.start(now);
+    pulseLfo.start(now);
+    this.tensionLayers.push({ osc, gainNode });
+    this.tensionLayers.push({ osc: pulseLfo, gainNode: null });
+  }
+
+  private playNoiseLayer(now: number, duration: number, minFreq: number, maxFreq: number, targetGain: number) {
+    if (!this.ctx || !this.ambientGain) return;
+    try {
+      const bs = this.ctx.sampleRate * 2.0;
+      const buf = this.ctx.createBuffer(1, bs, this.ctx.sampleRate);
+      const dat = buf.getChannelData(0);
+      for(let i=0; i<bs; i++) dat[i] = Math.random()*2-1;
+      const n = this.ctx.createBufferSource();
+      n.buffer = buf; n.loop = true;
+      const flt = this.ctx.createBiquadFilter();
+      flt.type = 'bandpass';
+      flt.frequency.value = (minFreq + maxFreq)/2;
+      flt.Q.value = 0.5;
+      const g = this.ctx.createGain();
+      g.gain.setValueAtTime(0.0001, now);
+      g.gain.exponentialRampToValueAtTime(targetGain, now + duration);
+      n.connect(flt); flt.connect(g); g.connect(this.ambientGain);
+      n.start(now);
+      this.tensionLayers.push({ osc: n, gainNode: g });
+    } catch(e){}
+  }
+
+  playSIGINTIntercept(lang: string, urgency: 'routine' | 'priority' | 'flash') {
+    if (!this.ctx || this.isMuted) return;
+    this.resume();
+    const now = this.ctx.currentTime;
+    this.sfxRadioIntercept();
+    let dur = 2, spk = 1, stat = 0.05;
+    if (urgency === 'priority') { dur = 3.5; spk = 2; stat = 0.1; }
+    if (urgency === 'flash') { dur = 5; spk = 3; stat = 0.2; }
+    for(let s=0; s<spk; s++) {
+      const src = this.ctx.createOscillator();
+      src.type = 'sawtooth';
+      src.frequency.setValueAtTime(300 + Math.random()*200, now);
+      const flt = this.ctx.createBiquadFilter();
+      flt.type = 'bandpass'; flt.frequency.value = 1500; flt.Q.value = 5.0;
+      const am = this.ctx.createOscillator();
+      am.type = 'sine'; am.frequency.value = 0.5 + Math.random()*4;
+      const amG = this.ctx.createGain(); amG.gain.value = 0.5;
+      am.connect(amG);
+      const oG = this.ctx.createGain();
+      oG.gain.setValueAtTime(0, now); oG.gain.linearRampToValueAtTime(0.08, now+0.1);
+      oG.gain.setValueAtTime(0.08, now + dur - 0.1); oG.gain.linearRampToValueAtTime(0, now+dur);
+      amG.connect(oG.gain);
+      src.connect(flt); flt.connect(oG); oG.connect(this.sfxGain || this.ctx.destination);
+      src.start(now); am.start(now); src.stop(now+dur); am.stop(now+dur);
+    }
+    try {
+      const bs = this.ctx.sampleRate * dur;
+      const b = this.ctx.createBuffer(1, bs, this.ctx.sampleRate);
+      const d = b.getChannelData(0);
+      for(let i=0; i<bs; i++) d[i] = Math.random()*2-1;
+      const n = this.ctx.createBufferSource(); n.buffer = b;
+      const ng = this.ctx.createGain(); ng.gain.value = stat;
+      n.connect(ng); ng.connect(this.sfxGain || this.ctx.destination);
+      n.start(now);
+    } catch(e){}
+    setTimeout(() => { this.sfxRadioIntercept(); }, Math.max(0, dur*1000 - 200));
+  }
+
+  setAcousticEnvironment(env: AcousticEnvironment) {
+    if (!this.ctx) return;
+    this.resume();
+    this.currentAcousticEnv = env;
+    if (!this.convolverNode) {
+      this.convolverNode = this.ctx.createConvolver();
+      this.convolverGain = this.ctx.createGain();
+      this.convolverGain.gain.value = 0.15;
+      this.convolverNode.connect(this.convolverGain);
+      this.convolverGain.connect(this.master || this.ctx.destination);
+      if (this.sfxGain) this.sfxGain.connect(this.convolverNode);
+    }
+    let lMs = 1200, dcy = 5.0;
+    if (env === 'oval_office') { lMs = 400; dcy = 8.0; }
+    if (env === 'underground_bunker') { lMs = 2800; dcy = 2.0; }
+    if (env === 'field_ops') { lMs = 200; dcy = 12.0; }
+    if (env === 'submarine_comms') { lMs = 80; dcy = 20.0; }
+    
+    const sr = this.ctx.sampleRate;
+    const ln = Math.max(1, sr * (lMs/1000));
+    const imp = this.ctx.createBuffer(2, ln, sr);
+    for(let ch=0; ch<2; ch++){
+      const dat = imp.getChannelData(ch);
+      for(let i=0; i<ln; i++) dat[i] = (Math.random()*2-1)*Math.pow(1-i/ln, dcy);
+    }
+    this.convolverNode.buffer = imp;
+    if (env === 'underground_bunker') {
+      const comb = this.ctx.createBiquadFilter();
+      comb.type = 'peaking'; comb.frequency.value = 180; comb.Q.value = 8.0;
+      this.convolverNode.disconnect();
+      this.convolverNode.connect(comb);
+      comb.connect(this.convolverGain!);
+    } else {
+      this.convolverNode.disconnect();
+      this.convolverNode.connect(this.convolverGain!);
+    }
+  }
+
+  enterCinematicSilence(durationMs: number) {
+    if (!this.ctx || !this.master) return;
+    this.resume();
+    const now = this.ctx.currentTime;
+    this.master.gain.setValueAtTime(this.master.gain.value, now);
+    this.master.gain.linearRampToValueAtTime(0.02, now + 0.8);
+  }
+
+  exitCinematicSilence(restoreToVolume: number) {
+    if (!this.ctx || !this.master) return;
+    const now = this.ctx.currentTime;
+    this.master.gain.setValueAtTime(this.master.gain.value, now);
+    this.master.gain.linearRampToValueAtTime(this.isMuted ? 0.0 : restoreToVolume, now + 1.2);
+  }
+
   private currentMusicDefcon: DefconLevel = 5;
   private distortionNode: WaveShaperNode | null = null;
 
@@ -1020,11 +1307,7 @@ class AudioEngine {
         break;
       case 'NUCLEAR_AFTERMATH':
         if (phase === 0) {
-          // Adjust volume
-          const prev = this.musicVolume;
-          this.musicVolume = 0.03;
           this.startIntroDrone();
-          this.musicVolume = prev;
         }
         if (phase === 4) this.sfxPeaceResolution();
         break;
@@ -1275,6 +1558,38 @@ class AudioEngine {
     osc.stop(sweepStart + 0.41);
   }
 
+  sfxWhiteout() {
+    if (!this.ctx) return;
+    this.resume();
+
+    const now = this.ctx.currentTime;
+    // Massive clipping noise burst to simulate blinding light
+    try {
+      const bufferSize = this.ctx.sampleRate * 2.0; // 2 seconds of noise
+      const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        data[i] = Math.random() * 2 - 1;
+      }
+      const noiseNode = this.ctx.createBufferSource();
+      noiseNode.buffer = buffer;
+      
+      const filter = this.ctx.createBiquadFilter();
+      filter.type = 'highpass';
+      filter.frequency.setValueAtTime(400, now);
+      filter.frequency.linearRampToValueAtTime(8000, now + 1.5);
+
+      const gain = this.ctx.createGain();
+      gain.gain.setValueAtTime(0.3, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 1.5);
+
+      noiseNode.connect(filter);
+      filter.connect(gain);
+      gain.connect(this.sfxGain || this.ctx.destination);
+      noiseNode.start(now);
+    } catch (e) {}
+  }
+
   setSceneVolume(targetVolume: number, durationMs: number) {
     if (this.master && this.ctx) {
       const targetTime = this.ctx.currentTime + (durationMs / 1000);
@@ -1284,11 +1599,7 @@ class AudioEngine {
   }
 
   restoreSimVolume(durationMs: number = 1200) {
-    if (this.master && this.ctx) {
-      const targetTime = this.ctx.currentTime + (durationMs / 1000);
-      this.master.gain.setValueAtTime(this.master.gain.value, this.ctx.currentTime);
-      this.master.gain.linearRampToValueAtTime(this.isMuted ? 0.0 : 0.7, targetTime);
-    }
+    this.exitCinematicSilence(0.7);
   }
 
   setMute(muted: boolean) {
@@ -1314,7 +1625,18 @@ if (typeof window !== 'undefined') {
     useWorldStore.subscribe((state) => {
       const currentLog = state.globalEventLog || [];
       if (currentLog.length > lastEventLogLength) {
-        const latestEvent = currentLog[0];
+        // Read new events and see if SIGINT applies
+        const newEvents = currentLog.slice(lastEventLogLength);
+        newEvents.forEach(evt => {
+          const text = evt.text.toLowerCase();
+          const categoryRaw = evt.severity || '';
+          
+          if (text.includes('sigint') || text.includes('humint')) {
+            audio.playSIGINTIntercept('english_encrypted', 'routine');
+          }
+        });
+
+        const latestEvent = currentLog[currentLog.length - 1];
         if (latestEvent && latestEvent.tick > 0) { // avoid bootstrap startup noise
           const text = latestEvent.text.toLowerCase();
           let category: 'conflict' | 'military' | 'nuclear' | 'economic' | 'cyber' | null = null;

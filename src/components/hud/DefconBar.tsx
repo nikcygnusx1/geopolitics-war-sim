@@ -1,292 +1,149 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useDefconStore, DEFCON_PALETTES, DefconLevel } from '../../store/defconStore';
-import { useClockStore } from '../../store/clockStore';
+import React, { useEffect, useState } from 'react';
+import { useDefconStore } from '../../store/defconStore';
+import { useWorldStore } from '../../store/worldStore';
 import { usePlayerStore } from '../../store/playerStore';
-import { PERSONAS } from '../../config/defconRegistry';
-import { fmtDate, fmtSession } from '../../utils/format';
-import { RadiationCounter } from './RadiationCounter';
 import { audio } from '../../utils/audio';
+import { PersonaId } from '../../types/defconPersona';
 
-export const DefconBar: React.FC = () => {
-  const currentDefcon = useDefconStore((state) => state.currentDefconLevel);
-  const playerCountryId = usePlayerStore((state) => state.countryId);
-  const activePersona = useDefconStore((state) => state.activePersona);
-  const transitionHistory = useDefconStore((state) => state.transitionHistory);
+export default function DefconBar() {
+  const defconLevel = useDefconStore((s) => s.currentDefconLevel);
+  const transitionHistory = useDefconStore((s) => s.transitionHistory);
+  const previousLevel = transitionHistory.length > 0 ? transitionHistory[0].fromLevel : 5;
+  const setDefconLevel = useDefconStore((s) => s.setDefconLevel);
+  const activePersona = useDefconStore((s) => s.activePersona);
+  const setPersona = useDefconStore((s) => s.setPersona);
   
-  // Clocks
-  const calendarDate = useClockStore((state) => state.currentCalendarDate);
-  const sessionElapsed = useClockStore((state) => state.sessionElapsedSeconds);
-  const currentTick = useClockStore((state) => state.currentTick);
+  const tick = useWorldStore(s => s.currentTick);
+  const [localTime, setLocalTime] = useState('');
 
-  // Persona Promotion Banner State
-  const [showPersonaBanner, setShowPersonaBanner] = useState(false);
-  const [bannerPersona, setBannerPersona] = useState(activePersona);
-  const prevPersonaRef = useRef(activePersona);
-
+  // Clock
   useEffect(() => {
-    if (activePersona !== prevPersonaRef.current) {
-      setBannerPersona(activePersona);
-      setShowPersonaBanner(true);
-      prevPersonaRef.current = activePersona;
-      const t = setTimeout(() => {
-        setShowPersonaBanner(false);
-      }, 3000); // 3 seconds
-      return () => clearTimeout(t);
-    }
-  }, [activePersona]);
+    const inter = setInterval(() => {
+      const d = new Date();
+      setLocalTime(d.toISOString().substring(11, 19) + ' UTC');
+    }, 1000);
+    return () => clearInterval(inter);
+  }, []);
 
-  const levels = [
-    { value: 5, name: 'PEACE' },
-    { value: 4, name: 'WATCH' },
-    { value: 3, name: 'ELEVATED' },
-    { value: 2, name: 'ARMED' },
-    { value: 1, name: 'NUCLEAR' },
-  ];
-
-  // Tooltip helper
-  const getTooltipAndHistory = (lvlValue: number) => {
-    const log = transitionHistory.find((h) => h.toLevel === lvlValue);
-    if (log) {
-      return `T:${String(log.tick).padStart(4, '0')} | ${log.reason} [${log.source}]`;
+  // Alert sounds
+  useEffect(() => {
+    if (defconLevel < previousLevel) {     
+      if (defconLevel === 1) {
+        audio.sfxNuclearAlarm();
+      } else if (defconLevel <= 3) {
+        audio.sfxCrisisWarning();
+      } else {
+        audio.sfxIntelChime();
+      }
     }
-    return `DEFCON STATUS LEVEL ${lvlValue} (PEACETIME NOMINAL STATUS)`;
+  }, [defconLevel, previousLevel]);
+
+  const levelColors: Record<number, string> = {
+    5: 'text-cyan-400 bg-cyan-950 border-cyan-800 shadow-[0_0_15px_rgba(34,211,238,0.2)]',
+    4: 'text-green-400 bg-green-950 border-green-800 shadow-[0_0_15px_rgba(74,222,128,0.2)]',
+    3: 'text-yellow-400 bg-yellow-950 border-yellow-800 shadow-[0_0_15px_rgba(250,204,21,0.2)]',
+    2: 'text-orange-500 bg-orange-950 border-orange-800 shadow-[0_0_20px_rgba(249,115,22,0.3)] animate-pulse',
+    1: 'text-red-500 bg-red-950 border-red-700 shadow-[0_0_30px_rgba(239,68,68,0.6)] animate-ping'
   };
 
-  // Glow classes and custom bar pulsing
-  let barEffectsClass = '';
-  let borderStyle = '2.5px solid var(--defcon-accent)';
-  let shadowStyle = '0 2px 14px var(--defcon-accent-soft)';
-
-  if (currentDefcon === 1) {
-    barEffectsClass = 'animate-defcon-1-flicker bg-red-950/20';
-    borderStyle = '3px solid #ff0022';
-    shadowStyle = '0 0 25px rgba(255, 0, 34, 0.4), inset 0 0 15px rgba(255, 0, 34, 0.15)';
-  } else if (currentDefcon === 2) {
-    barEffectsClass = 'animate-defcon-2-pulse bg-orange-950/15';
-    borderStyle = '2.5px solid #ff8c00';
-    shadowStyle = '0 0 15px rgba(255, 140, 0, 0.25)';
-  } else if (currentDefcon === 3) {
-    barEffectsClass = 'animate-defcon-3-flicker';
-    borderStyle = '1.5px solid #1a1a1a';
-    shadowStyle = '0 0 10px rgba(245, 166, 35, 0.15)';
-  }
-
-  const glyphs: Record<string, string> = {
-    ANALYST: '🔍',
-    WATCH_OFFICER: '👁',
-    CRISIS_LEAD: '⚔',
-    JOINT_COMMANDER: '🎖',
-    STRATEGIC_COMMAND: '☢',
+  const textColors: Record<number, string> = {
+    5: 'text-cyan-400', 4: 'text-green-400', 3: 'text-yellow-400', 2: 'text-orange-500', 1: 'text-red-500'
   };
 
-  const currentPersonaDef = PERSONAS[bannerPersona];
+  const activeColorClass = levelColors[defconLevel] || levelColors[5];
+  const activeTextColor = textColors[defconLevel] || textColors[5];
+
+  const getWarningMessage = () => {
+    switch (defconLevel) {
+      case 5: return "NORMAL READINESS // ROUTINE STATE WATCH // NO IMMINENT THREATS DETECTED";
+      case 4: return "INCREASED INTELLIGENCE WATCH // HEIGHTENED REGIONAL TENSIONS // MAINTAIN SURVEILLANCE";
+      case 3: return "FORCE READINESS INCREASED // MOBILIZING ASSETS // PREPARE FOR POTENTIAL HOSTILITIES";
+      case 2: return "FURTHER INCREASES TO READINESS // IMMINENT THREAT ACTIVE // ARMING ORDNANCE";
+      case 1: return "!!! MAXIMUM READINESS !!! // NUCLEAR WAR IMMINENT OBTAIN COMMAND CODES // !!! STANDBY LAUNCH !!!";
+      default: return "";
+    }
+  };
 
   return (
-    <div className="w-full relative z-40 select-none">
-      {/* Dynamic Main Action Bar */}
-      <div 
-        id="defcon-bar-root"
-        className={`w-full bg-[#020502] relative py-2.5 px-4 flex flex-col md:flex-row justify-between items-center transition-all duration-300 gap-3 border-b ${barEffectsClass}`}
-        style={{
-          borderBottom: borderStyle,
-          boxShadow: shadowStyle,
-        }}
-      >
-        {/* Top micro line accent */}
-        <div 
-          className="absolute top-0 left-0 right-0 h-[1.5px] opacity-70"
-          style={{ backgroundColor: 'var(--defcon-accent)' }}
-        />
-
-        {/* HUD left brand */}
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            <span 
-              className={`w-2 h-2 rounded-full inline-block ${currentDefcon === 1 ? 'bg-red-500 animate-ping-fast' : 'animate-pulse'}`} 
-              style={{ 
-                backgroundColor: currentDefcon === 1 ? '#ff0022' : 'var(--defcon-accent)', 
-                boxShadow: 'var(--defcon-accent-glow)' 
-              }} 
-            />
-            <span 
-              className={`classification font-bold tracking-[0.25em] text-[10px] ${currentDefcon === 1 ? 'text-red-500 animate-pulse' : ''}`}
-              style={{ 
-                color: currentDefcon === 1 ? '#ff0022' : 'var(--defcon-accent)', 
-                textShadow: '0 0 5px var(--defcon-accent)'
-              }}
-            >
-              TOP SECRET SOVEREIGN COMMAND EYES ONLY
-            </span>
+    <div className={`fixed top-0 left-0 w-full z-50 transition-colors duration-[1500ms] ${defconLevel === 1 ? 'bg-red-950/30 border-b border-red-600/50' : 'bg-black/85 border-b border-[#222]'} backdrop-blur-md`}>
+      {/* CRT SCANLINE */}
+      <div className="absolute inset-0 pointer-events-none opacity-[0.03]" style={{ background: 'repeating-linear-gradient(0deg, transparent, transparent 2px, #000 2px, #000 4px)' }}></div>
+      
+      <div className="flex h-16 w-full items-stretch font-mono relative">
+        {/* LEFT COMPARTMENT */}
+        <div className="flex-1 flex flex-col justify-between px-6 py-2 border-r border-[#333] relative">
+          <div className="flex justify-between items-center w-full">
+            <span className={`text-[10px] font-bold tracking-widest uppercase opacity-80 ${activeTextColor}`}>SOVEREIGN COMMAND // SECURE LINK</span>
+            <span className="text-[10px] text-gray-400">{localTime}</span>
           </div>
           
-          <span className="chrome text-gray-700 font-bold hidden md:inline">/</span>
-          
-          <span className="chrome text-gray-300 text-[9px] font-black tracking-wider bg-white/5 px-2 py-0.5 rounded border border-white/5 uppercase hidden md:inline-block">
-            COGNATE DIRECTORY: {playerCountryId || 'SEC-01'}
-          </span>
-
-          {currentDefcon === 1 && (
-            <div className="overflow-hidden whitespace-nowrap w-44 text-[8px] tracking-widest text-[#ff3344] font-bold bg-red-950/40 px-2 py-0.5 border border-red-500/30 rounded-sm uppercase ml-2 select-none">
-              <div className="inline-block animate-marquee">
-                ⚠ NUCLEAR WAR PROTOCOLS ENGAGED ⚠ LAUNCH CODE GRANTED ⚠ ALL SILOS PRIMED ⚠ OVERWRITE SECURE ⚠&nbsp;
-              </div>
+          <div className="overflow-hidden whitespace-nowrap text-[9px] text-gray-500 tracking-widest mt-auto">
+            <div className={`inline-block whitespace-nowrap flex gap-8 ${defconLevel <= 3 ? 'animate-[marquee_15s_linear_infinite]' : ''}`}>
+              <span className={defconLevel === 1 ? 'text-red-400 font-bold' : ''}>{getWarningMessage()}</span>
+              {defconLevel <= 3 && <span className={defconLevel === 1 ? 'text-red-400 font-bold' : ''}>{getWarningMessage()}</span>}
             </div>
-          )}
+          </div>
         </div>
 
-        {/* DEFCON status pips and reactor status column */}
-        <div className="flex flex-col items-center gap-1.5">
-          <div className="flex items-center gap-3 bg-black/40 border border-white/5 px-3 py-1 rounded-sm shadow-inner relative">
-            <span className="chrome text-[8px] font-extrabold text-gray-500 tracking-widest">DEFCON APERTURE RANGE:</span>
-            <div className="flex gap-1.5">
-              {levels.map((lvl) => {
-                const isActive = lvl.value === currentDefcon;
-                const isPassed = lvl.value >= currentDefcon;
-                const pipColor = DEFCON_PALETTES[lvl.value as DefconLevel].accent;
-                
-                return (
-                  <div 
-                    key={lvl.value}
-                    id={`defcon-pip-btn-${lvl.value}`}
-                    onClick={() => {
-                      audio.sfxKeyClick();
-                      useDefconStore.getState().setDefconLevel(lvl.value as any, 'PLAYER', 'Manual controller override request', currentTick);
-                    }}
-                    title={getTooltipAndHistory(lvl.value)}
-                    className="flex flex-col items-center justify-center relative px-3 py-1 border rounded cursor-pointer transition-all min-w-[70px] select-none hover:bg-white/[0.02]"
-                    style={{
-                      borderColor: isActive ? pipColor : 'rgba(255, 255, 255, 0.04)',
-                      backgroundColor: isActive ? 'rgba(0, 0, 0, 0.6)' : 'transparent',
-                      color: isActive ? pipColor : '#444c45',
-                      opacity: isPassed ? 1 : 0.3,
-                      boxShadow: isActive ? `0 0 8px ${pipColor}44` : 'none'
-                    }}
-                  >
-                    {/* CSS Border-radius Radar sweeping scan loop */}
-                    {isActive && (
-                      <div 
-                        className="absolute -inset-[1px] rounded border border-transparent animate-spin-slow pointer-events-none"
-                        style={{ 
-                          borderTopColor: pipColor,
-                          animationDuration: '3s',
-                          borderRadius: '4px'
-                        }} 
-                      />
-                    )}
-
-                    <div className="flex items-center gap-1">
-                      <div 
-                        className="w-[5px] h-[5px] rounded-full" 
-                        style={{
-                          backgroundColor: isActive ? pipColor : '#19241b',
-                          boxShadow: isActive ? `0 0 6px ${pipColor}` : 'none'
-                        }}
-                      />
-                      <span className="text-[10px] font-black leading-none">{lvl.value}</span>
-                    </div>
-                    <span className="text-[6.5px] font-black tracking-widest uppercase mt-0.5">{lvl.name}</span>
-                  </div>
-                );
-              })}
-            </div>
+        {/* CENTER COMPARTMENT / DEFCON BOARD */}
+        <div className="w-[420px] shrink-0 border-r border-l border-[#444] bg-[#0c0c0c] flex items-center justify-center p-1 relative z-10 box-border">
+          <div className="flex gap-2 items-center justify-center h-full w-full">
+            {[5, 4, 3, 2, 1].map((lvl) => {
+              const isActive = defconLevel === lvl;
+              const lvlColor = levelColors[lvl];
+              const textC = textColors[lvl];
+              return (
+                <button
+                  key={lvl}
+                  onClick={() => { audio.sfxKeyClick(); setDefconLevel(lvl as import('../../store/defconStore').DefconLevel, 'PLAYER', 'Manual Override', tick); }}
+                  className={`
+                    relative flex flex-col items-center justify-center transition-all cursor-pointer select-none
+                    ${isActive ? 'w-24 h-14 border border-current shadow-inner scale-105 z-10' : 'w-12 h-10 border border-gray-800 opacity-40 hover:opacity-100 hover:scale-100 bg-black scale-95'}
+                    ${isActive ? lvlColor : 'text-gray-600'}
+                  `}
+                  style={{
+                    clipPath: 'polygon(15% 0, 85% 0, 100% 100%, 0% 100%)'
+                  }}
+                >
+                  <span className={`text-[8px] font-black tracking-widest uppercase mb-[-2px] ${isActive ? '' : 'hidden'}`}>DEFCON</span>
+                  <span className={`text-xl font-black ${isActive ? '' : 'text-sm'}`}>{lvl}</span>
+                  {isActive && lvl === 1 && (
+                    <span className="absolute inset-0 bg-red-500 mix-blend-screen opacity-20 animate-pulse"></span>
+                  )}
+                </button>
+              );
+            })}
           </div>
+        </div>
 
-          {/* REACTOR CORE STATUS CELLS */}
-          <div className="flex items-center gap-2 px-3 py-0.5 bg-black/25 border border-white/5 rounded-sm select-none">
-            <span className="text-[6.5px] text-gray-500 font-bold tracking-widest uppercase mr-1">REACTOR CORE CELLS:</span>
+        {/* RIGHT COMPARTMENT */}
+        <div className="flex-1 flex flex-col justify-center px-6 py-2 relative gap-1 border-l border-[#333]">
+          <div className="flex justify-between items-center text-[10px] tracking-wide text-gray-400">
+            <span>T-TICK <span className="text-white">{tick}</span></span>
             <div className="flex gap-2">
-              {[5, 4, 3, 2, 1].map((lvl) => {
-                const isEscalated = lvl >= currentDefcon;
-                const coreColor = DEFCON_PALETTES[lvl as DefconLevel].accent;
-                return (
-                  <div 
-                    key={lvl}
-                    className="relative flex items-center justify-center"
-                    title={`Core Reactor Diagnostic: Cell ${lvl}`}
-                  >
-                    <div 
-                      className={`w-2 h-2 rounded-full transition-all duration-500 ${isEscalated ? 'animate-pulse-fx-fast' : 'opacity-20'}`}
-                      style={{
-                        background: isEscalated 
-                          ? `radial-gradient(circle, ${coreColor} 0%, rgba(0,0,0,0.8) 80%)` 
-                          : '#222',
-                        boxShadow: isEscalated ? `0 0 10px ${coreColor}` : 'none',
-                        border: `1px solid ${isEscalated ? coreColor : '#444'}`
-                      }}
-                    />
-                  </div>
-                );
-              })}
+              <span>PERSONA:</span>
+              <button 
+                onClick={() => { audio.sfxKeyClick(); setPersona('STRATEGIC_COMMAND'); }}
+                className={`px-1.5 rounded transition ${activePersona === 'STRATEGIC_COMMAND' ? 'bg-zinc-800 text-white font-bold' : 'hover:bg-zinc-900'}`}>
+                STRATEGIC_COMMAND
+              </button>
+              <button 
+                onClick={() => { audio.sfxKeyClick(); setPersona('ANALYST'); }}
+                className={`px-1.5 rounded transition ${activePersona === 'ANALYST' ? 'bg-zinc-800 text-cyan-400 font-bold' : 'hover:bg-zinc-900'}`}>
+                ANALYST
+              </button>
             </div>
-          </div>
-        </div>
-
-        {/* HUD clock, telemetry indicators */}
-        <div className="flex items-center gap-2.5 text-[9px]">
-          <RadiationCounter />
-          
-          <div className="flex items-center gap-1.5 border border-white/5 bg-black/30 px-2.5 py-1 rounded">
-            <span className="chrome text-gray-500 font-bold uppercase tracking-wider">📅 date:</span>
-            <span className="data-inline font-black tracking-wider uppercase animate-pulse" style={{ color: 'var(--defcon-accent)' }}>{fmtDate(calendarDate)}</span>
-          </div>
-          
-          <div className="flex items-center gap-1.5 border border-white/5 bg-black/30 px-2.5 py-1 rounded hidden lg:flex">
-            <span className="chrome text-gray-500 font-bold uppercase tracking-wider">⏱ elapsed:</span>
-            <span className="data-inline font-black tracking-widest text-[#00ff44]">{fmtSession(sessionElapsed)}</span>
-          </div>
-
-          <div className="flex items-center gap-1.5 border px-2.5 py-1 bg-[#0a100a]/70 rounded" style={{ borderColor: 'var(--defcon-accent)' }}>
-            <span className="chrome text-gray-500 font-extrabold tracking-wider">TICK:</span>
-            <span className="data-inline font-black tracking-widest animate-pulse" style={{ color: 'var(--defcon-accent)' }}>
-              {String(currentTick).padStart(4, '0')}
-            </span>
           </div>
         </div>
       </div>
-
-      {/* PERSONA PROMOTION SLIDING EXPAND BANNER */}
-      {showPersonaBanner && currentPersonaDef && (
-        <div 
-          className="absolute left-0 right-0 top-[100%] z-[150] shadow-[0_10px_30px_rgba(0,0,0,0.95)] animate-slide-in-persona overflow-hidden"
-          style={{
-            borderBottom: `2px solid var(--defcon-accent)`,
-            background: `linear-gradient(to bottom, var(--defcon-accent-soft), #000 85%)`
-          }}
-        >
-          <div className="px-6 py-3.5 flex flex-col md:flex-row items-center justify-between gap-4 max-w-7xl mx-auto">
-            {/* Persona card contents */}
-            <div className="flex items-center gap-4">
-              <div className="text-3xl p-2 bg-black/60 border rounded border-[var(--defcon-accent)] flex items-center justify-center animate-bounce-fx">
-                {glyphs[bannerPersona] || '🎖'}
-              </div>
-              <div className="space-y-1">
-                <div className="flex items-baseline gap-2">
-                  <span className="text-[7.5px] font-black uppercase text-gray-400 bg-white/5 px-2 py-0.5 rounded tracking-widest">SOVEREIGN PROMOTION RATIFIED</span>
-                  <span className="text-[7.5px] font-extrabold text-[#ffd700] tracking-widest">TIER {currentPersonaDef.authorityTier}/5 AUTHORITY</span>
-                </div>
-                <h3 className="text-sm font-black tracking-[0.2em] uppercase" style={{ color: 'var(--defcon-accent)' }}>
-                  {currentPersonaDef.name}
-                </h3>
-                <p className="text-[8.5px] text-gray-400 font-medium tracking-wide">
-                  {currentPersonaDef.description}
-                </p>
-              </div>
-            </div>
-
-            {/* Micro-data classification footer */}
-            <div className="text-right flex flex-col items-center md:items-end justify-center">
-              <div className="text-[10px] font-bold uppercase py-0.5 px-3 bg-black border border-red-500/40 text-red-400 tracking-widest animate-pulse">
-                CLASSIFIED AUTH LEVEL ACTIVATED
-              </div>
-              <span className="text-[7px] text-gray-500 font-mono tracking-widest uppercase mt-1">
-                SECURE HANDSHAKE KEY: {bannerPersona}_DIRECTIVE_{currentTick}
-              </span>
-            </div>
-          </div>
-        </div>
-      )}
+      
+      {/* MARQUEE ANIMATION STYLES */}
+      <style dangerouslySetInnerHTML={{__html: `
+        @keyframes marquee {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(-50%); }
+        }
+      `}} />
     </div>
   );
-};
-
-export default DefconBar;
+}
